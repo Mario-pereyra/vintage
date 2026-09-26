@@ -12,14 +12,15 @@
 	// (`wrangler versions upload --preview-alias pr-<N>`).
 	"workers_dev": true,
 	"preview_urls": true,
-	// Variables no secretas. En local se sobreescriben con .dev.vars; en CI el
-	// despliegue las inyecta con `--var` desde las variables del repo de GitHub.
+	// Variables no secretas con valores de desarrollo. En local se sobreescriben
+	// con .env; en CI el despliegue las inyecta con `--var` desde las variables
+	// del repo de GitHub.
 	"vars": {
 		"BETTER_AUTH_URL": "http://localhost:5173",
 		"WHATSAPP_NUMBER": "",
 		"R2_PUBLIC_URL": ""
 	},
-	// Secretos de runtime. En local van en .dev.vars; en producción los sube el
+	// Secretos de runtime. En local van en .env; en producción los sube el
 	// CI con `wrangler deploy --secrets-file`. Wrangler rechaza el despliegue si
 	// falta alguno.
 	"secrets": {
@@ -32,6 +33,7 @@
 		]
 	},
 	// Fotos de las piezas (tres variantes por foto, generadas en el navegador).
+	// El CI verifica que coincida con la variable R2_BUCKET de GitHub.
 	"r2_buckets": [
 		{
 			"binding": "FOTOS",

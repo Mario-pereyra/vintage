@@ -51,14 +51,25 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+          APP_URL: ${{ vars.APP_URL }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          WHATSAPP_NUMBER: ${{ vars.WHATSAPP_NUMBER }}
+          R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL }}
         run: |
           faltan=()
           for nombre in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID DATABASE_URL DIRECT_URL \
-                        BETTER_AUTH_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET ADMIN_EMAILS; do
+                        BETTER_AUTH_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET ADMIN_EMAILS \
+                        APP_URL R2_BUCKET; do
             if [ -z "${!nombre}" ]; then faltan+=("$nombre"); fi
           done
+          # Sin estas dos la app despliega igual; solo se avisa.
+          for nombre in WHATSAPP_NUMBER R2_PUBLIC_URL; do
+            if [ -z "${!nombre}" ]; then
+              echo "::warning title=Variable vacía::La variable de GitHub $nombre está vacía."
+            fi
+          done
           if [ ${#faltan[@]} -gt 0 ]; then
-            echo "::warning title=Despliegue omitido::Faltan secretos de GitHub: ${faltan[*]}. Cárgalos en Settings → Secrets and variables → Actions."
+            echo "::warning title=Despliegue omitido::Faltan secretos o variables de GitHub: ${faltan[*]}. Cárgalos en Settings → Secrets and variables → Actions."
             echo "listas=false" >> "$GITHUB_OUTPUT"
           else
             echo "listas=true" >> "$GITHUB_OUTPUT"
@@ -108,10 +119,17 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+          APP_URL: ${{ vars.APP_URL }}
           WHATSAPP_NUMBER: ${{ vars.WHATSAPP_NUMBER }}
           R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL }}
         # Sube la versión sin desplegarla: producción no cambia.
         run: |
+          # URL del alias: https://vintage.<sub>.workers.dev -> https://pr-<N>-vintage.<sub>.workers.dev
+          # Si APP_URL es un dominio propio no se puede derivar y queda APP_URL.
+          auth_url="$APP_URL"
+          if [[ "$APP_URL" =~ ^https://vintage\.([a-z0-9-]+)\.workers\.dev/?$ ]]; then
+            auth_url="https://${ALIAS}-vintage.${BASH_REMATCH[1]}.workers.dev"
+          fi
           secretos="$RUNNER_TEMP/secretos.json"
           trap 'rm -f "$secretos"' EXIT
           jq -n '{DATABASE_URL: env.DATABASE_URL, BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET,
@@ -165,11 +183,21 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+      - name: Verificar el bucket de R2
+        env:
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+        run: |
+          if ! grep -q "\"bucket_name\": \"$R2_BUCKET\"" wrangler.jsonc; then
+            echo "::error::La variable R2_BUCKET ($R2_BUCKET) no coincide con r2_buckets en wrangler.jsonc."
+            exit 1
+          fi
+          npx wrangler r2 bucket info "$R2_BUCKET" > /dev/null
+      # El build va antes de migrar: si falla, la base no queda adelantada.
+      - run: npm run build
       - name: Aplicar migraciones (Neon, conexión directa)
         env:
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
         run: npx prisma migrate deploy
-      - run: npm run build
       - name: Desplegar con los secretos de runtime
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

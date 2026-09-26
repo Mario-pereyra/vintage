@@ -77,10 +77,10 @@ Cada llamada a `crearBaseDePrueba()` clona una base ya migrada, así que cada pr
 ### Automático (GitHub Actions, `.github/workflows/ci.yml`)
 
 - **Cada PR y cada push a `main`**: typecheck, pruebas y build. No necesita secretos.
-- **Cada PR**: sube una versión de preview del Worker con `wrangler versions upload --preview-alias pr-<N>` (producción no cambia) y comenta la URL en el PR. La preview usa la base de producción y no aplica las migraciones del PR.
-- **Push a `main`**: `prisma migrate deploy` con `DIRECT_URL` y después `wrangler deploy --secrets-file`, que sube los secretos de runtime en la misma versión.
+- **Cada PR**: sube una versión de preview del Worker con `wrangler versions upload --preview-alias pr-<N>` (producción no cambia) y comenta la URL en el PR. Si `APP_URL` es `https://vintage.<sub>.workers.dev`, la preview recibe `BETTER_AUTH_URL=https://pr-<N>-vintage.<sub>.workers.dev`. La preview usa la base de producción y no aplica las migraciones del PR.
+- **Push a `main`**: verifica que el bucket `R2_BUCKET` exista y coincida con `wrangler.jsonc`, hace el build, aplica `prisma migrate deploy` con `DIRECT_URL` y despliega con `wrangler deploy --secrets-file`, que sube los secretos de runtime en la misma versión.
 
-Si falta algún secreto, los jobs de despliegue se saltan con un aviso en lugar de fallar. La primera preview aparece después del primer despliegue a producción.
+Si falta algún secreto o las variables `APP_URL` o `R2_BUCKET`, los jobs de despliegue se saltan con un aviso en lugar de fallar. La primera preview aparece después del primer despliegue a producción.
 
 ### Manual
 
