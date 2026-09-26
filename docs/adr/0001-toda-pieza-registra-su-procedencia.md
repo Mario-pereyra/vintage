@@ -1,0 +1,3 @@
+# Toda pieza registra su procedencia
+
+La importación y comercialización de prendería usada está restringida en Bolivia y la Aduana mantiene decomisos activos en 2026 (ver `docs/research/Estudio_de_mercado_Bolivia-Santa_Cruz.md`, secciones 7 y 30). Decidimos que el modelo sea agnóstico al canal de abastecimiento pero que **toda pieza registre su procedencia** (canal, proveedor, lote y documentación) desde el primer día, en lugar de tratar el abastecimiento como un dato opcional. Esto da trazabilidad ante una consulta legal y permite medir la rentabilidad por proveedor y por lote. En la práctica, la Etapa 1 prioriza lotes con procedencia documentable y compra local a particulares.

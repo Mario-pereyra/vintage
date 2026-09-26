@@ -1,0 +1,3 @@
+# Tres identificadores por pieza
+
+Cada pieza tiene un **ID interno** (UUID v7, nunca visible), una **URL pública** con nombre descriptivo y sufijo aleatorio corto (`/carteras/bandolera-cuero-negra-k7f3q9`) y un **código de pieza** correlativo (`VT-0142`) para la etiqueta física, la búsqueda en el panel y la referencia en WhatsApp o lives ("Ref. VT-0142" en la ficha). El código no va en la URL porque un correlativo expone el volumen de inventario y permite recorrer piezas aún no publicadas; el sufijo aleatorio mantiene la URL estable aunque cambie el nombre. Las URLs se comparten por WhatsApp y Facebook y siguen funcionando cuando la pieza se vende.

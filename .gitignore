@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.dev.vars
+.wrangler/
+build/
+.react-router/
+.scratch/
+*.log
+.DS_Store

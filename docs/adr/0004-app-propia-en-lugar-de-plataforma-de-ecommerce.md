@@ -1,0 +1,3 @@
+# App propia en lugar de una plataforma de e-commerce
+
+Shopify o Tiendanube resolverían catálogo, fotos y hosting en un día, pero no modelan el núcleo del negocio: lotes con apertura, descartes y rentabilidad; costo repartido por pieza; reservas con plazo ajustable y contador de reservas vencidas; visibilidad por campo; interesadas. Usarlas obligaría a llevar el inventario en planillas aparte y rompería la sincronización entre catálogo e inventario. Decidimos construir una app propia en TypeScript, con Postgres como única fuente de verdad, mantenida por un solo desarrollador y con presupuesto de infraestructura de 0 USD/mes en la Etapa 1.
