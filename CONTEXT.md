@@ -1,6 +1,6 @@
-# Vintage
+# Vintage Secret's
 
-> Nombre de marca provisional; cambiará cuando la dueña lo defina.
+> Marca: **Vintage Secret's**. Contacto de venta: WhatsApp +591 69647971.
 
 Tienda online de carteras de segunda mano seleccionadas, con base en Santa Cruz de la Sierra y sin local físico: un catálogo público de piezas únicas y un registro interno de inventario para aprender qué se vende, a qué precio y con qué margen.
 
@@ -9,7 +9,7 @@ Tienda online de carteras de segunda mano seleccionadas, con base en Santa Cruz 
 ### Inventario
 
 **Pieza**:
-Un artículo físico único registrado en el inventario e identificado por un código correlativo con el prefijo de la marca (provisionalmente `VT-0001`), que nunca se reutiliza y va en una etiqueta física de la pieza. Siempre existe una sola unidad.
+Un artículo físico único registrado en el inventario e identificado por un código correlativo con el prefijo de la marca (`VT-0001`), que nunca se reutiliza y va en una etiqueta física de la pieza. Siempre existe una sola unidad.
 _Avoid_: Producto, artículo, unidad, ítem
 
 **Cartera**:

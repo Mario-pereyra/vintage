@@ -42,11 +42,14 @@ Vender carteras de segunda mano seleccionadas y mostrarlas con la información s
 - **Precios:** muy variados. Van aproximadamente de Bs30 a Bs500, con piezas en Bs30, 80, 150, 300 y 500, y no están limitados a esas bandas. Una pieza barata y una cara conviven en el mismo catálogo.
 - **Restricciones técnicas:** las fotos se redimensionan en el navegador (no hay procesamiento en el servidor), no hay modo offline y el presupuesto es de 0 USD al mes.
 - **Terminología:** ver `CONTEXT.md` (Pieza, Condición, Reserva, Drop, Compradora, Operadora…). No se usan "producto", "clienta" ni "apartado".
-- **Sin definir:** el nombre de marca (Vintage es provisional), el prefijo del código (`VT-`) y los umbrales de tamaño.
+- **Marca y contacto:** Vintage Secret's; prefijo de código `VT-`; WhatsApp de la tienda +591 69647971.
+- **Umbrales de tamaño:** configurables por la operadora (valores iniciales: Mini <18, Pequeña 18–24, Mediana 25–32, Grande >32 cm de ancho); la ficha siempre muestra los vigentes.
 
 ## Brand Commitments
 
-Todavía no hay ninguno. No existen nombre definitivo, logo, colores ni redes con una estética propia. El diseño propone una identidad y la dueña la valida.
+- Nombre de marca: **Vintage Secret's** (confirmado por la dueña). El wordmark de la maqueta ("vintage") se reemplaza por este nombre al portar el diseño.
+- Identidad visual "Comprobante de pieza" aprobada por la dueña (ver DESIGN.md).
+- Todavía no hay logo ni redes con estética propia.
 
 ## Evidence on Hand
 
