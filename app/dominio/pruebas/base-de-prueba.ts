@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { PrismaPGlite } from "pglite-prisma-adapter";
 
-import { PrismaClient } from "~/generated/prisma/client";
+import { PrismaClient, type EstadoPieza } from "~/generated/prisma/client";
 
 import { crearDominio, type Dominio } from "../index";
 
@@ -42,6 +42,14 @@ function plantillaMigrada(): Promise<PGlite> {
 export interface BaseDePrueba {
   /** El módulo de dominio conectado a una base limpia y migrada. */
   dominio: Dominio;
+  /**
+   * Inserta una pieza directamente, sin pasar por el dominio.
+   *
+   * Provisorio: existe solo porque el dominio todavía no tiene operaciones
+   * para crear y publicar piezas. Cuando el ticket #4 las agregue, las pruebas
+   * deben preparar sus datos con ellas y este atajo se elimina.
+   */
+  sembrarPieza(pieza: { estado: EstadoPieza; publicadaEn?: Date }): Promise<void>;
   cerrar(): Promise<void>;
 }
 
@@ -56,6 +64,11 @@ export async function crearBaseDePrueba(): Promise<BaseDePrueba> {
 
   return {
     dominio: crearDominio(prisma),
+    async sembrarPieza({ estado, publicadaEn }) {
+      await prisma.pieza.create({
+        data: { id: crypto.randomUUID(), estado, publicadaEn },
+      });
+    },
     async cerrar() {
       await prisma.$disconnect();
       await pg.close();

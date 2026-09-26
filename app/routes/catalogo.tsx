@@ -1,6 +1,6 @@
 import { EstadoVacio } from "~/componentes/estado-vacio";
 import { Pagina } from "~/componentes/pagina";
-import { dominioContexto } from "~/servidor/contexto.server";
+import { obtenerDominio } from "~/servidor/contexto.server";
 
 import type { Route } from "./+types/catalogo";
 
@@ -16,7 +16,7 @@ export function meta(_: Route.MetaArgs) {
 }
 
 export async function loader({ context }: Route.LoaderArgs) {
-  const piezas = await context.get(dominioContexto).listarCatalogo();
+  const piezas = await obtenerDominio(context).listarCatalogo();
   return { piezas };
 }
 
