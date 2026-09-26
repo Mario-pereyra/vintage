@@ -9,3 +9,5 @@ build/
 .scratch/
 *.log
 .DS_Store
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
