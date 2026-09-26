@@ -1,0 +1,194 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # En un PR, un push nuevo cancela la corrida anterior. En main no se cancela
+  # un despliegue a medias.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "24"
+
+jobs:
+  # Typecheck, pruebas del dominio (PGlite) y build. No usa ningún secreto.
+  verificar:
+    name: Typecheck, pruebas y build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  # Decide si hay credenciales para desplegar. Si falta alguna, los despliegues
+  # se saltan con un aviso en lugar de fallar.
+  credenciales:
+    name: Credenciales de despliegue
+    runs-on: ubuntu-latest
+    outputs:
+      listas: ${{ steps.revisar.outputs.listas }}
+    steps:
+      - id: revisar
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+        run: |
+          faltan=()
+          for nombre in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID DATABASE_URL DIRECT_URL \
+                        BETTER_AUTH_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET ADMIN_EMAILS; do
+            if [ -z "${!nombre}" ]; then faltan+=("$nombre"); fi
+          done
+          if [ ${#faltan[@]} -gt 0 ]; then
+            echo "::warning title=Despliegue omitido::Faltan secretos de GitHub: ${faltan[*]}. Cárgalos en Settings → Secrets and variables → Actions."
+            echo "listas=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "listas=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Cada PR sube una versión de preview del Worker (sin tocar producción) con
+  # el alias pr-<N> y publica su URL en el PR.
+  preview:
+    name: Preview en Workers
+    needs: [verificar, credenciales]
+    if: github.event_name == 'pull_request' && needs.credenciales.outputs.listas == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # Una versión de preview solo existe sobre un Worker ya desplegado: hasta
+      # el primer despliegue desde main, la preview se salta con un aviso.
+      - name: ¿El Worker ya está en producción?
+        id: worker
+        run: |
+          if npx wrangler deployments status > /dev/null 2>&1; then
+            echo "existe=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning title=Preview omitida::El Worker vintage todavía no tiene un despliegue en producción. La preview se habilita después del primer despliegue desde main."
+            echo "existe=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.worker.outputs.existe == 'true'
+        run: npm run build
+      - name: Subir versión de preview
+        if: steps.worker.outputs.existe == 'true'
+        env:
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.json
+          ALIAS: pr-${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+          WHATSAPP_NUMBER: ${{ vars.WHATSAPP_NUMBER }}
+          R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL }}
+        # Sube la versión sin desplegarla: producción no cambia.
+        run: |
+          secretos="$RUNNER_TEMP/secretos.json"
+          trap 'rm -f "$secretos"' EXIT
+          jq -n '{DATABASE_URL: env.DATABASE_URL, BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET,
+                  GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET,
+                  ADMIN_EMAILS: env.ADMIN_EMAILS}' > "$secretos"
+          npx wrangler versions upload \
+            --preview-alias "$ALIAS" \
+            --tag "${SHA:0:7}" \
+            --message "PR #${{ github.event.pull_request.number }} (${SHA:0:7})" \
+            --secrets-file "$secretos" \
+            --var "WHATSAPP_NUMBER:$WHATSAPP_NUMBER" \
+            --var "R2_PUBLIC_URL:$R2_PUBLIC_URL"
+      - name: Publicar la URL en el PR
+        if: steps.worker.outputs.existe == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          SALIDA: ${{ runner.temp }}/wrangler-output.json
+        run: |
+          alias_url=$(jq -r 'select(.type == "version-upload") | .preview_alias_url // empty' "$SALIDA" | tail -n1)
+          version_url=$(jq -r 'select(.type == "version-upload") | .preview_url // empty' "$SALIDA" | tail -n1)
+          {
+            echo "### Vista previa en Cloudflare Workers"
+            echo
+            if [ -n "$alias_url" ]; then echo "- Alias del PR: $alias_url"; fi
+            if [ -n "$version_url" ]; then echo "- Esta versión (${SHA:0:7}): $version_url"; fi
+            if [ -z "$alias_url$version_url" ]; then echo "No se obtuvo la URL de preview. Revisa que el Worker tenga habilitadas las Preview URLs."; fi
+            echo
+            echo "Ojo: la preview usa la base de producción, y las migraciones de este PR todavía no están aplicadas en ella."
+          } > "$RUNNER_TEMP/comentario.md"
+          cat "$RUNNER_TEMP/comentario.md" >> "$GITHUB_STEP_SUMMARY"
+          gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/comentario.md" --edit-last --create-if-none
+
+  # main: aplica las migraciones pendientes y despliega a producción.
+  produccion:
+    name: Producción en Workers
+    needs: [verificar, credenciales]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.credenciales.outputs.listas == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: produccion
+      url: ${{ vars.APP_URL }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Aplicar migraciones (Neon, conexión directa)
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: npx prisma migrate deploy
+      - run: npm run build
+      - name: Desplegar con los secretos de runtime
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+          APP_URL: ${{ vars.APP_URL }}
+          WHATSAPP_NUMBER: ${{ vars.WHATSAPP_NUMBER }}
+          R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL }}
+        run: |
+          secretos="$RUNNER_TEMP/secretos.json"
+          trap 'rm -f "$secretos"' EXIT
+          jq -n '{DATABASE_URL: env.DATABASE_URL, BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET,
+                  GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET,
+                  ADMIN_EMAILS: env.ADMIN_EMAILS}' > "$secretos"
+          npx wrangler deploy \
+            --secrets-file "$secretos" \
+            --message "main (${GITHUB_SHA:0:7})" \
+            --var "BETTER_AUTH_URL:$APP_URL" \
+            --var "WHATSAPP_NUMBER:$WHATSAPP_NUMBER" \
+            --var "R2_PUBLIC_URL:$R2_PUBLIC_URL"
