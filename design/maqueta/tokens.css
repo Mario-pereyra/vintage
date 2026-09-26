@@ -1,0 +1,70 @@
+/* Comprobante de pieza — tokens de la maqueta (se portan a la app tras #2) */
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&family=Martian+Mono:wght@400;600;700&display=swap");
+
+:root {
+  /* Cuatro tintas planas */
+  --rosa: #e0457b;          /* campo tajibo */
+  --papel: #ffffff;         /* comprobante */
+  --tinta: #16130f;         /* texto y botón principal */
+  --sello: #2b3a8c;         /* sello de goma */
+
+  /* Derivadas de las cuatro tintas (no son tintas nuevas) */
+  --rosa-claro: #f6c3d5;    /* fondo de foto sobre rosa */
+  --rosa-tinta: #2a0716;    /* texto secundario sobre rosa */
+  --tinta-2: #5f5852;       /* texto secundario sobre papel */
+  --linea: #bdb5ad;         /* renglones punteados */
+  --papel-2: #f7eef2;         /* campo del panel: rosa muy diluido */
+
+  --f-texto: "Archivo", system-ui, sans-serif;
+  --f-cifra: "Martian Mono", ui-monospace, monospace;
+
+  --r-1: 4px;
+  --r-2: 8px;
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 28px; --s-7: 40px;
+  --ease-sello: cubic-bezier(.16, 1, .3, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; font-family: var(--f-texto); color: var(--tinta); }
+::selection { background: var(--sello); color: var(--papel); }
+:focus-visible { outline: 3px solid var(--sello); outline-offset: 3px; border-radius: 2px; }
+.cifra { font-family: var(--f-cifra); font-variant-numeric: tabular-nums; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Papel de comprobante con borde troquelado arriba y abajo */
+.comprobante {
+  background: var(--papel);
+  --diente: 7px;
+  -webkit-mask:
+    radial-gradient(circle var(--diente) at 50% 0, #0000 98%, #000) top / 18px 51% repeat-x,
+    radial-gradient(circle var(--diente) at 50% 100%, #0000 98%, #000) bottom / 18px 51% repeat-x;
+          mask:
+    radial-gradient(circle var(--diente) at 50% 0, #0000 98%, #000) top / 18px 51% repeat-x,
+    radial-gradient(circle var(--diente) at 50% 100%, #0000 98%, #000) bottom / 18px 51% repeat-x;
+}
+
+/* Sello de goma */
+.sello {
+  display: inline-block;
+  border: 3px solid var(--sello);
+  color: var(--sello);
+  border-radius: var(--r-1);
+  padding: 6px 10px 5px;
+  font: 700 13px/1.25 var(--f-cifra);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-align: center;
+  transform: rotate(-8deg);
+  mix-blend-mode: multiply;
+}
+.sello small { display: block; font-weight: 400; font-size: 10.5px; letter-spacing: .02em; text-transform: none; }
+.sello.estampa { animation: estampar .42s var(--ease-sello); }
+@keyframes estampar {
+  0% { transform: rotate(-8deg) scale(1.9); opacity: 0; filter: blur(2px); }
+  60% { transform: rotate(-8deg) scale(.94); opacity: 1; filter: blur(0); }
+  100% { transform: rotate(-8deg) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) { .sello.estampa { animation: none; } }
+
+.icono { width: 20px; height: 20px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }

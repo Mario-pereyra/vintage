@@ -1,0 +1,130 @@
+{
+  "title": "Elegí el mundo visual de la tienda",
+  "question": "El sorteo asignó «Comprobante de pieza». Quedate con él, tomá la alternativa o volvé a sortear.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Comprobante de pieza",
+      "kicker": "THE ROLL",
+      "lineage": "Los comprobantes de pago QR y las boletas que toda compradora guarda en su galería.",
+      "thesis": "Cada cartera se presenta como un comprobante verificado: renglones medidos, sello de revisión, referencia única.",
+      "palette": ["#E0457B", "#FFFFFF", "#16130F", "#2B3A8C"],
+      "materials": ["papel de comprobante con borde troquelado", "sello de goma en tinta azul", "renglones punteados de total"],
+      "viewport": "Foto grande de la pieza sobre un campo rosa tajibo; debajo, un comprobante blanco con «Ref. VT-0142» en cifras grandes, medidas y condición como renglones, el precio como TOTAL y el sello REVISADA; botón de WhatsApp fijo abajo.",
+      "risk": "Ejecutado con timidez parece una app de banco; el rosa se lee cliché si no domina la página entera.",
+      "raised": [
+        {"from": "challenger-teletext", "raise": "Cada pieza es una dirección: tipear «142» en la búsqueda abre su comprobante, como una página numerada."},
+        {"from": "challenger-blast", "raise": "La tipografía hace el trabajo: Ref., precio y medidas en cifras grandes; ningún ícono decorativo."},
+        {"from": "challenger-wpa", "raise": "Disciplina de tintas planas: cuatro tintas en todo el sitio, sin degradés ni sombras."},
+        {"from": "challenger-cityscape", "raise": "Los estados son el mismo comprobante resellado: RESERVADA con hora de vencimiento, VENDIDA con fecha y precio."}
+      ]
+    },
+    {
+      "id": "model-pick",
+      "label": "Etiqueta colgante",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "La etiqueta de cartón con hilo y código escrito a mano que cada pieza lleva físicamente.",
+      "thesis": "La ficha es la etiqueta que cuelga de la cartera, ampliada: código, medidas y condición anotados por quien la revisó.",
+      "palette": ["#F2A900", "#FFFFFF", "#141414", "#C8102E"],
+      "materials": ["cartón perforado con ojal", "hilo rojo", "anotación manuscrita"],
+      "viewport": "La foto de la pieza con la etiqueta amarilla colgando en primer plano; al girarla, el reverso muestra medidas, condición y el botón de WhatsApp.",
+      "risk": "Es donde aterrizan muchas tiendas de segunda mano; familiar, aunque muy legible."
+    },
+    {
+      "id": "challenger-teletext",
+      "label": "Teletexto",
+      "verdict": "declined",
+      "lineage": "Revistas de teletexto de 40×24 celdas.",
+      "thesis": "El catálogo como índice de páginas numeradas.",
+      "palette": ["#000000", "#FFFF00", "#00FFFF", "#FFFFFF"],
+      "materials": ["mosaico de bloques", "fuente bitmap"],
+      "viewport": "Índice P100 con las piezas como filas numeradas.",
+      "case": "Pierde en ambos ejes: la compradora no reconoce el teletexto y la foto queda sometida a la grilla.",
+      "kept": "Cada pieza direccionable por su número.",
+      "risk": "Novedad retro sin vínculo con Santa Cruz.",
+      "hero": "https://impeccable.style/worlds/cards/broadcast-programming-teletext-service-hero.webp"
+    },
+    {
+      "id": "challenger-blast",
+      "label": "Manifiesto en tipos de madera",
+      "verdict": "declined",
+      "lineage": "Revista BLAST, 1914.",
+      "thesis": "Letras que golpean sin imágenes.",
+      "palette": ["#C9A0A6", "#111111"],
+      "materials": ["tipos de madera", "reglas negras en cuña"],
+      "viewport": "Precio y Ref. en losas tipográficas giradas.",
+      "case": "Pierde en ambos ejes: una ficha sin foto dominante no vende una cartera.",
+      "kept": "Las cifras hacen el trabajo.",
+      "risk": "Grita donde debe dar confianza.",
+      "hero": "https://impeccable.style/worlds/cards/design-canon-blast-manifesto-page-hero.webp"
+    },
+    {
+      "id": "challenger-wpa",
+      "label": "Afiche WPA de parque",
+      "verdict": "declined",
+      "lineage": "Afiches serigrafiados de parques nacionales.",
+      "thesis": "Planos planos de tinta con un imperativo en mayúsculas.",
+      "palette": ["#2A8C8C", "#2F5D3A", "#C98A2B", "#F1E6CF"],
+      "materials": ["serigrafía de cuatro tintas"],
+      "viewport": "Paisaje en planos con «MIRALA» debajo.",
+      "case": "Pierde en ambos ejes: ilustra paisajes, no piezas fotografiadas.",
+      "kept": "Compromiso total con pocas tintas planas.",
+      "risk": "Nostalgia ajena al público.",
+      "hero": "https://impeccable.style/worlds/cards/posters-covers-sleeves-wpa-park-poster-hero.webp"
+    },
+    {
+      "id": "challenger-cityscape",
+      "label": "Ciudad de noche con lluvia",
+      "verdict": "declined",
+      "lineage": "Nocturno urbano de hora azul a amanecer.",
+      "thesis": "La tienda como ciudad que cambia de hora.",
+      "palette": ["#1B2A6B", "#0B0B0F", "#F2A33A", "#C9CED6"],
+      "materials": ["reflejos mojados", "neón"],
+      "viewport": "Horizonte nocturno con piezas como ventanas iluminadas.",
+      "case": "Pierde en ambos ejes: oscuro y atmosférico, esconde el estado real de la pieza.",
+      "kept": "Un vocabulario de estados completo y visible.",
+      "risk": "Pesado con datos móviles.",
+      "hero": "https://impeccable.style/worlds/cards/light-shadow-caustics-rain-night-cityscape-hero.webp"
+    },
+    {
+      "id": "challenger-algorave",
+      "label": "Algorave",
+      "verdict": "declined",
+      "lineage": "Código en vivo proyectado en una pista.",
+      "thesis": "Los cambios se anuncian antes de sonar.",
+      "palette": ["#000000", "#39FF14", "#FF2BD6", "#FFB000"],
+      "materials": ["buffer de código", "proyector"],
+      "viewport": "Terminal a escala de escenario.",
+      "case": "Pierde en ambos ejes: nada del mundo de la compradora.",
+      "kept": "Anunciar lo que viene (el próximo drop) antes de que ocurra.",
+      "risk": "Ilegible para el público.",
+      "hero": "https://impeccable.style/worlds/cards/medium-native-algorave-source-floor-hero.webp"
+    },
+    {
+      "id": "challenger-garden",
+      "label": "Jardín de lluvia gravitatoria",
+      "verdict": "declined",
+      "lineage": "Mundos surrealistas imposibles.",
+      "thesis": "Cada nube impone su propia gravedad.",
+      "palette": ["#5E6B5C", "#3A6FD8", "#D8453A", "#111111"],
+      "materials": ["simulación de partículas"],
+      "viewport": "Jardín con lluvia que cae hacia arriba.",
+      "case": "Pierde en ambos ejes: juego visual sin relación con carteras.",
+      "kept": "Un solo campo dominante en el celular.",
+      "risk": "Distrae del producto.",
+      "hero": "https://impeccable.style/worlds/cards/dream-surreal-impossible-worlds-gravity-rain-garden-hero.webp"
+    }
+  ],
+  "reroll": {"registers": ["safer", "bolder"]},
+  "buildPath": {"value": "code", "toggle": false},
+  "canon": true,
+  "canonCard": {
+    "label": "El estándar de la categoría",
+    "thesis": "Tienda de moda de segunda mano limpia: fondo blanco, grilla de fotos, tipografía negra y un acento.",
+    "palette": ["#FFFFFF", "#111111", "#8A8A8A", "#B8860B"],
+    "materials": ["grilla limpia", "fotografía de producto"],
+    "viewport": "Galería a sangre, nombre, precio y botón de WhatsApp debajo.",
+    "risk": "Indistinguible de la competencia por diseño; es la «plantilla genérica» que marcaste como error."
+  },
+  "steer": true
+}

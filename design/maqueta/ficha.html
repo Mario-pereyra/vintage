@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#e0457b">
+<title>Bandolera de cuero negra · Ref. VT-0142 · vintage</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  body { background: var(--rosa); }
+  a { color: inherit; text-underline-offset: 3px; }
+
+  /* Barra */
+  .barra { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) var(--s-4); color: var(--papel); max-width: 1120px; margin: 0 auto; }
+  .marca { font: 800 21px/1 var(--f-texto); letter-spacing: -.02em; text-decoration: none; }
+  .buscar { margin-left: auto; display: flex; align-items: center; gap: 6px; background: var(--papel); color: var(--tinta); border-radius: var(--r-1); padding: 0 10px; height: 38px; width: min(52vw, 220px); }
+  .buscar input { all: unset; width: 100%; font: 400 13px var(--f-cifra); color: var(--tinta); }
+  .buscar input::placeholder { color: var(--tinta-2); }
+  .buscar .icono { width: 16px; height: 16px; }
+  .miga { max-width: 1120px; margin: 0 auto; padding: 0 var(--s-4) var(--s-3); font-size: 13px; color: var(--rosa-tinta); }
+  .miga a { color: var(--rosa-tinta); }
+
+  .ficha { max-width: 1120px; margin: 0 auto; }
+
+  /* Galería de 8 tomas */
+  .galeria { margin: 0 var(--s-3); }
+  .carril { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; border-radius: var(--r-1); }
+  .carril::-webkit-scrollbar { display: none; }
+  .toma { flex: 0 0 100%; scroll-snap-align: center; aspect-ratio: 1; background: var(--rosa-claro); position: relative; margin: 0; display: grid; place-items: center; }
+  .toma svg { width: 70%; height: auto; }
+  .toma img { width: 100%; height: 100%; object-fit: contain; }
+  .toma figcaption { position: absolute; left: 10px; top: 10px; font: 600 10px var(--f-cifra); letter-spacing: .06em; text-transform: uppercase; background: var(--papel); padding: 4px 7px; border-radius: 2px; }
+  .indice { display: flex; gap: 6px; padding: 0 0 var(--s-3); overflow-x: auto; scrollbar-width: none; }
+  .indice button { flex: none; font: 500 12px var(--f-texto); color: var(--tinta); background: none; border: 1.5px solid var(--tinta); border-radius: 3px; padding: 6px 9px; cursor: pointer; }
+  .indice button[aria-selected="true"] { background: var(--tinta); color: var(--papel); border-color: var(--tinta); }
+
+  /* Comprobante */
+  .comprobante { margin: -48px var(--s-5) 0; padding: var(--s-6) var(--s-5) var(--s-6); position: relative; z-index: 1; }
+  .encabezado { position: relative; }
+  .ref { font: 700 clamp(34px, 10.5vw, 52px)/1 var(--f-cifra); letter-spacing: -.04em; margin: 0; white-space: nowrap; }
+  .ref span { font: 500 15px var(--f-texto); letter-spacing: 0; color: var(--tinta-2); margin-right: 6px; }
+  .encabezado .sello { position: absolute; right: -8px; top: 46px; margin: 0; }
+  .nombre { font: 600 19px/1.25 var(--f-texto); margin: var(--s-3) 0 var(--s-5); padding-right: 128px; min-height: 48px; text-wrap: balance; }
+
+  .renglones { margin: 0; }
+  .renglon { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: var(--s-3); padding: 10px 0; border-bottom: 1.5px dotted var(--linea); align-items: baseline; }
+  .renglon dt { font-size: 14px; color: var(--tinta-2); }
+  .renglon dd { margin: 0; font: 500 14.5px/1.4 var(--f-texto); text-align: right; text-wrap: pretty; }
+  .renglon dd.cifra { font: 400 13.5px/1.4 var(--f-cifra); }
+  .renglon dd small { display: block; font: 400 12px var(--f-texto); color: var(--tinta-2); }
+  .renglon.nota dd { font: 400 14px/1.4 var(--f-texto); text-align: right; max-width: 30ch; justify-self: end; }
+  .grupo { font: 800 11px var(--f-texto); letter-spacing: .12em; text-transform: uppercase; margin: var(--s-5) 0 0; padding-bottom: 6px; border-bottom: 1.5px solid var(--tinta); }
+
+  .total { display: flex; justify-content: space-between; align-items: baseline; margin-top: var(--s-5); padding-top: var(--s-4); border-top: 4px double var(--tinta); }
+  .total b { font: 800 13px var(--f-texto); letter-spacing: .14em; }
+  .total strong { font: 700 36px/1 var(--f-cifra); letter-spacing: -.04em; }
+  .total del { display: block; font: 400 13px var(--f-cifra); color: var(--tinta-2); text-align: right; }
+  .pie { margin-top: var(--s-4); font: 400 12px/1.5 var(--f-cifra); color: var(--tinta-2); }
+
+  /* Texto sobre rosa */
+  .sobre-rosa { padding: var(--s-6) var(--s-5) 0; color: var(--tinta); }
+  .sobre-rosa h2 { font: 800 22px/1.15 var(--f-texto); letter-spacing: -.01em; margin: 0 0 var(--s-3); text-wrap: balance; }
+  .sobre-rosa p { font-size: 16px; line-height: 1.55; margin: 0 0 var(--s-3); max-width: 60ch; }
+  .entregas { list-style: none; padding: 0; margin: 0; }
+  .entregas li { display: grid; grid-template-columns: 24px 1fr; gap: var(--s-3); padding: var(--s-3) 0; border-top: 1.5px solid rgb(22 19 15 / .25); font-size: 15px; line-height: 1.45; }
+  .entregas li:last-child { border-bottom: 1.5px solid rgb(22 19 15 / .25); }
+  .entregas b { display: block; }
+
+  /* Vendidas recientes */
+  .vendidas { display: flex; gap: var(--s-3); overflow-x: auto; padding: var(--s-2) var(--s-5) var(--s-2); margin: 0 calc(var(--s-5) * -1); scrollbar-width: none; }
+  .mini { flex: 0 0 148px; padding: var(--s-4) var(--s-3) var(--s-4); --diente: 5px; text-decoration: none; position: relative; }
+  .mini .ph { aspect-ratio: 1; background: var(--rosa-claro); display: grid; place-items: center; margin-bottom: var(--s-2); }
+  .mini .ph svg { width: 60%; }
+  .mini .n { font: 600 14px/1.3 var(--f-texto); }
+  .mini .r { font: 400 12px var(--f-cifra); color: var(--tinta-2); }
+  .mini .p { font: 700 15px var(--f-cifra); margin-top: 2px; }
+  .mini .sello { position: absolute; top: 40px; left: 22px; font-size: 11px; padding: 4px 7px; background: rgb(255 255 255 / .6); }
+
+  /* Acción fija */
+  .accion { position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; padding: var(--s-3) var(--s-3) calc(var(--s-3) + env(safe-area-inset-bottom)); background: var(--rosa); border-top: 1.5px solid rgb(22 19 15 / .2); }
+  body { padding-bottom: 96px; }
+  .boton { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; column-gap: 10px; min-height: 56px; border-radius: var(--r-2); background: var(--tinta); color: var(--papel); font: 800 16px var(--f-texto); text-decoration: none; transition: transform .15s ease-out; }
+  .boton:active { transform: scale(.98); }
+  .boton.secundario { background: var(--papel); color: var(--tinta); }
+  .boton small { font: 400 12px var(--f-cifra); opacity: .75; }
+
+  .muestra { font: 500 13px var(--f-texto); color: var(--rosa-tinta); padding: var(--s-4) var(--s-5) 0; }
+
+  /* Control solo de maqueta */
+  .demo { position: fixed; bottom: 92px; left: 50%; translate: -50% 0; z-index: 5; display: flex; gap: 4px; background: var(--tinta); padding: 4px; border-radius: 999px; }
+  .demo button { font: 600 11px var(--f-texto); color: var(--papel); background: none; border: 0; padding: 6px 10px; border-radius: 999px; cursor: pointer; }
+  .demo button[aria-pressed="true"] { background: var(--papel); color: var(--tinta); }
+
+  .vendida .toma { filter: grayscale(.5) contrast(.95); }
+
+  @media (min-width: 900px) {
+    .cuerpo { display: grid; grid-template-columns: 1.1fr 1fr; gap: var(--s-7); align-items: start; padding: 0 var(--s-5); }
+    .galeria, .comprobante { margin-left: 0; margin-right: 0; }
+    .comprobante { margin-top: 0; }
+    .col-der { position: sticky; top: var(--s-4); }
+    .accion { position: static; background: none; padding: var(--s-4) 0 0; margin: 0; }
+    .toma { flex-basis: 100%; aspect-ratio: 4 / 5; }
+    .indice { flex-wrap: wrap; overflow: visible; }
+    .comprobante { margin: 0; }
+    .cuerpo { grid-template-areas: "gal der" "txt der"; }
+    .galeria { grid-area: gal; } .col-der { grid-area: der; } .textos { grid-area: txt; }
+    .textos .sobre-rosa { padding-left: 0; padding-right: 0; }
+    .demo { bottom: 16px; left: auto; right: 16px; translate: none; }
+    body { padding-bottom: 0; }
+    .accion { left: auto; right: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="demo" role="group" aria-label="Estado de la pieza (solo maqueta)">
+  <button aria-pressed="true" data-estado="disponible">Disponible</button>
+  <button aria-pressed="false" data-estado="reservada">Reservada</button>
+  <button aria-pressed="false" data-estado="vendida">Vendida</button>
+</div>
+
+<header class="barra">
+  <a class="marca" href="#">vintage</a>
+  <label class="buscar">
+    <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <span class="sr">Buscar por referencia o palabra</span>
+    <input type="search" inputmode="search" placeholder="Ref. 142 o «tote»">
+  </label>
+</header>
+<nav class="miga" aria-label="Ubicación"><a href="#">Carteras</a> / <a href="#">Bandoleras</a></nav>
+
+<main class="ficha" id="ficha">
+  <div class="cuerpo">
+    <section class="galeria" aria-label="Fotos de la pieza">
+      <div class="indice" id="indice" role="tablist" aria-label="Tomas"></div>
+      <div class="carril" id="carril" tabindex="0" aria-label="Fotos: deslizá para ver las 8 tomas">
+        <!-- 8 tomas sintéticas -->
+      </div>
+    </section>
+
+    <div class="col-der">
+      <article class="comprobante" aria-labelledby="ref">
+        <div class="encabezado">
+          <h1 class="ref" id="ref"><span>Ref.</span>VT-0142</h1>
+          <p class="sello" id="sello" role="status">Revisada<small>limpia · cierres ok</small></p>
+        </div>
+        <p class="nombre">Bandolera de cuero negra</p>
+
+        <dl class="renglones">
+          <div class="renglon"><dt>Medidas</dt><dd class="cifra">22 × 30 × 9 cm<small>alto × ancho × profundidad, cerrada</small></dd></div>
+          <div class="renglon"><dt>Caída de la correa</dt><dd class="cifra">55 cm<small>regulable</small></dd></div>
+          <div class="renglon"><dt>Tamaño</dt><dd>Mediana<small>de 25 a 32 cm de ancho · rango provisional</small></dd></div>
+          <div class="renglon"><dt>Qué cabe</dt><dd>Celular grande, billetera, lentes</dd></div>
+        </dl>
+
+        <p class="grupo">La pieza</p>
+        <dl class="renglones">
+          <div class="renglon"><dt>Tipo</dt><dd>Bandolera</dd></div>
+          <div class="renglon"><dt>Color · herrajes</dt><dd>Negro · dorados</dd></div>
+          <div class="renglon"><dt>Material</dt><dd>Cuero</dd></div>
+          <div class="renglon"><dt>Cierre</dt><dd>Solapa con imán</dd></div>
+          <div class="renglon"><dt>Interior</dt><dd>Forrado · 1 bolsillo con cierre</dd></div>
+          <div class="renglon"><dt>Incluye</dt><dd>Correa larga</dd></div>
+        </dl>
+
+        <p class="grupo">Revisión</p>
+        <dl class="renglones">
+          <div class="renglon"><dt>Condición</dt><dd>Muy buena</dd></div>
+          <div class="renglon nota"><dt>Detalle</dt><dd>Leve marca de uso en una esquina de la base (foto 4).</dd></div>
+          <div class="renglon"><dt>Marca</dt><dd>Sin marca</dd></div>
+        </dl>
+
+        <div class="total">
+          <b>TOTAL</b>
+          <div><strong class="cifra" id="precio">Bs 180</strong></div>
+        </div>
+        <p class="pie" id="pie">Publicada 12/09 · DROP #03 · Una sola unidad</p>
+      </article>
+
+      <div class="accion">
+        <a class="boton" id="cta" href="https://wa.me/?text=Hola%2C%20me%20interesa%20la%20Ref.%20VT-0142%20(Bandolera%20de%20cuero%20negra)" target="_blank" rel="noopener">
+          <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12Z"/></svg>
+          <span id="cta-texto">Escribinos por WhatsApp</span><small id="cta-ref">Ref. VT-0142</small>
+        </a>
+      </div>
+    </div>
+    <div class="textos">
+  <section class="sobre-rosa">
+    <h2>Lista para usar todos los días</h2>
+    <p>Bandolera de cuero liso con solapa y correa regulable. La limpiamos, revisamos cierres y costuras, y la fotografiamos tal como la vas a recibir.</p>
+  </section>
+
+  <section class="sobre-rosa">
+    <h2>Cómo la recibís</h2>
+    <ul class="entregas">
+      <li><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg><span><b>Retiro en Santa Cruz</b>Coordinamos el punto por WhatsApp.</span></li>
+      <li><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></svg><span><b>Delivery en Santa Cruz</b>Costo según tu zona.</span></li>
+      <li><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8l8-4 8 4v8l-8 4-8-4Z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg><span><b>Envío a otro departamento</b>Por encomienda o flota; te pasamos la guía.</span></li>
+    </ul>
+  </section>
+
+    </div>
+  </div>
+
+  <section class="sobre-rosa" aria-labelledby="t-vendidas">
+    <h2 id="t-vendidas">Se fueron esta semana</h2>
+    <p class="muestra" style="padding:0">Ventas y fotos de muestra (maqueta). Rangos de tamaño provisionales.</p>
+    <div class="vendidas" id="vendidas"></div>
+    <p><a href="#">Ver todas las vendidas</a></p>
+  </section>
+  <div style="height: var(--s-7)"></div>
+</main>
+
+<script>
+  // Bolsa sintética (marcador de foto): cambia de ángulo según la toma
+  const bolsa = (v) => {
+    const base = '<svg viewBox="0 0 200 180" aria-hidden="true">';
+    const views = {
+      frente: '<path d="M52 64c6-34 30-46 48-46s42 12 48 46" fill="none" stroke="#16130f" stroke-width="5"/><rect x="24" y="60" width="152" height="104" rx="12" fill="#16130f"/><path d="M24 60h152v38c-30 12-122 12-152 0Z" fill="#2a2520"/><rect x="90" y="92" width="20" height="12" rx="3" fill="#c9a44a"/>',
+      dorso: '<path d="M52 64c6-34 30-46 48-46s42 12 48 46" fill="none" stroke="#16130f" stroke-width="5"/><rect x="24" y="60" width="152" height="104" rx="12" fill="#16130f"/><rect x="60" y="86" width="80" height="44" rx="4" fill="none" stroke="#3b342d" stroke-width="3"/>',
+      lateral: '<path d="M90 64c2-34 8-46 10-46s8 12 10 46" fill="none" stroke="#16130f" stroke-width="5"/><rect x="76" y="60" width="48" height="104" rx="10" fill="#16130f"/>',
+      base: '<rect x="24" y="70" width="152" height="50" rx="12" fill="#16130f"/><circle cx="40" cy="112" r="10" fill="none" stroke="#e0457b" stroke-width="3"/>',
+      interior: '<rect x="24" y="40" width="152" height="120" rx="12" fill="#3b342d"/><rect x="40" y="56" width="120" height="56" rx="4" fill="#5b5046"/><path d="M50 84h100" stroke="#c9a44a" stroke-width="3"/>',
+      herrajes: '<rect x="40" y="60" width="120" height="70" rx="10" fill="#2a2520"/><rect x="80" y="78" width="40" height="24" rx="5" fill="#c9a44a"/><circle cx="100" cy="90" r="5" fill="#2a2520"/>',
+      asas: '<path d="M30 150c10-110 130-110 140 0" fill="none" stroke="#16130f" stroke-width="9"/><rect x="92" y="30" width="16" height="10" rx="2" fill="#c9a44a"/>',
+      puesta: '<circle cx="100" cy="36" r="18" fill="#b24b6e"/><path d="M62 180c0-60 16-96 38-96s38 36 38 96Z" fill="#b24b6e"/><path d="M84 88l40 58" stroke="#16130f" stroke-width="4"/><rect x="112" y="136" width="48" height="36" rx="6" fill="#16130f"/>'
+    };
+    return base + views[v] + '</svg>';
+  };
+  const tomas = [['frente','Frente'],['dorso','Dorso'],['lateral','Lateral'],['base','Base y esquinas'],['interior','Interior'],['herrajes','Herrajes y cierre'],['asas','Asas'],['puesta','Puesta']];
+  const carril = document.getElementById('carril'), indice = document.getElementById('indice');
+  tomas.forEach(([k, n], i) => {
+    carril.insertAdjacentHTML('beforeend', `<figure class="toma" id="t${i}">${bolsa(k)}<figcaption>Muestra · ${n}</figcaption></figure>`);
+    const b = document.createElement('button');
+    b.textContent = `${i + 1} ${n}`; b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', i === 0);
+    b.onclick = () => carril.scrollTo({ left: carril.clientWidth * i, behavior: 'smooth' });
+    indice.append(b);
+  });
+  const btns = [...indice.children];
+  carril.addEventListener('scroll', () => {
+    const i = Math.round(carril.scrollLeft / carril.clientWidth);
+    btns.forEach((b, j) => b.setAttribute('aria-selected', j === i));
+    btns[i]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, { passive: true });
+
+  // Vendidas recientes (muestra)
+  const vend = [['VT-0131','Tote negra','Bs 90'],['VT-0127','Clutch negro','Bs 60'],['VT-0138','De hombro negra','Bs 150'],['VT-0120','Mini negra','Bs 45']];
+  document.getElementById('vendidas').innerHTML = vend.map(([r, n, p], i) =>
+    `<a class="mini comprobante" href="#"><div class="ph">${bolsa(['frente','dorso','lateral','frente'][i])}</div><span class="sello">Vendida</span><div class="n">${n}</div><div class="r">Ref. ${r}</div><div class="p">${p}</div></a>`).join('');
+
+  // Estados: el mismo comprobante resellado
+  const E = {
+    disponible: { sello: 'Revisada<small>limpia · cierres ok</small>', cta: 'Escribinos por WhatsApp', sec: false },
+    reservada: { sello: 'Reservada<small>hasta las 16:40</small>', cta: 'Avisame si se libera', sec: true },
+    vendida: { sello: 'Vendida<small>14/09 · Bs 180</small>', cta: 'Ver carteras disponibles', sec: true }
+  };
+  const sello = document.getElementById('sello'), cta = document.getElementById('cta');
+  document.querySelectorAll('.demo button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.demo button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    const e = E[b.dataset.estado];
+    document.body.classList.toggle('vendida', b.dataset.estado === 'vendida');
+    sello.innerHTML = e.sello; sello.classList.remove('estampa'); void sello.offsetWidth; sello.classList.add('estampa');
+    document.getElementById('cta-texto').textContent = e.cta; document.getElementById('cta-ref').hidden = e.sec; cta.classList.toggle('secundario', e.sec);
+  });
+</script>
+</body>
+</html>

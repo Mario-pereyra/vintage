@@ -11,3 +11,9 @@ build/
 .DS_Store
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+
+# impeccable: artefactos de sesión
+.impeccable/review/
+.impeccable/questions/
+.impeccable/mocks/
+.impeccable/build/

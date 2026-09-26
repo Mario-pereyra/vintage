@@ -1,0 +1,388 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-26T23:15:16.987Z",
+  "title": "Design System: Vintage",
+  "extensions": {
+    "colorMeta": {
+      "rosa": {
+        "role": "primary",
+        "displayName": "Rosa tajibo",
+        "canonical": "#e0457b",
+        "tonalRamp": [
+          "#240007",
+          "#4d001e",
+          "#7d0036",
+          "#ad0052",
+          "#d43871",
+          "#fb5f91",
+          "#ff9bba",
+          "#ffdeea"
+        ]
+      },
+      "sello": {
+        "role": "secondary",
+        "displayName": "Azul de sello",
+        "canonical": "#2b3a8c",
+        "tonalRamp": [
+          "#05003b",
+          "#111364",
+          "#273586",
+          "#4255aa",
+          "#5f76ce",
+          "#7f98f3",
+          "#a3bfff",
+          "#d5ecff"
+        ]
+      },
+      "tinta": {
+        "role": "neutral",
+        "displayName": "Tinta",
+        "canonical": "#16130f",
+        "tonalRamp": [
+          "#0d0b07",
+          "#27231f",
+          "#433f3a",
+          "#615d58",
+          "#817d77",
+          "#a29e98",
+          "#c8c3be",
+          "#f2eee8"
+        ]
+      },
+      "papel": {
+        "role": "neutral",
+        "displayName": "Papel",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "tinta-2": {
+        "role": "neutral",
+        "displayName": "Tinta suave",
+        "canonical": "#5f5852",
+        "tonalRamp": [
+          "#0f0a06",
+          "#29231e",
+          "#453e39",
+          "#635c56",
+          "#837c75",
+          "#a59d96",
+          "#cbc2bc",
+          "#f5ede6"
+        ]
+      },
+      "linea": {
+        "role": "neutral",
+        "displayName": "Línea",
+        "canonical": "#bdb5ad",
+        "tonalRamp": [
+          "#0f0a05",
+          "#29231d",
+          "#453e38",
+          "#635c55",
+          "#837c74",
+          "#a59d95",
+          "#cbc3ba",
+          "#f5ede4"
+        ]
+      },
+      "rosa-claro": {
+        "role": "neutral",
+        "displayName": "Rosa claro",
+        "canonical": "#f6c3d5",
+        "tonalRamp": [
+          "#1d000c",
+          "#3a1525",
+          "#5a3141",
+          "#7a4f5f",
+          "#9c6e7f",
+          "#bf8fa0",
+          "#e6b4c6",
+          "#ffdef0"
+        ]
+      },
+      "rosa-tinta": {
+        "role": "neutral",
+        "displayName": "Rosa tinta",
+        "canonical": "#2a0716",
+        "tonalRamp": [
+          "#1d000b",
+          "#3a1624",
+          "#593140",
+          "#7a4f5e",
+          "#9c6e7d",
+          "#bf8f9e",
+          "#e6b4c4",
+          "#ffdeef"
+        ]
+      },
+      "papel-2": {
+        "role": "neutral",
+        "displayName": "Papel rosado",
+        "canonical": "#f7eef2",
+        "tonalRamp": [
+          "#0f090c",
+          "#282225",
+          "#443d41",
+          "#635b5f",
+          "#837b7e",
+          "#a49c9f",
+          "#cac1c5",
+          "#f5ecf0"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "ref": {
+        "displayName": "Ref",
+        "purpose": "Número de comprobante de la pieza (VT-0142)."
+      },
+      "total": {
+        "displayName": "Total",
+        "purpose": "Precio en el TOTAL y en el campo de precio."
+      },
+      "cifra-campo": {
+        "displayName": "Cifra de campo",
+        "purpose": "Medidas tipeadas en el panel."
+      },
+      "cifra": {
+        "displayName": "Cifra",
+        "purpose": "Valores numéricos de renglón y pie del comprobante."
+      },
+      "sello": {
+        "displayName": "Sello",
+        "purpose": "Letras del sello de goma."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Títulos de sección sobre rosa."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Nombre de la pieza en el comprobante."
+      },
+      "title-panel": {
+        "displayName": "Título de bloque",
+        "purpose": "Títulos de bloque del panel."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Descripción y texto sobre rosa, máximo 60ch."
+      },
+      "renglon": {
+        "displayName": "Renglón",
+        "purpose": "Valor en palabras de un renglón."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Etiquetas de campo del panel."
+      },
+      "grupo": {
+        "displayName": "Grupo",
+        "purpose": "Encabezado de un grupo de renglones del comprobante, con regla de tinta debajo."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "ease-sello",
+        "value": "cubic-bezier(.16, 1, .3, 1)",
+        "purpose": "Curva del estampado del sello."
+      },
+      {
+        "name": "estampar",
+        "value": "0.42s ease-sello; scale 1.9 -> 0.94 -> 1, blur 2px -> 0, opacity 0 -> 1, rotate -8deg fijo",
+        "purpose": "Re-sellado al cambiar el estado; se anula con prefers-reduced-motion."
+      },
+      {
+        "name": "presion",
+        "value": "transform scale(.98) 0.15s ease-out",
+        "purpose": "Respuesta al presionar el botón de WhatsApp."
+      },
+      {
+        "name": "interruptor",
+        "value": "background 0.15s; perilla transform 0.18s ease-out",
+        "purpose": "Interruptor Mostrar."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "escritorio",
+        "value": "900px"
+      },
+      {
+        "name": "panel-max",
+        "value": "640px"
+      },
+      {
+        "name": "ficha-max",
+        "value": "1120px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón de WhatsApp con Ref.",
+      "kind": "button",
+      "refersTo": "boton-whatsapp",
+      "description": "Acción única de la ficha, fija abajo sobre rosa; lleva la Ref. de la pieza.",
+      "html": "<div class=\"ds-accion\"><a class=\"ds-boton\" href=\"#\"><svg class=\"ds-ico\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12Z\"/></svg><span>Escribinos por WhatsApp</span><small>Ref. VT-0142</small></a></div>",
+      "css": ":host{--rosa:#e0457b;--papel:#ffffff;--tinta:#16130f;--sello:#2b3a8c;--rosa-claro:#f6c3d5;--rosa-tinta:#2a0716;--tinta-2:#5f5852;--linea:#bdb5ad;--papel-2:#f7eef2;--f-texto:\"Archivo\",system-ui,sans-serif;--f-cifra:\"Martian Mono\",ui-monospace,monospace;--r-1:4px;--r-2:8px;--ease-sello:cubic-bezier(.16,1,.3,1)} .ds-accion{background:var(--rosa);padding:12px;border-top:1.5px solid rgb(22 19 15 / .2)} .ds-boton{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;column-gap:10px;min-height:56px;border-radius:var(--r-2);background:var(--tinta);color:var(--papel);font:800 16px var(--f-texto);text-decoration:none;transition:transform .15s ease-out} .ds-boton:active{transform:scale(.98)} .ds-boton:focus-visible{outline:3px solid var(--sello);outline-offset:3px;} .ds-boton small{font:400 12px var(--f-cifra);opacity:.75} .ds-ico{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}"
+    },
+    {
+      "name": "Botón secundario (Reservada / Vendida)",
+      "kind": "button",
+      "refersTo": "boton-whatsapp-secundario",
+      "description": "La misma acción en papel cuando la pieza no está disponible; pierde la Ref.",
+      "html": "<div class=\"ds-accion\"><a class=\"ds-boton-sec\" href=\"#\">Avisame si se libera</a></div>",
+      "css": ":host{--rosa:#e0457b;--papel:#ffffff;--tinta:#16130f;--sello:#2b3a8c;--rosa-claro:#f6c3d5;--rosa-tinta:#2a0716;--tinta-2:#5f5852;--linea:#bdb5ad;--papel-2:#f7eef2;--f-texto:\"Archivo\",system-ui,sans-serif;--f-cifra:\"Martian Mono\",ui-monospace,monospace;--r-1:4px;--r-2:8px;--ease-sello:cubic-bezier(.16,1,.3,1)} .ds-accion{background:var(--rosa);padding:12px} .ds-boton-sec{display:flex;align-items:center;justify-content:center;min-height:56px;border-radius:var(--r-2);background:var(--papel);color:var(--tinta);font:800 16px var(--f-texto);text-decoration:none;transition:transform .15s ease-out} .ds-boton-sec:active{transform:scale(.98)} .ds-boton-sec:focus-visible{outline:3px solid var(--sello);outline-offset:3px;}"
+    },
+    {
+      "name": "Comprobante con renglones y TOTAL",
+      "kind": "card",
+      "refersTo": "comprobante",
+      "description": "Papel troquelado con la Ref., el sello, renglones punteados y el TOTAL con regla doble.",
+      "html": "<div class=\"ds-campo\"><article class=\"ds-comprobante\"><div class=\"ds-enc\"><p class=\"ds-ref\"><span>Ref.</span>VT-0142</p><p class=\"ds-sello\">Revisada<small>limpia · cierres ok</small></p></div><p class=\"ds-nombre\">Bandolera de cuero negra</p><dl><div class=\"ds-renglon\"><dt>Medidas</dt><dd class=\"ds-cifra\">22 × 30 × 9 cm</dd></div><div class=\"ds-renglon\"><dt>Condición</dt><dd>Muy buena</dd></div></dl><div class=\"ds-total\"><b>TOTAL</b><strong>Bs 180</strong></div></article></div>",
+      "css": ":host{--rosa:#e0457b;--papel:#ffffff;--tinta:#16130f;--sello:#2b3a8c;--rosa-claro:#f6c3d5;--rosa-tinta:#2a0716;--tinta-2:#5f5852;--linea:#bdb5ad;--papel-2:#f7eef2;--f-texto:\"Archivo\",system-ui,sans-serif;--f-cifra:\"Martian Mono\",ui-monospace,monospace;--r-1:4px;--r-2:8px;--ease-sello:cubic-bezier(.16,1,.3,1)} .ds-campo{background:var(--rosa);padding:24px 16px} .ds-comprobante{background:var(--papel);color:var(--tinta);padding:28px 20px;font-family:var(--f-texto);--diente:7px;-webkit-mask:radial-gradient(circle var(--diente) at 50% 0,#0000 98%,#000) top/18px 51% repeat-x,radial-gradient(circle var(--diente) at 50% 100%,#0000 98%,#000) bottom/18px 51% repeat-x;mask:radial-gradient(circle var(--diente) at 50% 0,#0000 98%,#000) top/18px 51% repeat-x,radial-gradient(circle var(--diente) at 50% 100%,#0000 98%,#000) bottom/18px 51% repeat-x} .ds-enc{display:flex;justify-content:space-between;align-items:flex-start;gap:12px} .ds-ref{font:700 40px/1 var(--f-cifra);letter-spacing:-.04em;margin:0;font-variant-numeric:tabular-nums;white-space:nowrap} .ds-ref span{font:500 15px var(--f-texto);letter-spacing:0;color:var(--tinta-2);margin-right:6px} .ds-sello{display:inline-block;border:3px solid var(--sello);color:var(--sello);border-radius:var(--r-1);padding:6px 10px 5px;font:700 13px/1.25 var(--f-cifra);letter-spacing:.08em;text-transform:uppercase;text-align:center;transform:rotate(-8deg);mix-blend-mode:multiply;margin:0} .ds-sello small{display:block;font-weight:400;font-size:10.5px;letter-spacing:.02em;text-transform:none} .ds-enc .ds-sello{margin-top:40px} .ds-nombre{font:600 19px/1.25 var(--f-texto);margin:12px 0 20px} dl{margin:0} .ds-renglon{display:grid;grid-template-columns:7.5em minmax(0,1fr);gap:12px;padding:10px 0;border-bottom:1.5px dotted var(--linea);align-items:baseline} .ds-renglon dt{font-size:14px;color:var(--tinta-2)} .ds-renglon dd{margin:0;font:500 14.5px/1.4 var(--f-texto);text-align:right} .ds-renglon dd.ds-cifra{font:400 13.5px/1.4 var(--f-cifra);font-variant-numeric:tabular-nums} .ds-total{display:flex;justify-content:space-between;align-items:baseline;margin-top:20px;padding-top:16px;border-top:4px double var(--tinta)} .ds-total b{font:800 13px var(--f-texto);letter-spacing:.14em} .ds-total strong{font:700 36px/1 var(--f-cifra);letter-spacing:-.04em;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Sello de goma",
+      "kind": "custom",
+      "refersTo": "sello",
+      "description": "Estado de la pieza (Revisada, Reservada con hora, Vendida con fecha y precio, En preparación, Lista); se estampa al cambiar.",
+      "html": "<div class=\"ds-papel\"><p class=\"ds-sello ds-estampa\">Reservada<small>hasta las 16:40</small></p><p class=\"ds-sello\">Vendida<small>14/09 · Bs 180</small></p><p class=\"ds-sello\">En preparación</p></div>",
+      "css": ":host{--rosa:#e0457b;--papel:#ffffff;--tinta:#16130f;--sello:#2b3a8c;--rosa-claro:#f6c3d5;--rosa-tinta:#2a0716;--tinta-2:#5f5852;--linea:#bdb5ad;--papel-2:#f7eef2;--f-texto:\"Archivo\",system-ui,sans-serif;--f-cifra:\"Martian Mono\",ui-monospace,monospace;--r-1:4px;--r-2:8px;--ease-sello:cubic-bezier(.16,1,.3,1)} .ds-papel{background:var(--papel);padding:28px;display:flex;gap:24px;flex-wrap:wrap} .ds-sello{display:inline-block;border:3px solid var(--sello);color:var(--sello);border-radius:var(--r-1);padding:6px 10px 5px;font:700 13px/1.25 var(--f-cifra);letter-spacing:.08em;text-transform:uppercase;text-align:center;transform:rotate(-8deg);mix-blend-mode:multiply;margin:0} .ds-sello small{display:block;font-weight:400;font-size:10.5px;letter-spacing:.02em;text-transform:none} .ds-estampa{animation:ds-estampar .42s var(--ease-sello)} @keyframes ds-estampar{0%{transform:rotate(-8deg) scale(1.9);opacity:0;filter:blur(2px)}60%{transform:rotate(-8deg) scale(.94);opacity:1;filter:blur(0)}100%{transform:rotate(-8deg) scale(1)}} @media (prefers-reduced-motion:reduce){.ds-estampa{animation:none}}"
+    },
+    {
+      "name": "Chips",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Selección única por grupo en el panel (Tipo, Color, Material); \"+ Otro\" discontinuo.",
+      "html": "<div class=\"ds-chips\"><button class=\"ds-chip\" aria-pressed=\"false\">De hombro</button><button class=\"ds-chip\" aria-pressed=\"true\">Bandolera</button><button class=\"ds-chip\" aria-pressed=\"false\"><i style=\"background:#7a4a2a\"></i>Café</button><button class=\"ds-chip ds-mas\">+ Otro</button></div>",
+      "css": ":host{--rosa:#e0457b;--papel:#ffffff;--tinta:#16130f;--sello:#2b3a8c;--rosa-claro:#f6c3d5;--rosa-tinta:#2a0716;--tinta-2:#5f5852;--linea:#bdb5ad;--papel-2:#f7eef2;--f-texto:\"Archivo\",system-ui,sans-serif;--f-cifra:\"Martian Mono\",ui-monospace,monospace;--r-1:4px;--r-2:8px;--ease-sello:cubic-bezier(.16,1,.3,1)} .ds-chips{display:flex;flex-wrap:wrap;gap:6px;background:var(--papel);padding:16px} .ds-chip{min-height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--linea);background:var(--papel);font:500 14px var(--f-texto);color:var(--tinta);cursor:pointer;display:inline-flex;align-items:center;gap:6px} .ds-chip:focus-visible{outline:3px solid var(--sello);outline-offset:3px;} .ds-chip[aria-pressed=\"true\"]{background:var(--tinta);border-color:var(--tinta);color:var(--papel)} .ds-mas{border-style:dashed;color:var(--tinta-2)} .ds-chip i{width:14px;height:14px;border-radius:50%;border:1px solid rgb(0 0 0 / .2)}"
+    },
+    {
+      "name": "Control segmentado",
+      "kind": "custom",
+      "refersTo": "segmento",
+      "description": "Escalas fijas: Condición y autenticidad.",
+      "html": "<div class=\"ds-seg\"><button aria-pressed=\"false\">Excelente</button><button aria-pressed=\"true\">Muy buena</button><button aria-pressed=\"false\">Buena</button><button aria-pressed=\"false\">Con detalles</button></div>",
+      "css": ":host{--rosa:#e0457b;--papel:#ffffff;--tinta:#16130f;--sello:#2b3a8c;--rosa-claro:#f6c3d5;--rosa-tinta:#2a0716;--tinta-2:#5f5852;--linea:#bdb5ad;--papel-2:#f7eef2;--f-texto:\"Archivo\",system-ui,sans-serif;--f-cifra:\"Martian Mono\",ui-monospace,monospace;--r-1:4px;--r-2:8px;--ease-sello:cubic-bezier(.16,1,.3,1)} .ds-seg{display:grid;grid-template-columns:repeat(4,1fr);border:1.5px solid var(--tinta);border-radius:var(--r-2);overflow:hidden} .ds-seg button{min-height:46px;border:0;border-left:1.5px solid var(--tinta);background:var(--papel);font:600 13px/1.15 var(--f-texto);color:var(--tinta);cursor:pointer;padding:4px} .ds-seg button:first-child{border-left:0} .ds-seg button:focus-visible{outline:3px solid var(--sello);outline-offset:-3px} .ds-seg button[aria-pressed=\"true\"]{background:var(--tinta);color:var(--papel)}"
+    },
+    {
+      "name": "Interruptor \"Mostrar\"",
+      "kind": "input",
+      "description": "Visibilidad pública de cada campo opcional; encendido en tinta azul.",
+      "html": "<label class=\"ds-ver\"><input type=\"checkbox\" checked> Mostrar</label>",
+      "css": ":host{--rosa:#e0457b;--papel:#ffffff;--tinta:#16130f;--sello:#2b3a8c;--rosa-claro:#f6c3d5;--rosa-tinta:#2a0716;--tinta-2:#5f5852;--linea:#bdb5ad;--papel-2:#f7eef2;--f-texto:\"Archivo\",system-ui,sans-serif;--f-cifra:\"Martian Mono\",ui-monospace,monospace;--r-1:4px;--r-2:8px;--ease-sello:cubic-bezier(.16,1,.3,1)} .ds-ver{display:inline-flex;align-items:center;gap:6px;font:500 12px var(--f-texto);color:var(--tinta-2);cursor:pointer} .ds-ver input{appearance:none;width:36px;height:22px;border-radius:999px;background:var(--linea);position:relative;cursor:pointer;transition:background .15s;margin:0} .ds-ver input::after{content:\"\";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--papel);transition:transform .18s ease-out} .ds-ver input:checked{background:var(--sello)} .ds-ver input:checked::after{transform:translateX(14px)} .ds-ver input:focus-visible{outline:3px solid var(--sello);outline-offset:3px;}"
+    },
+    {
+      "name": "Campo numérico de medida",
+      "kind": "input",
+      "refersTo": "campo-numerico",
+      "description": "Medidas en cm: cifra grande sobre línea de tinta, teclado decimal; el tamaño derivado en tinta azul.",
+      "html": "<div class=\"ds-medidas\"><label class=\"ds-num\"><span>Alto</span><div><input inputmode=\"decimal\" value=\"22\"><em>cm</em></div></label><label class=\"ds-num\"><span>Ancho</span><div><input inputmode=\"decimal\" value=\"30\"><em>cm</em></div></label><label class=\"ds-num\"><span>Profundidad</span><div><input inputmode=\"decimal\" value=\"9\"><em>cm</em></div></label></div><p class=\"ds-derivado\">Mediana (de 25 a 32 cm de ancho)</p>",
+      "css": ":host{--rosa:#e0457b;--papel:#ffffff;--tinta:#16130f;--sello:#2b3a8c;--rosa-claro:#f6c3d5;--rosa-tinta:#2a0716;--tinta-2:#5f5852;--linea:#bdb5ad;--papel-2:#f7eef2;--f-texto:\"Archivo\",system-ui,sans-serif;--f-cifra:\"Martian Mono\",ui-monospace,monospace;--r-1:4px;--r-2:8px;--ease-sello:cubic-bezier(.16,1,.3,1)} .ds-medidas{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--papel);padding:16px 16px 0} .ds-num{display:flex;flex-direction:column;gap:4px} .ds-num span{font:500 12px var(--f-texto);color:var(--tinta-2)} .ds-num div{display:flex;align-items:baseline;border-bottom:2px solid var(--tinta)} .ds-num div:focus-within{outline:3px solid var(--sello);outline-offset:3px} .ds-num input{all:unset;width:100%;font:700 24px var(--f-cifra);font-variant-numeric:tabular-nums;padding:6px 0;color:var(--tinta)} .ds-num em{font:400 12px var(--f-cifra);font-style:normal;color:var(--tinta-2)} .ds-derivado{margin:0;padding:12px 16px 16px;background:var(--papel);font:600 14px var(--f-texto);color:var(--sello)}"
+    },
+    {
+      "name": "Bloque \"Nunca se publica\"",
+      "kind": "card",
+      "refersTo": "bloque-interno",
+      "description": "Datos internos del panel (lote, condición de ingreso); siempre al final.",
+      "html": "<section class=\"ds-interno\"><h2>Procedencia <span class=\"ds-candado\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\"5\" y=\"11\" width=\"14\" height=\"10\" rx=\"2\"/><path d=\"M8 11V7a4 4 0 0 1 8 0v4\"/></svg>Nunca se publica</span></h2><select class=\"ds-texto\"><option>LOTE-07 · Fardo Primera · abierto 10/09</option></select></section>",
+      "css": ":host{--rosa:#e0457b;--papel:#ffffff;--tinta:#16130f;--sello:#2b3a8c;--rosa-claro:#f6c3d5;--rosa-tinta:#2a0716;--tinta-2:#5f5852;--linea:#bdb5ad;--papel-2:#f7eef2;--f-texto:\"Archivo\",system-ui,sans-serif;--f-cifra:\"Martian Mono\",ui-monospace,monospace;--r-1:4px;--r-2:8px;--ease-sello:cubic-bezier(.16,1,.3,1)} .ds-interno{background:var(--papel);border:1.5px solid var(--linea);border-radius:var(--r-2);padding:20px 16px} .ds-interno h2{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font:800 17px var(--f-texto);color:var(--tinta-2);margin:0 0 16px} .ds-candado{display:inline-flex;gap:6px;align-items:center;font:600 11px var(--f-texto);letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-2)} .ds-candado svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round} .ds-texto{width:100%;min-height:48px;border:1.5px solid var(--linea);border-radius:var(--r-1);padding:12px;font:400 15px/1.4 var(--f-texto);color:var(--tinta);background:var(--papel)} .ds-texto:focus{border-color:var(--tinta)} .ds-texto:focus-visible{outline:3px solid var(--sello);outline-offset:3px;}"
+    },
+    {
+      "name": "Barra de acciones con motivo",
+      "kind": "nav",
+      "refersTo": "btn-panel-primario",
+      "description": "Vista previa, Guardar y Publicar; si Publicar está deshabilitado, la línea de motivo dice qué falta.",
+      "html": "<div class=\"ds-acciones\"><p class=\"ds-motivo\">Faltan 2 tomas para publicar</p><div class=\"ds-fila\"><button class=\"ds-btn ds-ico\" aria-label=\"Ver cómo la verá la compradora\"><svg viewBox=\"0 0 24 24\"><path d=\"M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg></button><button class=\"ds-btn\">Guardar</button><button class=\"ds-btn ds-pri\" disabled>Publicar</button></div></div>",
+      "css": ":host{--rosa:#e0457b;--papel:#ffffff;--tinta:#16130f;--sello:#2b3a8c;--rosa-claro:#f6c3d5;--rosa-tinta:#2a0716;--tinta-2:#5f5852;--linea:#bdb5ad;--papel-2:#f7eef2;--f-texto:\"Archivo\",system-ui,sans-serif;--f-cifra:\"Martian Mono\",ui-monospace,monospace;--r-1:4px;--r-2:8px;--ease-sello:cubic-bezier(.16,1,.3,1)} .ds-acciones{background:var(--papel);border-top:1.5px solid var(--linea);padding:12px} .ds-fila{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center} .ds-motivo{margin:0 0 6px;font:500 13px var(--f-texto);color:var(--tinta-2);text-align:right} .ds-btn{min-height:52px;border-radius:var(--r-2);font:800 15px var(--f-texto);cursor:pointer;border:1.5px solid var(--tinta);background:var(--papel);color:var(--tinta);padding:0 12px} .ds-btn:focus-visible{outline:3px solid var(--sello);outline-offset:3px;} .ds-pri{background:var(--tinta);color:var(--papel)} .ds-pri:disabled{background:var(--papel-2);border-color:var(--linea);color:var(--tinta-2);cursor:not-allowed} .ds-ico{width:52px;padding:0;display:grid;place-items:center} .ds-ico svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}"
+    }
+  ],
+  "narrative": {
+    "northStar": "El comprobante de pieza",
+    "overview": "Cada cartera se presenta como un comprobante verificado, no como una tarjeta de producto. La Ref. funciona como número de comprobante, los datos se leen como renglones medidos, el precio es el TOTAL bajo una regla doble y el estado es un sello de goma estampado sobre el mismo papel. La compradora lee una revisión que alguien hizo; la operadora, en el panel, llena ese mismo comprobante.\n\nEl mundo se imprime con cuatro tintas planas: un campo rosa tajibo que domina la página pública, papel blanco de comprobante con borde troquelado, tinta casi negra para texto y acción, y tinta azul de sello. No hay degradés visibles, sombras ni brillo: la profundidad sale de apoyar papel sobre rosa y de la mezcla del sello sobre el papel. Las cifras (Ref., precios, medidas, fechas) hacen el trabajo en Martian Mono; las palabras van en Archivo.\n\nLa densidad es de ticket: renglones compactos separados por puntos, jerarquía por tamaño de cifra y no por color. El panel de la operadora hereda las tintas y los componentes, pero baja el volumen del rosa para trabajar rápido con una mano.",
+    "keyCharacteristics": [
+      "Cuatro tintas planas (rosa, papel, tinta, sello) más tonos derivados; nada más.",
+      "Papel de comprobante con borde troquelado arriba y abajo.",
+      "Renglones con líneas punteadas; TOTAL con regla doble.",
+      "Sello de goma girado (-8°) que se re-estampa al cambiar de estado.",
+      "Cifras en monoespaciada tabular; texto en Archivo.",
+      "Fotos siempre enteras, nunca recortadas.",
+      "Una sola acción fuerte por pantalla, en tinta negra."
+    ],
+    "rules": [
+      {
+        "name": "The Cuatro Tintas Rule",
+        "body": "Solo existen rosa, papel, tinta y sello; cualquier otro valor es un derivado de una de ellas con un rol fijo. Los colores de muestra de los chips de color (negro, café, beige, rojo, blanco) son datos de la pieza, no tintas del sistema.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tinta Sobre Rosa Rule",
+        "body": "El texto pequeño sobre rosa va en tinta o rosa tinta. El blanco sobre rosa solo se usa en texto grande y en negrita (marca de 21px/800, título del panel de 20px/800) y en íconos de la barra; su contraste (unos 4:1) no alcanza para texto normal.",
+        "section": "colors"
+      },
+      {
+        "name": "The Rosa Solo Arriba Rule",
+        "body": "En el panel, el rosa aparece únicamente en la barra superior; el campo es papel rosado. La única excepción es la hoja de vista previa, porque muestra el mundo de la compradora.",
+        "section": "colors"
+      },
+      {
+        "name": "The Cifras En Mono Rule",
+        "body": "Martian Mono se usa para Ref., precios, medidas, fechas, conteos, números de Drop, el campo de búsqueda por Ref. y las letras del sello de goma (que son parte del sello). Toda otra palabra va en Archivo, incluidos los valores en palabras de los renglones (\"Bandolera\", \"Muy buena\").",
+        "section": "typography"
+      },
+      {
+        "name": "The Cifras Tabulares Rule",
+        "body": "Toda cifra lleva `font-variant-numeric: tabular-nums` para que las columnas de medidas y precios se alineen como en un ticket.",
+        "section": "typography"
+      },
+      {
+        "name": "The Foto Entera Rule",
+        "body": "Toda foto que ve la compradora se muestra completa (`object-fit: contain`) sobre rosa claro: 1:1 en celular y 4:5 en escritorio. Nunca se recorta para llenar un marco.",
+        "section": "layout"
+      },
+      {
+        "name": "The Pulgar Rule",
+        "body": "Las acciones principales miden 52–56px de alto, los chips 40px y los segmentos 46px; todo lo que se toca durante la carga se alcanza con una mano.",
+        "section": "layout"
+      },
+      {
+        "name": "The Sin Sombras Rule",
+        "body": "Nada proyecta sombra ni lleva un degradé visible. El `radial-gradient` de la máscara del troquel es una herramienta de corte, no un relleno, y es la única excepción.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** usar solo las cuatro tintas (rosa, papel, tinta y sello) y sus derivados con el rol asignado.",
+      "**Do** poner cada cifra (Ref., precio, medida, fecha, conteo) en Martian Mono tabular, y cada palabra en Archivo.",
+      "**Do** separar los renglones con línea punteada de 1.5px y cerrar el comprobante con el TOTAL sobre una regla doble.",
+      "**Do** expresar el estado de una pieza con el sello de goma y re-estamparlo al cambiar, respetando `prefers-reduced-motion`.",
+      "**Do** mostrar cada foto entera sobre rosa claro: 1:1 en celular y 4:5 en escritorio.",
+      "**Do** llevar siempre la Ref. en la acción de WhatsApp de una pieza Disponible.",
+      "**Do** mantener el panel sobre papel rosado, con el rosa solo en la barra superior.",
+      "**Do** acompañar toda acción deshabilitada con una línea que diga qué falta.",
+      "**Do** usar el foco de tinta azul (3px, separación de 3px) en todo elemento interactivo."
+    ],
+    "donts": [
+      "**Don't** usar sombras ni degradés visibles; la profundidad es papel sobre rosa.",
+      "**Don't** poner texto blanco pequeño sobre rosa; solo texto grande y en negrita.",
+      "**Don't** recortar una foto de la pieza para llenar un marco.",
+      "**Don't** usar Martian Mono para frases o valores en palabras, fuera del sello y del campo de búsqueda por Ref.",
+      "**Don't** usar el tono línea como color de texto.",
+      "**Don't** llevar el rosa como fondo a los bloques o campos del panel.",
+      "**Don't** agregar tintas nuevas para estados; el estado es el sello.",
+      "**Don't** portar los controles de maqueta (el selector de estado \"Disponible, Reservada, Vendida\", \"Cargar 6 fotos de muestra\", el prefijo \"Muestra ·\" y las notas de muestra): no son parte del sistema."
+    ]
+  }
+}

@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#e0457b">
+<title>Nueva pieza · panel · vintage</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  body { background: var(--papel-2); }
+  .barra { position: sticky; top: 0; z-index: 3; background: var(--rosa); color: var(--papel); display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) var(--s-3); }
+  .barra a { color: inherit; display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--r-2); }
+  .barra h1 { font: 800 20px var(--f-texto); margin: 0; }
+  .barra .codigo { margin-left: auto; font: 600 12px var(--f-cifra); background: var(--papel); color: var(--tinta); padding: 6px 8px; border-radius: var(--r-1); }
+
+  .estado-pieza { display: flex; justify-content: space-between; align-items: center; padding: var(--s-2) var(--s-2) var(--s-4); font: 600 14px var(--f-texto); color: var(--tinta-2); }
+  .estado-pieza .sello { margin: 0; }
+  main { max-width: 640px; margin: 0 auto; padding: var(--s-3) var(--s-3) 140px; }
+  .bloque { background: var(--papel); border-radius: var(--r-2); padding: var(--s-5) var(--s-4); margin-bottom: var(--s-3); }
+  .bloque > h2 { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); font: 800 17px var(--f-texto); margin: 0 0 var(--s-4); }
+  .bloque > h2 .cifra { font-size: 12px; font-weight: 600; color: var(--tinta-2); }
+  .bloque > h2 .cifra.ok { color: var(--sello); }
+  .ayuda { font-size: 13.5px; line-height: 1.45; color: var(--tinta-2); margin: calc(var(--s-3) * -1) 0 var(--s-4); }
+
+  /* Fotos: 8 tomas en orden */
+  .tomas { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-2); }
+  .slot { position: relative; aspect-ratio: 4 / 5; border-radius: var(--r-1); border: 1.5px dashed var(--linea); background: var(--papel-2); display: flex; flex-direction: column; justify-content: flex-end; padding: 6px; font: 600 10.5px/1.2 var(--f-texto); color: var(--tinta-2); cursor: pointer; overflow: hidden; text-align: left; }
+  .slot .n { position: absolute; top: 6px; left: 6px; font: 700 11px var(--f-cifra); }
+  .slot.llena { border: 0; background: var(--rosa-claro); color: var(--tinta); }
+  .slot.llena img, .slot.llena svg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .slot.llena span.t { position: relative; background: var(--papel); padding: 2px 5px; border-radius: 2px; align-self: flex-start; }
+  .slot.sel { outline: 3px solid var(--sello); outline-offset: 2px; }
+  .galeria-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 52px; margin-top: var(--s-4); border: 1.5px solid var(--tinta); background: var(--papel); border-radius: var(--r-2); font: 700 15px var(--f-texto); color: var(--tinta); cursor: pointer; }
+  .galeria-btn input { display: none; }
+  .aviso { font-size: 13px; color: var(--tinta-2); margin: var(--s-3) 0 0; }
+
+  /* Campos */
+  .campo { margin-bottom: var(--s-5); }
+  .campo:last-child { margin-bottom: 0; }
+  .etiqueta { display: flex; justify-content: space-between; align-items: center; gap: var(--s-3); font: 600 14px var(--f-texto); margin-bottom: var(--s-2); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1.5px solid var(--linea); background: var(--papel); font: 500 14px var(--f-texto); color: var(--tinta); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .chip[aria-pressed="true"] { background: var(--tinta); border-color: var(--tinta); color: var(--papel); }
+  .chip.mas { border-style: dashed; color: var(--tinta-2); }
+  .chip i { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgb(0 0 0 / .2); }
+
+  .medidas { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2); }
+  .num { display: flex; flex-direction: column; gap: 4px; }
+  .num span { font: 500 12px var(--f-texto); color: var(--tinta-2); }
+  .num div { display: flex; align-items: baseline; border-bottom: 2px solid var(--tinta); }
+  .num input { all: unset; width: 100%; font: 700 24px var(--f-cifra); padding: 6px 0; }
+  .num input::placeholder { color: var(--linea); }
+  .num em { font: 400 12px var(--f-cifra); font-style: normal; color: var(--tinta-2); }
+  .derivado { margin-top: var(--s-3); font: 600 14px var(--f-texto); color: var(--sello); }
+
+  .texto { width: 100%; min-height: 48px; border: 1.5px solid var(--linea); border-radius: var(--r-1); padding: 12px; font: 400 15px/1.4 var(--f-texto); color: var(--tinta); background: var(--papel); resize: vertical; }
+  .texto:focus { border-color: var(--tinta); outline: none; }
+
+  .segmento { display: grid; grid-template-columns: repeat(4, 1fr); border: 1.5px solid var(--tinta); border-radius: var(--r-2); overflow: hidden; }
+  .segmento.tres { grid-template-columns: repeat(3, 1fr); }
+  .segmento button { min-height: 46px; border: 0; border-left: 1.5px solid var(--tinta); background: var(--papel); font: 600 13px/1.15 var(--f-texto); color: var(--tinta); cursor: pointer; padding: 4px; }
+  .segmento button:first-child { border-left: 0; }
+  .segmento button[aria-pressed="true"] { background: var(--tinta); color: var(--papel); }
+
+  /* Interruptor de visibilidad */
+  .ver { display: inline-flex; align-items: center; gap: 6px; font: 500 12px var(--f-texto); color: var(--tinta-2); cursor: pointer; }
+  .ver input { appearance: none; width: 36px; height: 22px; border-radius: 999px; background: var(--linea); position: relative; cursor: pointer; transition: background .15s; margin: 0; }
+  .ver input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--papel); transition: transform .18s ease-out; }
+  .ver input:checked { background: var(--sello); }
+  .ver input:checked::after { transform: translateX(14px); }
+
+  .precio { display: flex; align-items: baseline; gap: 8px; border-bottom: 3px double var(--tinta); }
+  .precio b { font: 700 22px var(--f-cifra); }
+  .precio input { all: unset; width: 100%; font: 700 40px var(--f-cifra); letter-spacing: -.03em; padding: 4px 0; }
+
+  .interno { background: var(--papel); border: 1.5px solid var(--linea); }
+  .interno > h2 { color: var(--tinta-2); }
+  .candado { display: inline-flex; gap: 6px; align-items: center; font: 600 11px var(--f-texto); letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-2); }
+  select.texto { appearance: none; background: var(--papel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316130f' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center / 18px; }
+
+  /* Barra de acciones */
+  .acciones { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; background: var(--papel); border-top: 1.5px solid var(--linea); padding: var(--s-3) var(--s-3) calc(var(--s-3) + env(safe-area-inset-bottom)); }
+  .acciones .fila { max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: auto 1fr 1fr; gap: var(--s-2); align-items: center; }
+  .btn { min-height: 52px; border-radius: var(--r-2); font: 800 15px var(--f-texto); cursor: pointer; border: 1.5px solid var(--tinta); background: var(--papel); color: var(--tinta); padding: 0 12px; }
+  .btn.pri { background: var(--tinta); color: var(--papel); }
+  .btn.pri:disabled { background: var(--papel-2); border-color: var(--linea); color: var(--tinta-2); cursor: not-allowed; }
+  .btn.ico { width: 52px; padding: 0; display: grid; place-items: center; }
+  .motivo { max-width: 640px; margin: 0 auto 6px; font: 500 13px var(--f-texto); color: var(--tinta-2); text-align: right; }
+
+  /* Vista previa: el comprobante que verá la compradora */
+  dialog { border: 0; padding: 0; width: min(420px, 100%); max-height: 88dvh; margin: auto auto 0; background: var(--rosa); border-radius: 16px 16px 0 0; }
+  dialog::backdrop { background: rgb(22 19 15 / .5); }
+  .hoja { padding: var(--s-4) var(--s-3) var(--s-5); }
+  .hoja header { display: flex; justify-content: space-between; align-items: center; color: var(--tinta); font: 700 14px var(--f-texto); padding: 0 var(--s-2) var(--s-3); }
+  .hoja header button { border: 0; background: var(--papel); color: var(--tinta); border-radius: var(--r-2); width: 40px; height: 40px; cursor: pointer; display: grid; place-items: center; }
+  .vp { padding: var(--s-6) var(--s-5); }
+  .vp .ref { font: 700 40px/1 var(--f-cifra); letter-spacing: -.04em; margin: 0; }
+  .vp .nom { font: 600 17px var(--f-texto); margin: 8px 0 var(--s-4); }
+  .vp .r { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1.5px dotted var(--linea); font-size: 14px; }
+  .vp .r span:last-child { font: 400 13px var(--f-cifra); text-align: right; }
+  .vp .r.oculto { opacity: .35; text-decoration: line-through; }
+  .vp .tot { display: flex; justify-content: space-between; align-items: baseline; margin-top: var(--s-4); padding-top: var(--s-3); border-top: 4px double var(--tinta); }
+  .vp .tot strong { font: 700 30px var(--f-cifra); }
+  .vp .leyenda { font: 400 11px var(--f-cifra); color: var(--tinta-2); margin-top: var(--s-3); }
+  .vp .sello { float: right; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<header class="barra">
+  <a href="#" aria-label="Volver a piezas"><svg class="icono" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></a>
+  <h1>Nueva pieza</h1>
+  <span class="codigo" title="Se asigna al guardar">VT-0143</span>
+</header>
+
+<main>
+  <div class="estado-pieza"><span>Pieza nueva · VT-0143</span><p class="sello" id="sello-carga" role="status">En preparación</p></div>
+  <section class="bloque" aria-labelledby="h-fotos">
+    <h2 id="h-fotos">Fotos <span class="cifra" id="cuenta">0 de 8 tomas</span></h2>
+    <p class="ayuda">Elegí las fotos en el orden de siempre: frente, dorso, lateral, base, interior, herrajes, asas y puesta. Si alguna quedó en otro lugar, tocá dos fotos para intercambiarlas.</p>
+    <div class="tomas" id="tomas"></div>
+    <label class="galeria-btn">
+      <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>
+      Elegir de la galería
+      <input type="file" accept="image/*" multiple id="archivos">
+    </label>
+    <p class="aviso">Se achican en tu celular antes de subir: rápido aun con datos.</p>
+    <button type="button" class="galeria-btn" id="demo-fotos" style="border-style:dashed;margin-top:var(--s-2)">Cargar 6 fotos de muestra (maqueta)</button>
+  </section>
+
+  <section class="bloque" aria-labelledby="h-pieza">
+    <h2 id="h-pieza">La pieza</h2>
+    <div class="campo">
+      <div class="etiqueta">Tipo</div>
+      <div class="chips" data-grupo="tipo">
+        <button class="chip" aria-pressed="false">De hombro</button><button class="chip" aria-pressed="false">De mano</button><button class="chip" aria-pressed="true">Bandolera</button><button class="chip" aria-pressed="false">Tote</button><button class="chip" aria-pressed="false">Clutch</button><button class="chip mas">+ Otro</button>
+      </div>
+    </div>
+    <div class="campo">
+      <div class="etiqueta">Color</div>
+      <div class="chips" data-grupo="color">
+        <button class="chip" aria-pressed="true"><i style="background:#16130f"></i>Negro</button><button class="chip" aria-pressed="false"><i style="background:#7a4a2a"></i>Café</button><button class="chip" aria-pressed="false"><i style="background:#d9c3a0"></i>Beige</button><button class="chip" aria-pressed="false"><i style="background:#b3202a"></i>Rojo</button><button class="chip" aria-pressed="false"><i style="background:#fff"></i>Blanco</button><button class="chip mas">+ Otro</button>
+      </div>
+    </div>
+    <div class="campo">
+      <div class="etiqueta">Material</div>
+      <div class="chips" data-grupo="material">
+        <button class="chip" aria-pressed="true">Cuero</button><button class="chip" aria-pressed="false">Cuerina</button><button class="chip" aria-pressed="false">Lona</button><button class="chip" aria-pressed="false">Tela</button><button class="chip mas">+ Otro</button>
+      </div>
+    </div>
+    <div class="campo">
+      <div class="etiqueta">Nombre</div>
+      <input class="texto" id="nombre" value="Bandolera de cuero negra">
+    </div>
+  </section>
+
+  <section class="bloque" aria-labelledby="h-medidas">
+    <h2 id="h-medidas">Medidas</h2>
+    <p class="ayuda">Cerrada, sin contar asas.</p>
+    <div class="medidas">
+      <label class="num"><span>Alto</span><div><input inputmode="decimal" id="alto" placeholder="0" value="22"><em>cm</em></div></label>
+      <label class="num"><span>Ancho</span><div><input inputmode="decimal" id="ancho" placeholder="0" value="30"><em>cm</em></div></label>
+      <label class="num"><span>Profundidad</span><div><input inputmode="decimal" id="prof" placeholder="0" value="9"><em>cm</em></div></label>
+    </div>
+    <p class="derivado" id="tamano">→ Mediana (de 25 a 32 cm de ancho) · umbrales provisionales</p>
+    <div class="campo" style="margin-top:var(--s-5)">
+      <label class="num" style="max-width:60%"><span>Caída del asa o correa</span><div><input inputmode="decimal" id="caida" placeholder="0" value="55"><em>cm</em></div></label>
+    </div>
+  </section>
+
+  <section class="bloque" aria-labelledby="h-rev">
+    <h2 id="h-rev">Revisión</h2>
+    <div class="campo">
+      <div class="etiqueta">Condición <label class="ver"><input type="checkbox" checked data-v="condicion"> Mostrar</label></div>
+      <div class="segmento" data-grupo="condicion">
+        <button aria-pressed="false">Excelente</button><button aria-pressed="true">Muy buena</button><button aria-pressed="false">Buena</button><button aria-pressed="false">Con detalles</button>
+      </div>
+    </div>
+    <div class="campo">
+      <div class="etiqueta">Detalle que conserva <label class="ver"><input type="checkbox" checked data-v="nota"> Mostrar</label></div>
+      <textarea class="texto" id="nota" rows="2" placeholder="Opcional. Ej.: leve marca en la base (foto 4).">Leve marca de uso en una esquina de la base (foto 4).</textarea>
+    </div>
+    <div class="campo">
+      <div class="etiqueta">Marca y autenticidad <label class="ver"><input type="checkbox" checked data-v="marca"> Mostrar</label></div>
+      <select class="texto" id="marca"><option>Sin marca</option><option>Guess</option><option>Michael Kors</option><option>Coach</option><option>+ Agregar marca…</option></select>
+      <div class="segmento tres" data-grupo="aut" style="margin-top:var(--s-2)">
+        <button aria-pressed="false">Comprobada</button><button aria-pressed="false">Atribuida</button><button aria-pressed="true">Sin marca</button>
+      </div>
+    </div>
+    <div class="campo">
+      <div class="etiqueta">Qué cabe <label class="ver"><input type="checkbox" checked data-v="cabe"> Mostrar</label></div>
+      <input class="texto" id="cabe" value="Celular grande, billetera, lentes">
+    </div>
+  </section>
+
+  <section class="bloque" aria-labelledby="h-precio">
+    <h2 id="h-precio">Precio publicado</h2>
+    <label class="precio"><b>Bs</b><input inputmode="numeric" id="precio" value="180" aria-labelledby="h-precio"></label>
+  </section>
+
+  <section class="bloque interno" aria-labelledby="h-proc">
+    <h2 id="h-proc">Procedencia <span class="candado"><svg class="icono" viewBox="0 0 24 24" style="width:14px;height:14px" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Nunca se publica</span></h2>
+    <div class="campo">
+      <div class="etiqueta">Lote</div>
+      <select class="texto"><option>LOTE-07 · Fardo Primera · abierto 10/09</option><option>Compra a particular</option></select>
+    </div>
+    <div class="campo">
+      <div class="etiqueta">Condición de ingreso</div>
+      <div class="segmento" data-grupo="ingreso">
+        <button aria-pressed="false">Excelente</button><button aria-pressed="false">Muy buena</button><button aria-pressed="true">Buena</button><button aria-pressed="false">Con detalles</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="acciones">
+  <p class="motivo" id="motivo">Faltan 8 tomas para publicar</p>
+  <div class="fila">
+    <button class="btn ico" id="ver" aria-label="Ver cómo la verá la compradora"><svg class="icono" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+    <button class="btn">Guardar</button>
+    <button class="btn pri" id="publicar" disabled>Publicar</button>
+  </div>
+</div>
+
+<dialog id="hoja" aria-labelledby="hoja-t">
+  <div class="hoja">
+    <header><span id="hoja-t">Así la verá la compradora</span><button id="cerrar" aria-label="Cerrar"><svg class="icono" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></header>
+    <div class="comprobante vp" id="vp"></div>
+  </div>
+</dialog>
+
+<script>
+  const NOMBRES = ['Frente','Dorso','Lateral','Base','Interior','Herrajes','Asas','Puesta'];
+  const fotos = Array(8).fill(null);
+  const tomasEl = document.getElementById('tomas');
+  let sel = null;
+
+  const dibujar = () => {
+    tomasEl.innerHTML = '';
+    fotos.forEach((f, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'slot' + (f ? ' llena' : '') + (sel === i ? ' sel' : '');
+      b.setAttribute('aria-label', `Toma ${i + 1}: ${NOMBRES[i]}${f ? '' : ', vacía'}`);
+      b.innerHTML = (f || '') + `<span class="n">${i + 1}</span><span class="t">${NOMBRES[i]}</span>`;
+      b.onclick = () => {
+        if (!f) return document.getElementById('archivos').click();
+        if (sel === null) { sel = i; }
+        else { [fotos[sel], fotos[i]] = [fotos[i], fotos[sel]]; sel = null; }
+        dibujar();
+      };
+      tomasEl.append(b);
+    });
+    const n = fotos.filter(Boolean).length;
+    const cuenta = document.getElementById('cuenta');
+    cuenta.textContent = `${n} de 8 tomas`; cuenta.classList.toggle('ok', n === 8);
+    const sc = document.getElementById('sello-carga'), lista = n === 8 ? 'Lista' : 'En preparación';
+    if (sc.textContent !== lista) { sc.textContent = lista; sc.classList.remove('estampa'); void sc.offsetWidth; sc.classList.add('estampa'); }
+    const pub = document.getElementById('publicar');
+    pub.disabled = n < 8;
+    document.getElementById('motivo').textContent = n < 8 ? `Faltan ${8 - n} ${8 - n === 1 ? 'toma' : 'tomas'} para publicar` : 'Lista para publicar';
+  };
+
+  const agregar = (htmls) => { for (const h of htmls) { const i = fotos.indexOf(null); if (i < 0) break; fotos[i] = h; } dibujar(); };
+  document.getElementById('archivos').onchange = (e) => {
+    agregar([...e.target.files].map(f => `<img alt="" src="${URL.createObjectURL(f)}">`));
+  };
+  const tonos = ['#f6c3d5','#efb3c8','#f3cfdc','#e9a8bf','#f6c3d5','#efb3c8'];
+  document.getElementById('demo-fotos').onclick = () =>
+    agregar(tonos.map((t, i) => `<svg viewBox="0 0 80 100" preserveAspectRatio="xMidYMid slice"><rect width="80" height="100" fill="${t}"/><rect x="16" y="40" width="48" height="36" rx="5" fill="#16130f"/><path d="M26 42c2-14 10-18 14-18s12 4 14 18" fill="none" stroke="#16130f" stroke-width="3"/></svg>`));
+
+  // Chips y segmentos: selección única por grupo
+  document.querySelectorAll('[data-grupo]').forEach(g => g.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || b.classList.contains('mas')) return;
+    g.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  }));
+
+  // Tamaño derivado del ancho
+  const tamano = () => {
+    const a = parseFloat(document.getElementById('ancho').value);
+    const t = !a ? '' : a < 18 ? 'Mini (menos de 18 cm de ancho)' : a < 25 ? 'Pequeña (de 18 a 24 cm de ancho)' : a <= 32 ? 'Mediana (de 25 a 32 cm de ancho)' : 'Grande (más de 32 cm de ancho)';
+    document.getElementById('tamano').textContent = t ? '→ ' + t + ' · umbrales provisionales' : '';
+  };
+  document.getElementById('ancho').oninput = tamano;
+
+  // Vista previa del comprobante
+  const val = id => document.getElementById(id).value;
+  const pulsado = g => document.querySelector(`[data-grupo="${g}"] [aria-pressed="true"]`)?.textContent.trim() ?? '—';
+  const visible = k => document.querySelector(`[data-v="${k}"]`).checked;
+  const hoja = document.getElementById('hoja');
+  document.getElementById('ver').onclick = () => {
+    const r = (k, v, oculto) => `<div class="r${oculto ? ' oculto' : ''}"><span>${k}</span><span>${v}</span></div>`;
+    document.getElementById('vp').innerHTML = `
+      <p class="sello">En preparación<small>no visible aún</small></p>
+      <p class="ref">VT-0143</p><p class="nom">${val('nombre')}</p>
+      ${r('Medidas', `${val('alto')} × ${val('ancho')} × ${val('prof')} cm`)}
+      ${r('Caída', `${val('caida')} cm`)}
+      ${r('Tipo · Material', `${pulsado('tipo')} · ${pulsado('material')}`)}
+      ${r('Condición', pulsado('condicion'), !visible('condicion'))}
+      ${r('Detalle', val('nota') || '—', !visible('nota'))}
+      ${r('Marca', `${val('marca')} · ${pulsado('aut')}`, !visible('marca'))}
+      ${r('Qué cabe', val('cabe'), !visible('cabe'))}
+      <div class="tot"><b>TOTAL</b><strong>Bs ${val('precio')}</strong></div>
+      <p class="leyenda">Tachado = cargado pero oculto. Lote y costo nunca aparecen.</p>`;
+    hoja.showModal();
+  };
+  document.getElementById('cerrar').onclick = () => hoja.close();
+
+  dibujar();
+</script>
+</body>
+</html>
