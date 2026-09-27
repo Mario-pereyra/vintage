@@ -1,6 +1,7 @@
 import { configuracionTienda } from "~/configuracion/tienda";
 import type { PrismaClient } from "~/generated/prisma/client";
 
+import { crearAbastecimiento } from "./abastecimiento";
 import { listarCatalogo, type FiltrosDeCatalogo } from "./catalogo";
 import { crearFotos } from "./fotos";
 import { ampliarLista, obtenerListas, type Lista } from "./listas";
@@ -30,6 +31,7 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
   const piezas = crearPiezas(db, config);
   const reservas = crearReservas(db, config);
   const fotos = crearFotos(db, { prefijoDeCodigo: config.prefijoDeCodigo });
+  const abastecimiento = crearAbastecimiento(db, piezas);
 
   /**
    * Vencimiento perezoso: antes de leer el estado de una pieza, vence las
@@ -70,7 +72,10 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
     // --- Fotos de pieza: las 8 tomas mínimas, su orden fijo y su portada ---
     ...fotos,
 
-    // --- Listas ampliables (tipo de cartera, color, material) ---
+    // --- Abastecimiento: proveedores, lotes, apertura y compra a particular ---
+    ...abastecimiento,
+
+    // --- Listas ampliables (tipo de cartera, color, material, calidad declarada) ---
     /** Los valores de cada lista, en orden de alta. */
     listas: () => obtenerListas(db),
     /** Suma un valor a una lista, o devuelve el que ya existe con ese nombre. */
@@ -81,11 +86,22 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
 export type Dominio = ReturnType<typeof crearDominio>;
 
 export type {
+  CanalDeAbastecimiento,
+  DatosDeApertura,
+  DatosDeCompraAParticular,
+  DatosDeLote,
+  DatosDeProveedor,
+  LoteDelPanel,
+  Proveedor,
+} from "./abastecimiento";
+export { CANALES_DE_ABASTECIMIENTO, TEXTO_DE_CANAL } from "./abastecimiento";
+export type {
   FiltrosDeCatalogo,
   PaginaDeCatalogo,
   PiezaEnCatalogo,
 } from "./catalogo";
 export { PIEZAS_POR_PAGINA } from "./catalogo";
+export { CONDICIONES, TEXTO_DE_CONDICION, type CondicionDePieza } from "./condicion";
 export { ErrorDeDominio, type MotivoDeRechazo } from "./errores";
 export {
   TOMAS_REQUERIDAS,

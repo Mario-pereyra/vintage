@@ -6,7 +6,9 @@ export type MotivoDeRechazo =
   | "pieza_incompleta"
   /** La pieza no existe (o el código no se entiende). */
   | "pieza_no_encontrada"
-  /** El estado actual de la pieza no admite esa operación. */
+  /** El lote no existe. */
+  | "lote_no_encontrado"
+  /** El estado actual de la pieza (o del lote) no admite esa operación. */
   | "transicion_no_permitida"
   /** La pieza no tiene una reserva activa (o ya venció). */
   | "reserva_no_encontrada"
