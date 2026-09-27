@@ -59,12 +59,15 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     tamano: parametros.get("tamano") ?? "",
     precioMin: parametros.get("precioMin") ?? "",
     precioMax: parametros.get("precioMax") ?? "",
+    // "Ver vendidas": solo "1" activa el filtro.
+    vendidas: parametros.get("vendidas") === "1" ? "1" : "",
   };
 
   const filtros: FiltrosDeCatalogo = {
     tipoId: enteroPositivo(filtrosCrudos.tipo),
     colorId: enteroPositivo(filtrosCrudos.color),
     tamano: tamanoValido(filtrosCrudos.tamano),
+    vendidas: filtrosCrudos.vendidas === "1",
   };
   const precioMinBs = enteroPositivo(filtrosCrudos.precioMin);
   const precioMaxBs = enteroPositivo(filtrosCrudos.precioMax);
@@ -189,6 +192,7 @@ function filtrosEnPalabras({ filtrosCrudos, listas }: DatosDelCatalogo) {
     { etiqueta: "Color", valor: color?.nombre, cifra: false },
     { etiqueta: "Tamaño", valor: filtrosCrudos.tamano || undefined, cifra: false },
     { etiqueta: "Precio", valor: describirPrecio(filtrosCrudos) ?? undefined, cifra: true },
+    { etiqueta: "Estado", valor: filtrosCrudos.vendidas ? "Vendidas" : undefined, cifra: false },
   ];
   return filas.filter(
     (fila): fila is { etiqueta: string; valor: string; cifra: boolean } => Boolean(fila.valor),
@@ -273,10 +277,32 @@ function Filtros({
     filtrosCrudos.tamano,
     describirPrecio(filtrosCrudos),
   ].filter((valor): valor is string => Boolean(valor));
-  const hayFiltros = Object.values(filtrosCrudos).some(Boolean);
+  // "Ver vendidas" no es un filtro que quitar: lo resuelven sus chips.
+  const hayFiltros = Object.entries(filtrosCrudos).some(
+    ([nombre, valor]) => nombre !== "vendidas" && Boolean(valor),
+  );
 
   return (
     <section className="filtros" aria-label="Filtrar el catálogo">
+      <GrupoDeFiltro id="f-vendidas" titulo="Estado">
+        <ChipsDeFiltro
+          opciones={[
+            {
+              clave: "en-venta",
+              texto: "En venta",
+              href: cambiar({ vendidas: "" }),
+              activo: !filtrosCrudos.vendidas,
+            },
+            {
+              clave: "vendidas",
+              texto: "Ver vendidas",
+              href: cambiar({ vendidas: "1" }),
+              activo: Boolean(filtrosCrudos.vendidas),
+            },
+          ]}
+        />
+      </GrupoDeFiltro>
+
       <GrupoDeFiltro id="f-tipo" titulo="Tipo">
         <ChipsDeFiltro opciones={tipos} carril />
       </GrupoDeFiltro>
@@ -330,6 +356,9 @@ function Filtros({
               {filtrosCrudos.tamano ? (
                 <input type="hidden" name="tamano" value={filtrosCrudos.tamano} />
               ) : null}
+              {filtrosCrudos.vendidas ? (
+                <input type="hidden" name="vendidas" value="1" />
+              ) : null}
               <label className="rango-extremo">
                 <span>Desde</span>
                 <span className="rango-cifra">
@@ -367,7 +396,12 @@ function Filtros({
       </details>
 
       {hayFiltros && conQuitar ? (
-        <Link to="/" className="filtros-quitar" preventScrollReset replace>
+        <Link
+          to={filtrosCrudos.vendidas ? "/?vendidas=1" : "/"}
+          className="filtros-quitar"
+          preventScrollReset
+          replace
+        >
           Quitar filtros
         </Link>
       ) : null}
@@ -396,7 +430,13 @@ function TarjetaDePieza({
             ? { src: `${r2PublicUrl}/${pieza.foto.claveCatalogo}`, alt: pieza.foto.alt }
             : null
         }
-        sello={pieza.estado === "reservada" ? "Reservada" : undefined}
+        sello={
+          pieza.estado === "reservada"
+            ? "Reservada"
+            : pieza.estado === "vendida"
+              ? "Vendida"
+              : undefined
+        }
       />
     </li>
   );
@@ -406,6 +446,10 @@ export default function Catalogo({ loaderData }: Route.ComponentProps) {
   const { catalogo, filtrosCrudos, tomar, whatsapp, r2PublicUrl } = loaderData;
   const { piezas, hayMas } = catalogo;
   const hayFiltros = Object.values(filtrosCrudos).some(Boolean);
+  const vendidas = Boolean(filtrosCrudos.vendidas);
+  const hayOtrosFiltros = Object.entries(filtrosCrudos).some(
+    ([nombre, valor]) => nombre !== "vendidas" && Boolean(valor),
+  );
 
   // Sin piezas publicadas: el catálogo entero está vacío, no hay nada que filtrar.
   if (piezas.length === 0 && !hayFiltros) {
@@ -443,13 +487,23 @@ export default function Catalogo({ loaderData }: Route.ComponentProps) {
         <Filtros datos={loaderData} conQuitar={piezas.length > 0} />
 
         <div className="catalogo-resultados">
-          {piezas.length === 0 ? (
+          {piezas.length === 0 && vendidas && !hayOtrosFiltros ? (
+            <EstadoVacio
+              titulo="Todavía no hay vendidas"
+              detalle="Cuando una pieza se venda, su ficha queda aquí, con sus medidas y su precio."
+              accion={
+                <Link to="/" className="btn btn-ancho" replace>
+                  Ver carteras en venta
+                </Link>
+              }
+            />
+          ) : piezas.length === 0 ? (
             <EstadoVacio
               titulo="Ninguna pieza coincide"
               detalle="Cada cartera es única y el catálogo cambia con cada drop. Probá con menos filtros."
               accion={
-                <Link to="/" className="btn btn-ancho" replace>
-                  Quitar filtros y ver todo
+                <Link to={vendidas ? "/?vendidas=1" : "/"} className="btn btn-ancho" replace>
+                  {vendidas ? "Quitar filtros y ver todas las vendidas" : "Quitar filtros y ver todo"}
                 </Link>
               }
             >
@@ -463,7 +517,16 @@ export default function Catalogo({ loaderData }: Route.ComponentProps) {
             </EstadoVacio>
           ) : (
             <>
-              <ul className="catalogo-lista">
+              {vendidas ? (
+                <section className="sobre-rosa vendidas-intro" aria-labelledby="t-vendidas">
+                  <h2 id="t-vendidas">Ya tienen dueña</h2>
+                  <p>
+                    Cada pieza es única: cuando se vende, no vuelve. Dejamos sus fichas a la
+                    vista, con las medidas y el precio al que se publicaron.
+                  </p>
+                </section>
+              ) : null}
+              <ul className={vendidas ? "catalogo-lista catalogo-lista-vendidas" : "catalogo-lista"}>
                 {piezas.map((pieza) => (
                   <TarjetaDePieza key={pieza.codigo} pieza={pieza} r2PublicUrl={r2PublicUrl} />
                 ))}
@@ -479,10 +542,20 @@ export default function Catalogo({ loaderData }: Route.ComponentProps) {
                 </Link>
               ) : (
                 <p className="catalogo-fin">
-                  {piezas.length === 1
-                    ? "Esta es la única pieza"
-                    : `Estas son las ${piezas.length} piezas`}
-                  {hayFiltros ? " con estos filtros." : " del catálogo."}
+                  {vendidas
+                    ? piezas.length === 1
+                      ? "Esta es la única vendida"
+                      : `Estas son las ${piezas.length} vendidas`
+                    : piezas.length === 1
+                      ? "Esta es la única pieza"
+                      : `Estas son las ${piezas.length} piezas`}
+                  {vendidas
+                    ? hayOtrosFiltros
+                      ? " con estos filtros."
+                      : "."
+                    : hayFiltros
+                      ? " con estos filtros."
+                      : " del catálogo."}
                 </p>
               )}
             </>

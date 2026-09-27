@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { data, redirect } from "react-router";
+import { data, Link, redirect } from "react-router";
 
 import { AccionFija, BotonWhatsApp } from "~/componentes/boton-whatsapp";
 import {
@@ -85,7 +85,7 @@ const SELLO: Record<FichaPublica["estado"], string> = {
   disponible: "Disponible",
   reservada: "Reservada",
   vendida: "Vendida",
-  retirada: "Ya no disponible",
+  retirada: "Retirada",
 };
 
 function cm(valor: number) {
@@ -116,6 +116,8 @@ export default function Ficha({ loaderData }: Route.ComponentProps) {
     alt: `${ficha.nombre} — ${foto.etiqueta}`,
     toma: foto.etiqueta,
   }));
+  const vendida = ficha.estado === "vendida";
+  const retirada = ficha.estado === "retirada";
 
   return (
     <Pagina
@@ -131,13 +133,19 @@ export default function Ficha({ loaderData }: Route.ComponentProps) {
         <GaleriaDeTomas
           fotos={fotos}
           sinFotos={
-            <>
-              <p className="toma-sin-foto-titulo">Las fotos de esta pieza todavía no están cargadas</p>
-              <p className="toma-sin-foto-detalle">
-                Pedilas por WhatsApp con la <span className="cifra">Ref. {ficha.codigo}</span>{" "}
-                y te las mandamos.
-              </p>
-            </>
+            vendida || retirada ? (
+              <p className="toma-sin-foto-titulo">Esta pieza no tiene fotos cargadas</p>
+            ) : (
+              <>
+                <p className="toma-sin-foto-titulo">
+                  Las fotos de esta pieza todavía no están cargadas
+                </p>
+                <p className="toma-sin-foto-detalle">
+                  Pedilas por WhatsApp con la <span className="cifra">Ref. {ficha.codigo}</span> y
+                  te las mandamos.
+                </p>
+              </>
+            )
           }
         />
 
@@ -149,18 +157,17 @@ export default function Ficha({ loaderData }: Route.ComponentProps) {
               como="h2"
               sello={{
                 texto: SELLO[ficha.estado],
+                // "Ya no disponible" va en la segunda línea: en una sola, el sello tapa el nombre.
                 detalle: ficha.reservadaHasta
                   ? `hasta las ${horaDeBolivia(ficha.reservadaHasta)}`
-                  : undefined,
+                  : retirada
+                    ? "ya no disponible"
+                    : undefined,
               }}
             />
             <NombrePieza>{ficha.nombre}</NombrePieza>
             <Renglones>
-              <Renglon
-                etiqueta="Medidas"
-                cifra
-                aclaracion="alto × ancho × profundidad, cerrada"
-              >
+              <Renglon etiqueta="Medidas" cifra aclaracion="alto × ancho × profundidad, cerrada">
                 {cm(medidas.altoCm)} × {cm(medidas.anchoCm)} × {cm(medidas.profundidadCm)} cm
               </Renglon>
               {medidas.caidaCm !== null ? (
@@ -180,7 +187,8 @@ export default function Ficha({ loaderData }: Route.ComponentProps) {
             </Renglones>
             <Total precio={precio(ficha)} />
             <PieComprobante>
-              Publicada {fechaCorta(ficha.publicadaEn)} · Una sola unidad
+              Publicada {fechaCorta(ficha.publicadaEn)} ·{" "}
+              {vendida ? "Vendida" : retirada ? "Fuera del catálogo" : "Una sola unidad"}
             </PieComprobante>
           </Comprobante>
 
@@ -194,21 +202,35 @@ export default function Ficha({ loaderData }: Route.ComponentProps) {
                 url={url}
               />
             ) : (
-              <BotonWhatsApp
-                variante="secundario"
-                href="/"
-                texto="Ver carteras disponibles"
-              />
+              <BotonWhatsApp variante="secundario" href="/" texto="Ver carteras disponibles" />
             )}
           </AccionFija>
         </div>
 
         <div className="ficha-textos">
+          {vendida ? (
+            <section className="sobre-rosa ficha-final" aria-labelledby="t-final">
+              <h2 id="t-final">Esta ya tiene dueña</h2>
+              <p>
+                Se vendió y no vuelve: cada pieza es única. Dejamos su ficha publicada, con sus
+                medidas y su precio, para que veas qué carteras pasan por la tienda.
+              </p>
+              <p>
+                <Link to="/?vendidas=1">Ver todas las vendidas</Link>
+              </p>
+            </section>
+          ) : retirada ? (
+            <section className="sobre-rosa ficha-final" aria-labelledby="t-final">
+              <h2 id="t-final">Ya no está a la venta</h2>
+              <p>Esta pieza salió del catálogo. Mirá las carteras que están disponibles ahora.</p>
+            </section>
+          ) : null}
+
           <section className="sobre-rosa" aria-labelledby="t-medimos">
             <h2 id="t-medimos">Cómo la medimos</h2>
             <p>
-              Cerrada y sin contar asas: alto × ancho × profundidad, en centímetros. El
-              tamaño sale del ancho, con estos rangos:
+              Cerrada y sin contar asas: alto × ancho × profundidad, en centímetros. El tamaño sale
+              del ancho, con estos rangos:
             </p>
             <ul className="lista-sobre-rosa lista-tamanos">
               {ficha.tamanos.map((tamano) => {
@@ -224,29 +246,31 @@ export default function Ficha({ loaderData }: Route.ComponentProps) {
             </ul>
           </section>
 
-          <section className="sobre-rosa" aria-labelledby="t-recibis">
-            <h2 id="t-recibis">Cómo la recibís</h2>
-            <ul className="lista-sobre-rosa">
-              <li>
-                <Icono nombre="ubicacion" />
-                <span>
-                  <b>Retiro en Santa Cruz</b>Coordinamos el punto por WhatsApp.
-                </span>
-              </li>
-              <li>
-                <Icono nombre="delivery" />
-                <span>
-                  <b>Delivery en Santa Cruz</b>Costo según tu zona.
-                </span>
-              </li>
-              <li>
-                <Icono nombre="paquete" />
-                <span>
-                  <b>Envío a otro departamento</b>Por encomienda o flota; te pasamos la guía.
-                </span>
-              </li>
-            </ul>
-          </section>
+          {vendida || retirada ? null : (
+            <section className="sobre-rosa" aria-labelledby="t-recibis">
+              <h2 id="t-recibis">Cómo la recibís</h2>
+              <ul className="lista-sobre-rosa">
+                <li>
+                  <Icono nombre="ubicacion" />
+                  <span>
+                    <b>Retiro en Santa Cruz</b>Coordinamos el punto por WhatsApp.
+                  </span>
+                </li>
+                <li>
+                  <Icono nombre="delivery" />
+                  <span>
+                    <b>Delivery en Santa Cruz</b>Costo según tu zona.
+                  </span>
+                </li>
+                <li>
+                  <Icono nombre="paquete" />
+                  <span>
+                    <b>Envío a otro departamento</b>Por encomienda o flota; te pasamos la guía.
+                  </span>
+                </li>
+              </ul>
+            </section>
+          )}
         </div>
       </div>
     </Pagina>

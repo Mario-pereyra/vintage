@@ -530,7 +530,9 @@ export function crearPiezas(db: Prisma.TransactionClient, config: ConfiguracionD
       if (fila.estado !== "EN_PREPARACION") {
         throw new ErrorDeDominio(
           "transicion_no_permitida",
-          `La pieza ${codigoDe(fila.codigo)} ya está publicada.`,
+          fila.estado === "RETIRADA" && !fila.publicadaEn
+            ? `La pieza ${codigoDe(fila.codigo)} está retirada: no se publica.`
+            : `La pieza ${codigoDe(fila.codigo)} ya está publicada.`,
         );
       }
       const faltan = faltantes(fila);
@@ -623,6 +625,8 @@ export function crearPiezas(db: Prisma.TransactionClient, config: ConfiguracionD
         },
       });
       if (!fila || fila.estado === "EN_PREPARACION") return null;
+      // Retirada sin haberse publicado nunca: para la compradora no existió.
+      if (fila.estado === "RETIRADA" && !fila.publicadaEn) return null;
 
       const { nombre, tipo, color, material, altoCm, anchoCm, profundidadCm } =
         fila;

@@ -55,6 +55,7 @@ function normalizarFiltros(filtros: FiltrosDeCatalogo): FiltrosDeCatalogo {
     tipoId: idDeFiltro(filtros.tipoId),
     colorId: idDeFiltro(filtros.colorId),
     tamano: filtros.tamano,
+    vendidas: filtros.vendidas === true,
     precioMinCentavos,
     precioMaxCentavos,
   };
@@ -68,14 +69,18 @@ export interface ConfiguracionDeCatalogo {
 }
 
 /**
- * Estados que la compradora ve en el listado principal y cómo se nombran
- * fuera del dominio. Las Vendidas van aparte ("Ver vendidas"); En preparación
- * y Retirada nunca se listan.
+ * Estados que la compradora ve en el catálogo y cómo se nombran fuera del
+ * dominio. El listado principal muestra Disponibles y Reservadas; las
+ * Vendidas se ven solo con el filtro "Ver vendidas" (vendidas visibles). En
+ * preparación y Retirada nunca se listan.
  */
 const estadosDelListado = {
   DISPONIBLE: "disponible",
   RESERVADA: "reservada",
+  VENDIDA: "vendida",
 } as const satisfies Partial<Record<EstadoPieza, string>>;
+
+const ESTADOS_DEL_LISTADO_PRINCIPAL: EstadoDelListado[] = ["DISPONIBLE", "RESERVADA"];
 
 type EstadoDelListado = keyof typeof estadosDelListado;
 
@@ -89,6 +94,11 @@ export interface FiltrosDeCatalogo {
   tamano?: Tamano;
   precioMinCentavos?: number;
   precioMaxCentavos?: number;
+  /**
+   * "Ver vendidas": en lugar del listado principal, solo las Vendidas, la
+   * última vendida primero. Se combina con los demás filtros.
+   */
+  vendidas?: boolean;
 }
 
 /**
@@ -103,6 +113,10 @@ export interface PiezaEnCatalogo {
   /** La ruta pública de su ficha, `/carteras/<slug>-<sufijo>`. */
   ruta: string;
   estado: (typeof estadosDelListado)[EstadoDelListado];
+  /**
+   * El precio publicado. En una vendida también: el precio final (tras el
+   * regateo) es interno y nunca se publica.
+   */
   precioCentavos: number;
   tamano: Tamano;
   /**
@@ -150,7 +164,8 @@ function aPiezaEnCatalogo(
 
 /**
  * El listado principal del catálogo: Disponibles y Reservadas, más recientes
- * primero, con los filtros combinados de `filtros`. `limite` es cuántas
+ * primero, con los filtros combinados de `filtros`. Con `vendidas`, solo las
+ * Vendidas, la última vendida primero. `limite` es cuántas
  * piezas traer desde el principio (no un cursor): la carga incremental pide
  * de nuevo con un límite mayor.
  */
@@ -161,9 +176,9 @@ export async function listarCatalogo(
   limite: number = PIEZAS_POR_PAGINA,
 ): Promise<PaginaDeCatalogo> {
   const filtros = normalizarFiltros(filtrosCrudos);
-  const where: Prisma.PiezaWhereInput = {
-    estado: { in: Object.keys(estadosDelListado) as EstadoDelListado[] },
-  };
+  const where: Prisma.PiezaWhereInput = filtros.vendidas
+    ? { estado: "VENDIDA" }
+    : { estado: { in: ESTADOS_DEL_LISTADO_PRINCIPAL } };
 
   if (filtros.tipoId !== undefined) where.tipoId = filtros.tipoId;
   if (filtros.colorId !== undefined) where.colorId = filtros.colorId;
@@ -182,7 +197,9 @@ export async function listarCatalogo(
 
   const filas = await db.pieza.findMany({
     where,
-    orderBy: [{ publicadaEn: "desc" }, { codigo: "desc" }],
+    orderBy: filtros.vendidas
+      ? [{ venta: { vendidaEn: "desc" } }, { codigo: "desc" }]
+      : [{ publicadaEn: "desc" }, { codigo: "desc" }],
     take: limite + 1,
     include: { fotos: { where: { portada: true } } },
   });

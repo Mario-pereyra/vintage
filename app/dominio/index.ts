@@ -7,6 +7,8 @@ import { crearFotos } from "./fotos";
 import { ampliarLista, obtenerListas, type Lista } from "./listas";
 import { crearPiezas, type ConfiguracionDePiezas } from "./piezas";
 import { crearReservas } from "./reservas";
+import { crearRetiros } from "./retiros";
+import { crearVentas } from "./ventas";
 
 export type OpcionesDelDominio = Partial<ConfiguracionDePiezas>;
 
@@ -30,6 +32,8 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
   };
   const piezas = crearPiezas(db, configDePiezas);
   const reservas = crearReservas(db, configDePiezas);
+  const ventas = crearVentas(db, configDePiezas);
+  const retiros = crearRetiros(db, configDePiezas);
   const fotos = crearFotos(db, { prefijoDeCodigo: configDePiezas.prefijoDeCodigo });
   // `abrirLote` recibe también la configuración para poder crear las piezas
   // del lote dentro de su propia transacción (ver abastecimiento.ts).
@@ -77,6 +81,15 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
     // --- Abastecimiento: proveedores, lotes, apertura y compra a particular ---
     ...abastecimiento,
 
+    // --- Venta con pago verificado, entrega y retiro ---
+    registrarVenta: trasVencer(ventas.registrarVenta),
+    ventaDePieza: ventas.ventaDePieza,
+    marcarEntregada: ventas.marcarEntregada,
+    registrarGuia: ventas.registrarGuia,
+    listarEntregasPendientes: ventas.listarEntregasPendientes,
+    retirarPieza: trasVencer(retiros.retirarPieza),
+    retiroDePieza: retiros.retiroDePieza,
+
     // --- Listas ampliables (tipo de cartera, color, material, calidad declarada) ---
     /** Los valores de cada lista, en orden de alta. */
     listas: () => obtenerListas(db),
@@ -117,13 +130,14 @@ export {
   type TipoDeToma,
 } from "./fotos";
 export type { Lista, Listas, OpcionDeColor, OpcionDeLista } from "./listas";
-export type {
-  CampoDePieza,
-  DatosDePieza,
-  EstadoDePieza,
-  FichaPublica,
-  PiezaDelPanel,
-  PiezaEnPanel,
+export {
+  PRECIO_MAXIMO_CENTAVOS,
+  type CampoDePieza,
+  type DatosDePieza,
+  type EstadoDePieza,
+  type FichaPublica,
+  type PiezaDelPanel,
+  type PiezaEnPanel,
 } from "./piezas";
 export { COSTO_DIRECTO_MAXIMO_CENTAVOS, repartoDeLote } from "./piezas";
 export {
@@ -137,6 +151,17 @@ export {
   type ReglaDeCompradora,
   type ReservaActiva,
 } from "./reservas";
+export type { DatosDeRetiro, MotivoDelRetiro, RetiroDePieza } from "./retiros";
+export {
+  COSTO_DE_ENTREGA_MAXIMO_CENTAVOS,
+  type CanalDeLaVenta,
+  type DatosDeEntrega,
+  type DatosDeVenta,
+  type Entrega,
+  type EstadoDeLaEntrega,
+  type ModalidadDeLaEntrega,
+  type Venta,
+} from "./ventas";
 export type { Tamano, UmbralesDeTamano } from "./tamano";
 export {
   crearAccesoAlPanel,
