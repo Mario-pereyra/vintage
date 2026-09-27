@@ -19,3 +19,8 @@ export function crearDominio(db: PrismaClient) {
 export type Dominio = ReturnType<typeof crearDominio>;
 
 export type { PiezaEnCatalogo } from "./catalogo";
+export {
+  crearAccesoAlPanel,
+  OPERADORA_DE_PRUEBA,
+  type AccesoAlPanel,
+} from "./acceso";

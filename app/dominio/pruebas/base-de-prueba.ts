@@ -58,9 +58,7 @@ export interface BaseDePrueba {
  * reales, y el módulo de dominio conectado a ella. Úsala en `beforeEach`.
  */
 export async function crearBaseDePrueba(): Promise<BaseDePrueba> {
-  // `clone()` devuelve otra instancia de PGlite, aunque su tipo sea la interfaz.
-  const pg = (await (await plantillaMigrada()).clone()) as PGlite;
-  const prisma = new PrismaClient({ adapter: new PrismaPGlite(pg) });
+  const { prisma, cerrar } = await crearPrismaDePrueba();
 
   return {
     dominio: crearDominio(prisma),
@@ -69,6 +67,25 @@ export async function crearBaseDePrueba(): Promise<BaseDePrueba> {
         data: { id: crypto.randomUUID(), estado, publicadaEn },
       });
     },
+    cerrar,
+  };
+}
+
+/**
+ * Un cliente de Prisma sobre una base limpia y migrada. Solo para probar la
+ * capa de autenticación (Better Auth), que habla con Prisma directamente; las
+ * pruebas del dominio usan `crearBaseDePrueba()`.
+ */
+export async function crearPrismaDePrueba(): Promise<{
+  prisma: PrismaClient;
+  cerrar(): Promise<void>;
+}> {
+  // `clone()` devuelve otra instancia de PGlite, aunque su tipo sea la interfaz.
+  const pg = (await (await plantillaMigrada()).clone()) as PGlite;
+  const prisma = new PrismaClient({ adapter: new PrismaPGlite(pg) });
+
+  return {
+    prisma,
     async cerrar() {
       await prisma.$disconnect();
       await pg.close();

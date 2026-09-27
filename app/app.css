@@ -914,7 +914,113 @@
   .boton,
   .btn,
   .mostrar > input,
-  .mostrar > input::after {
+  .mostrar > input::after,
+  .barra-panel-salir {
     transition: none;
+  }
+}
+
+/* ── Cabecera del panel, ingreso y aviso sin conexión ── */
+@layer components {
+  /* La barra y su aviso quedan pegados arriba, juntos. */
+  .panel-cabecera {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+  }
+  .panel-cabecera > .barra-panel {
+    position: static;
+  }
+  .barra-panel-salir {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 0 var(--s-3) 0 10px;
+    border: 0;
+    border-radius: var(--r-2);
+    background: var(--papel);
+    color: var(--tinta);
+    font: 700 14px var(--f-texto);
+    white-space: nowrap;
+    transition: transform 0.15s ease-out;
+  }
+  .barra-panel-salir:active {
+    transform: scale(0.98);
+  }
+
+  /* Franja de tinta: "sin conexión" no tiene tinta propia (no hay tinta de alerta). */
+  .aviso-sin-conexion {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-2);
+    padding: 10px var(--s-4);
+    background: var(--tinta);
+    color: var(--papel);
+  }
+  .aviso-sin-conexion p {
+    margin: 0;
+    font: 400 14px / 1.35 var(--f-texto);
+    max-width: 58ch;
+  }
+  .aviso-sin-conexion strong {
+    font-weight: 800;
+  }
+
+  /* Pantallas de ingreso: una columna corta dentro del cuerpo del panel. */
+  .ingreso {
+    max-width: 440px;
+    margin: var(--s-5) auto 0;
+  }
+  .ingreso .btn {
+    width: 100%;
+  }
+  /* El rechazo se estampa arriba del mensaje, como en un comprobante devuelto. */
+  .ingreso-rechazo {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s-4);
+    border: 1.5px solid var(--tinta);
+  }
+  .ingreso-rechazo > .sello {
+    margin: var(--s-1) 0 0 var(--s-1);
+  }
+  .ingreso-rechazo p {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .ingreso-rechazo p + p {
+    margin-top: var(--s-2);
+    color: var(--tinta-2);
+    font-size: 14px;
+  }
+  .ingreso-pie {
+    margin: var(--s-4) var(--s-1) 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--tinta-2);
+  }
+  .ingreso-pie a {
+    color: var(--tinta);
+    font-weight: 600;
+  }
+  /* Un correo largo corta en cualquier punto antes que desbordar el renglón. */
+  .correo {
+    overflow-wrap: break-word;
+  }
+
+  .bloque > .ayuda:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Portada del panel */
+  .saludo {
+    font: 800 22px / 1.15 var(--f-texto);
+    letter-spacing: -0.01em;
+    margin: var(--s-3) var(--s-1) var(--s-4);
+    text-wrap: balance;
   }
 }

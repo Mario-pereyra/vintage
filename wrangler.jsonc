@@ -18,7 +18,10 @@
 	"vars": {
 		"BETTER_AUTH_URL": "http://localhost:5173",
 		"WHATSAPP_NUMBER": "",
-		"R2_PUBLIC_URL": ""
+		"R2_PUBLIC_URL": "",
+		// Login de desarrollo (ticket #3): "true" solo en local y en las vistas
+		// previas. Vacío en producción: /ingresar/desarrollo responde 404.
+		"DEV_LOGIN": ""
 	},
 	// Secretos de runtime. En local van en .env; en producción los sube el
 	// CI con `wrangler deploy --secrets-file`. Wrangler rechaza el despliegue si

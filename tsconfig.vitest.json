@@ -1,6 +1,11 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["app/dominio/**/*", "app/generated/**/*"],
+  "include": [
+    "app/dominio/**/*",
+    "app/generated/**/*",
+    "app/servidor/autenticacion.server.ts",
+    "app/servidor/autenticacion.test.ts"
+  ],
   "compilerOptions": {
     "composite": true,
     "strict": true,

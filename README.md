@@ -45,9 +45,22 @@ Todas están documentadas en `.env.example`. En local basta con un `.env`: lo le
 | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | secreto | Secreto de GitHub (Wrangler en CI) |
 | `APP_URL` | variable | Variable de GitHub → `BETTER_AUTH_URL` del Worker |
 | `WHATSAPP_NUMBER`, `R2_PUBLIC_URL` | variable | Variable de GitHub → var del Worker |
+| `DEV_LOGIN` | variable | `"true"` en local (`.env`) y en las previews (el CI la pasa con `--var`). Vacía en producción (`wrangler.jsonc`); el CI rechaza desplegar si no lo está. |
 | `R2_BUCKET` | variable | Variable de GitHub (`vintage-fotos`); el binding `FOTOS` está en `wrangler.jsonc` |
 
 Los secretos de runtime están declarados en `wrangler.jsonc` (`secrets.required`): Wrangler avisa en local si falta alguno y rechaza un despliegue sin ellos.
+
+## Login de operadoras
+
+El panel `/admin` usa Better Auth con Google (`app/servidor/autenticacion.server.ts`). Solo entran los correos de `ADMIN_EMAILS`; no hay registro público. Todas las rutas de `/admin` cuelgan de `routes/admin/layout.tsx`, cuyo middleware exige sesión antes de correr cualquier loader o action: una ruta nueva del panel va como hija de ese layout en `app/routes.ts`.
+
+- `/ingresar`: botón "Entrar con Google" y el mensaje de error si el correo no está permitido.
+- `/ingresar/desarrollo`: login de desarrollo, entra como la operadora de prueba sin Google (para Playwright). Solo existe con `DEV_LOGIN="true"`; si no, responde 404.
+- `POST /salir`: cierra la sesión.
+
+Google OAuth solo acepta `http://localhost:5173` y la `APP_URL`: las previews y los dev servers en otro puerto entran con el login de desarrollo.
+
+El panel es una PWA instalable (`public/manifest.webmanifest` y `public/iconos/`) sin service worker: no funciona sin conexión y muestra un aviso cuando se corta.
 
 ## Scripts
 

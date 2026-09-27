@@ -24,6 +24,24 @@ const trazos = {
       <path d="M8 11V7a4 4 0 0 1 8 0v4" />
     </>
   ),
+  salir: (
+    <>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="m16 17 5-5-5-5" />
+      <path d="M21 12H9" />
+    </>
+  ),
+  sinConexion: (
+    <>
+      <path d="M12 20h.01" />
+      <path d="M8.5 16.4a5 5 0 0 1 7 0" />
+      <path d="M2 8.8a15 15 0 0 1 4.2-2.6" />
+      <path d="M10.7 5c4-.4 8.1.9 11.3 3.8" />
+      <path d="M16.8 11.2a10 10 0 0 1 2.3 1.7" />
+      <path d="M5 13a10 10 0 0 1 5.2-2.8" />
+      <path d="m2 2 20 20" />
+    </>
+  ),
 } as const;
 
 export type NombreIcono = keyof typeof trazos;
