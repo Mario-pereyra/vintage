@@ -25,6 +25,7 @@
 
   --r-1: 4px;
   --r-2: 8px;
+  --r-full: 999px; /* chips e interruptor (rounded.full de DESIGN.md) */
   --s-1: 4px;
   --s-2: 8px;
   --s-3: 12px;
@@ -55,6 +56,7 @@
 
   --radius-r-1: var(--r-1);
   --radius-r-2: var(--r-2);
+  --radius-full: var(--r-full);
 
   --spacing-s-1: var(--s-1);
   --spacing-s-2: var(--s-2);
@@ -208,7 +210,7 @@
     left: 22px;
     font-size: 11px;
     padding: 4px 7px;
-    background: rgb(255 255 255 / 0.6);
+    background: color-mix(in srgb, var(--papel) 60%, transparent);
   }
 
   /* ── Renglón ── */
@@ -323,16 +325,16 @@
     z-index: 4;
     padding: var(--s-3) var(--s-3) calc(var(--s-3) + env(safe-area-inset-bottom));
     background: var(--rosa);
-    border-top: 1.5px solid rgb(22 19 15 / 0.2);
+    border-top: 1.5px solid color-mix(in srgb, var(--tinta) 20%, transparent);
   }
   .boton {
     display: flex;
     align-items: center;
     justify-content: center;
     flex-wrap: wrap;
-    column-gap: 10px;
+    column-gap: var(--s-2);
     min-height: 56px;
-    padding: 0 var(--s-4);
+    padding: 0 var(--s-2);
     border-radius: var(--r-2);
     background: var(--tinta);
     color: var(--papel);
@@ -362,6 +364,7 @@
     color: var(--tinta);
   }
   .boton small {
+    white-space: nowrap;
     font: 400 12px var(--f-cifra);
     font-variant-numeric: tabular-nums;
     opacity: 0.75;
@@ -376,7 +379,7 @@
   .chip {
     min-height: 40px;
     padding: 0 14px;
-    border-radius: 999px;
+    border-radius: var(--r-full);
     border: 1.5px solid var(--linea);
     background: var(--papel);
     font: 500 14px var(--f-texto);
@@ -399,7 +402,7 @@
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    border: 1px solid rgb(0 0 0 / 0.2);
+    border: 1px solid color-mix(in srgb, var(--tinta) 20%, transparent);
   }
 
   /* ── Control segmentado ── */
@@ -409,7 +412,6 @@
     grid-auto-flow: column;
     border: 1.5px solid var(--tinta);
     border-radius: var(--r-2);
-    overflow: hidden;
   }
   .segmento > button {
     min-height: 46px;
@@ -422,13 +424,19 @@
   }
   .segmento > button:first-child {
     border-left: 0;
+    border-radius: calc(var(--r-2) - 1.5px) 0 0 calc(var(--r-2) - 1.5px);
+  }
+  .segmento > button:last-child {
+    border-radius: 0 calc(var(--r-2) - 1.5px) calc(var(--r-2) - 1.5px) 0;
   }
   .segmento > button[aria-checked="true"] {
     background: var(--tinta);
     color: var(--papel);
   }
   .segmento > button:focus-visible {
-    outline-offset: -6px;
+    /* Foco del sistema (3px, separación de 3px) por encima de las opciones vecinas. */
+    position: relative;
+    z-index: 1;
   }
 
   /* ── Interruptor "Mostrar" ── */
@@ -444,7 +452,7 @@
     appearance: none;
     width: 36px;
     height: 22px;
-    border-radius: 999px;
+    border-radius: var(--r-full);
     background: var(--linea);
     position: relative;
     cursor: pointer;
@@ -802,6 +810,15 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .barra-panel .marca {
+    padding-left: var(--s-1);
+  }
+  .barra-panel-filete {
+    align-self: stretch;
+    width: 1.5px;
+    margin: 6px 0;
+    background: color-mix(in srgb, var(--tinta) 25%, transparent);
   }
   .barra-panel-derecha {
     margin-left: auto;
