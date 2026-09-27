@@ -1,7 +1,6 @@
-import { data, Link } from "react-router";
+import { data } from "react-router";
 
 import { BloquePanel } from "~/componentes/bloque-panel";
-import { Renglon, Renglones } from "~/componentes/renglon";
 import { ErrorDeDominio } from "~/dominio";
 import { obtenerDominio } from "~/servidor/contexto.server";
 import { leerFiltrosDeRentabilidad, leerId } from "~/servidor/filtros-de-rentabilidad.server";
@@ -10,16 +9,18 @@ import type { BarraDelPanel } from "../layout";
 import type { Route } from "./+types/proveedor";
 import {
   BloqueDeCalidad,
+  CabeceraDeRentabilidad,
+  CifrasDeRentabilidadBloque,
+  cuenta,
   Desglose,
+  FilaDeRentabilidad,
   FiltroDeFechas,
-  monto,
-  porcentajeTexto,
-  RenglonesDeCifras,
   TEXTO_DEL_ESTADO_DEL_LOTE,
+  valorDeLote,
 } from "./cifras";
 
 export const handle = {
-  titulo: "Rentabilidad del proveedor",
+  titulo: "Proveedor",
   volverA: "/admin/rentabilidad",
 } satisfies BarraDelPanel;
 
@@ -46,62 +47,59 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
 
 export default function RentabilidadDelProveedor({ loaderData }: Route.ComponentProps) {
   const { proveedor, desde, hasta, errores } = loaderData;
+  const origen = [
+    cuenta(proveedor.lotes, "lote", "lotes"),
+    proveedor.comprasAParticular > 0
+      ? cuenta(proveedor.comprasAParticular, "compra a particular", "compras a particular")
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <>
-      <FiltroDeFechas desde={desde} hasta={hasta} errores={errores} />
+      <CabeceraDeRentabilidad titulo={proveedor.nombre} detalle={origen} />
 
-      <BloquePanel titulo={proveedor.nombre} nuncaSePublica>
-        <Renglones>
-          <Renglon etiqueta="Lotes" cifra>
-            {proveedor.lotes}
-          </Renglon>
-          <Renglon etiqueta="Compras a particular" cifra>
-            {proveedor.comprasAParticular}
-          </Renglon>
-        </Renglones>
-        <RenglonesDeCifras cifras={proveedor} porcentajeRecuperado={proveedor.porcentajeRecuperado} />
-      </BloquePanel>
+      <FiltroDeFechas
+        accion={`/admin/rentabilidad/proveedores/${proveedor.id}`}
+        desde={desde}
+        hasta={hasta}
+        errores={errores}
+      />
 
-      <BloqueDeCalidad calidad={proveedor.calidadDetectada} />
+      <CifrasDeRentabilidadBloque
+        cifras={proveedor}
+        porcentajeRecuperado={proveedor.porcentajeRecuperado}
+      />
 
-      {proveedor.calidadPorDeclarada.length > 0 ? (
-        <BloquePanel titulo="Declarada frente a detectada" nuncaSePublica>
-          <Renglones>
-            {proveedor.calidadPorDeclarada.map((fila) => (
-              <Renglon
-                key={fila.calidadDeclaradaNombre}
-                etiqueta={`${fila.calidadDeclaradaNombre} (${fila.lotes} ${fila.lotes === 1 ? "lote" : "lotes"})`}
-                cifra
-                aclaracion={`Exc. ${fila.calidadDetectada.condiciones.excelente} · Muy b. ${fila.calidadDetectada.condiciones.muy_buena} · Buena ${fila.calidadDetectada.condiciones.buena} · Con det. ${fila.calidadDetectada.condiciones.con_detalles}`}
-              >
-                {porcentajeTexto(fila.calidadDetectada.porcentajeDescarte)} descarte
-              </Renglon>
-            ))}
-          </Renglones>
-        </BloquePanel>
-      ) : null}
+      <BloqueDeCalidad
+        calidad={proveedor.calidadDetectada}
+        porDeclarada={proveedor.calidadPorDeclarada.map((fila) => ({
+          nombre: fila.calidadDeclaradaNombre,
+          lotes: fila.lotes,
+          calidad: fila.calidadDetectada,
+        }))}
+      />
 
       <Desglose porTipo={proveedor.porTipo} porCondicion={proveedor.porCondicion} />
 
       {proveedor.detalleDeLotes.length > 0 ? (
         <BloquePanel titulo="Sus lotes" detalle={String(proveedor.detalleDeLotes.length)}>
           <ul className="filas-pieza">
-            {proveedor.detalleDeLotes.map((lote) => (
-              <li key={lote.id}>
-                <Link className="fila-pieza" to={`/admin/rentabilidad/lotes/${lote.id}`}>
-                  <span>
-                    <span className="fila-pieza-ref">Lote #{lote.id}</span>
-                    <span className="fila-pieza-nombre">
-                      {lote.calidadDeclaradaNombre} · {TEXTO_DEL_ESTADO_DEL_LOTE[lote.estado]}
-                    </span>
-                  </span>
-                  <span className="fila-pieza-derecha">
-                    <span className="cifra">{monto(lote.margenCentavos)}</span>
-                  </span>
-                </Link>
-              </li>
-            ))}
+            {proveedor.detalleDeLotes.map((lote) => {
+              const { valor, que } = valorDeLote(lote);
+              return (
+                <FilaDeRentabilidad
+                  key={lote.id}
+                  to={`/admin/rentabilidad/lotes/${lote.id}`}
+                  nombre={`Lote #${lote.id}`}
+                  nombreCifra
+                  detalle={`${lote.calidadDeclaradaNombre} · ${TEXTO_DEL_ESTADO_DEL_LOTE[lote.estado]}`}
+                  valor={valor}
+                  que={que}
+                />
+              );
+            })}
           </ul>
         </BloquePanel>
       ) : null}

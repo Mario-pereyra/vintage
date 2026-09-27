@@ -3165,3 +3165,245 @@
     }
   }
 }
+
+/* ── Rentabilidad (/admin/rentabilidad, lotes/:id y proveedores/:id): interno ── */
+@layer components {
+  /* Un proveedor se nombra en palabras: Archivo, no la cifra de la Ref. */
+  .rentabilidad-nombre {
+    margin: 0;
+    font: 800 22px / 1.15 var(--f-texto);
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+  h2.pieza-cabecera-ref {
+    margin: 0;
+  }
+  .pieza-cabecera-detalle .enlace-renglon {
+    font-weight: 700;
+  }
+
+  /* Filtro por fecha de compra: las dos fechas lado a lado, en cifra. */
+  .filtro-rentabilidad-fechas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-3);
+  }
+  .filtro-rentabilidad-fechas > .campo {
+    margin-bottom: 0;
+  }
+  .filtro-rentabilidad input[type="date"].texto {
+    font: 400 14px var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+    padding-inline: 10px;
+  }
+  .filtro-rentabilidad .campo-error {
+    margin: var(--s-2) 0 0;
+  }
+  .filtro-rentabilidad .btn {
+    width: 100%;
+    margin-top: var(--s-4);
+  }
+  .filtro-rentabilidad-botones {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: var(--s-2);
+    align-items: end;
+  }
+  .filtro-rentabilidad-botones .btn-suave {
+    min-height: 52px;
+  }
+
+  /* La suma del costo: filete de tinta arriba, como un subtotal. */
+  .renglon-suma {
+    border-top: 1.5px solid var(--tinta);
+    border-bottom: 0;
+  }
+  .renglon-suma > dt {
+    color: var(--tinta);
+    font-weight: 700;
+  }
+  .renglon-suma > dd.cifra {
+    font-weight: 700;
+  }
+  .bloque .renglones + .grupo {
+    margin-top: var(--s-6);
+  }
+
+  /* El cierre de las cifras: el eco del TOTAL, con la cifra que manda en tinta azul. */
+  .total-rentabilidad {
+    gap: var(--s-3);
+  }
+  .total-rentabilidad > b {
+    flex: none;
+  }
+  .total-rentabilidad > div {
+    min-width: 0;
+    text-align: right;
+  }
+  .total-rentabilidad strong {
+    font-size: clamp(26px, 8vw, 36px);
+    color: var(--sello);
+    overflow-wrap: anywhere;
+  }
+  .total-rentabilidad small {
+    display: block;
+    margin-top: 6px;
+    font: 400 12.5px / 1.35 var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+    color: var(--tinta-2);
+  }
+  .total-rentabilidad ~ .enlace-ficha {
+    margin-top: var(--s-5);
+  }
+
+  /* Filas de las listas: el nombre en palabras y la cifra con lo que es. */
+  .fila-rentabilidad-nombre {
+    display: block;
+    font: 700 15.5px / 1.3 var(--f-texto);
+    overflow-wrap: anywhere;
+  }
+  .fila-rentabilidad-valor {
+    display: grid;
+    justify-items: end;
+    gap: 2px;
+  }
+  .fila-rentabilidad-valor > .cifra {
+    font-weight: 700;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .fila-rentabilidad-valor > small {
+    font: 500 12px var(--f-texto);
+    color: var(--tinta-2);
+  }
+
+  /* Desglose: en el celular, un renglón por fila (nombre y margen arriba, cifras debajo). */
+  .tabla-rentabilidad {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .tabla-rentabilidad thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .tabla-rentabilidad tbody tr {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, auto));
+    justify-content: space-between;
+    gap: var(--s-2) var(--s-3);
+    padding: var(--s-3) 0;
+    border-top: 1.5px dotted var(--linea);
+  }
+  .tabla-rentabilidad tbody tr:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+  .tabla-rentabilidad tbody tr:last-child {
+    padding-bottom: 0;
+  }
+  .tabla-rentabilidad tbody th {
+    grid-column: 1 / 4;
+    grid-row: 1;
+    text-align: left;
+    font: 600 15px / 1.3 var(--f-texto);
+  }
+  .tabla-rentabilidad td {
+    padding: 0;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .tabla-rentabilidad td::before {
+    content: attr(data-etiqueta);
+    display: block;
+    font: 500 12px / 1.3 var(--f-texto);
+    color: var(--tinta-2);
+  }
+  .tabla-rentabilidad td.tabla-rentabilidad-margen {
+    grid-column: 4;
+    grid-row: 1;
+    text-align: right;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--sello);
+  }
+  .tabla-rentabilidad td.tabla-rentabilidad-margen::before {
+    display: none;
+  }
+
+  @media (min-width: 560px) {
+    .tabla-rentabilidad thead {
+      position: static;
+      width: auto;
+      height: auto;
+      overflow: visible;
+      clip-path: none;
+    }
+    .tabla-rentabilidad thead th {
+      padding: 0 0 var(--s-2) var(--s-3);
+      border-bottom: 1.5px solid var(--tinta);
+      font: 800 11px var(--f-texto);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .tabla-rentabilidad thead th:first-child {
+      padding-left: 0;
+    }
+    .tabla-rentabilidad tbody tr {
+      display: table-row;
+      border-top: 1.5px dotted var(--linea);
+    }
+    .tabla-rentabilidad tbody tr:first-child {
+      border-top: 0;
+    }
+    .tabla-rentabilidad tbody th,
+    .tabla-rentabilidad td {
+      padding: 10px 0 10px var(--s-3);
+      vertical-align: baseline;
+    }
+    .tabla-rentabilidad tbody th {
+      padding-left: 0;
+      font-size: 14.5px;
+      font-weight: 500;
+      overflow-wrap: anywhere;
+    }
+    .tabla-rentabilidad td {
+      text-align: right;
+      font-size: 13.5px;
+    }
+    .tabla-rentabilidad td::before {
+      display: none;
+    }
+    .tabla-rentabilidad tbody tr:last-child > * {
+      padding-bottom: 0;
+    }
+  }
+}
+
+@layer components {
+  /* Un grupo dentro de un bloque conserva su tipografía (no la del título del bloque). */
+  .bloque > h2.grupo {
+    display: block;
+    font: 800 11px var(--f-texto);
+    letter-spacing: 0.12em;
+  }
+  .total-rentabilidad small > span {
+    white-space: nowrap;
+  }
+  .fila-rentabilidad .fila-pieza-nombre {
+    white-space: normal;
+    overflow: visible;
+  }
+}
+@layer components {
+  .bloque:has(.filtro-rentabilidad) .bloque-detalle {
+    white-space: nowrap;
+  }
+}

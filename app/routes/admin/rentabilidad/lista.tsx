@@ -1,8 +1,5 @@
-import { Link } from "react-router";
-
 import { BloquePanel } from "~/componentes/bloque-panel";
 import { EstadoVacio } from "~/componentes/estado-vacio";
-import { Icono } from "~/componentes/icono";
 import { ErrorDeDominio } from "~/dominio";
 import { obtenerDominio } from "~/servidor/contexto.server";
 import { leerFiltrosDeRentabilidad } from "~/servidor/filtros-de-rentabilidad.server";
@@ -10,10 +7,12 @@ import { leerFiltrosDeRentabilidad } from "~/servidor/filtros-de-rentabilidad.se
 import type { BarraDelPanel } from "../layout";
 import type { Route } from "./+types/lista";
 import {
+  cuenta,
+  FilaDeRentabilidad,
   FiltroDeFechas,
   monto,
-  porcentajeTexto,
   TEXTO_DEL_ESTADO_DEL_LOTE,
+  valorDeLote,
 } from "./cifras";
 
 export const handle = { titulo: "Rentabilidad", volverA: "/admin" } satisfies BarraDelPanel;
@@ -38,74 +37,80 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   }
 }
 
+/** "1 lote · 1 compra a particular", sin las partes en cero. */
+function origenDelProveedor(lotes: number, comprasAParticular: number): string {
+  const partes = [
+    lotes > 0 || comprasAParticular === 0 ? cuenta(lotes, "lote", "lotes") : null,
+    comprasAParticular > 0
+      ? cuenta(comprasAParticular, "compra a particular", "compras a particular")
+      : null,
+  ];
+  return partes.filter(Boolean).join(" · ");
+}
+
 export default function Rentabilidad({ loaderData }: Route.ComponentProps) {
   const { proveedores, lotes, desde, hasta, errores, consulta } = loaderData;
+  const conError = Object.keys(errores).length > 0;
+  const filtrado = Boolean(desde || hasta);
 
   return (
     <>
       <p className="panel-nota">
         Lo que dejó cada proveedor y cada lote: ingresos por ventas contra costo, transporte,
-        reacondicionamiento y entregas. Filtra por fecha de compra del lote.
+        reacondicionamiento y entregas.
       </p>
 
-      <FiltroDeFechas desde={desde} hasta={hasta} errores={errores} />
+      <FiltroDeFechas accion="/admin/rentabilidad" desde={desde} hasta={hasta} errores={errores} />
 
-      {proveedores.length === 0 && lotes.length === 0 ? (
-        <EstadoVacio
-          titulo="Nada que medir todavía"
-          detalle="Registra un lote o una compra a particular para ver su rentabilidad."
-        />
+      {conError ? null : proveedores.length === 0 && lotes.length === 0 ? (
+        filtrado ? (
+          <EstadoVacio
+            titulo="Nada comprado en esas fechas"
+            detalle="Prueba con otro rango o quita el filtro para ver todo."
+          />
+        ) : (
+          <EstadoVacio
+            titulo="Nada que medir todavía"
+            detalle="Registra un lote o una compra a particular para ver su rentabilidad."
+          />
+        )
       ) : (
         <>
           <BloquePanel titulo="Proveedores" detalle={String(proveedores.length)} nuncaSePublica>
             <ul className="filas-pieza">
               {proveedores.map((proveedor) => (
-                <li key={proveedor.id}>
-                  <Link
-                    className="fila-pieza"
-                    to={`/admin/rentabilidad/proveedores/${proveedor.id}${consulta}`}
-                  >
-                    <span>
-                      <span className="fila-pieza-ref">{proveedor.nombre}</span>
-                      <span className="fila-pieza-nombre">
-                        {proveedor.lotes} {proveedor.lotes === 1 ? "lote" : "lotes"} ·{" "}
-                        {proveedor.vendidas} de {proveedor.piezas} vendidas
-                      </span>
-                    </span>
-                    <span className="fila-pieza-derecha">
-                      <span className="cifra">{monto(proveedor.margenCentavos)}</span>
-                      <Icono nombre="adelante" />
-                    </span>
-                  </Link>
-                </li>
+                <FilaDeRentabilidad
+                  key={proveedor.id}
+                  to={`/admin/rentabilidad/proveedores/${proveedor.id}${consulta}`}
+                  nombre={proveedor.nombre}
+                  detalle={`${origenDelProveedor(proveedor.lotes, proveedor.comprasAParticular)} · ${proveedor.vendidas} de ${proveedor.piezas} vendidas`}
+                  valor={monto(proveedor.margenCentavos)}
+                  que="margen"
+                />
               ))}
             </ul>
           </BloquePanel>
 
-          <BloquePanel titulo="Lotes" detalle={String(lotes.length)}>
-            <ul className="filas-pieza">
-              {lotes.map((lote) => (
-                <li key={lote.id}>
-                  <Link className="fila-pieza" to={`/admin/rentabilidad/lotes/${lote.id}`}>
-                    <span>
-                      <span className="fila-pieza-ref">Lote #{lote.id}</span>
-                      <span className="fila-pieza-nombre">
-                        {lote.proveedorNombre} · {TEXTO_DEL_ESTADO_DEL_LOTE[lote.estado]}
-                      </span>
-                    </span>
-                    <span className="fila-pieza-derecha">
-                      <span className="cifra">
-                        {lote.estado === "terminado"
-                          ? monto(lote.margenCentavos)
-                          : porcentajeTexto(lote.porcentajeRecuperado)}
-                      </span>
-                      <Icono nombre="adelante" />
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </BloquePanel>
+          {lotes.length > 0 ? (
+            <BloquePanel titulo="Lotes" detalle={String(lotes.length)}>
+              <ul className="filas-pieza">
+                {lotes.map((lote) => {
+                  const { valor, que } = valorDeLote(lote);
+                  return (
+                    <FilaDeRentabilidad
+                      key={lote.id}
+                      to={`/admin/rentabilidad/lotes/${lote.id}`}
+                      nombre={`Lote #${lote.id}`}
+                      nombreCifra
+                      detalle={`${lote.proveedorNombre} · ${TEXTO_DEL_ESTADO_DEL_LOTE[lote.estado]}`}
+                      valor={valor}
+                      que={que}
+                    />
+                  );
+                })}
+              </ul>
+            </BloquePanel>
+          ) : null}
         </>
       )}
     </>
