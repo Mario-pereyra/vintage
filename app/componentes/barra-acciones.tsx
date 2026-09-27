@@ -65,3 +65,48 @@ export function BarraAccionesPanel({
     </div>
   );
 }
+
+/**
+ * La línea de motivo a partir de lo que falta, con su artículo: ["el costo",
+ * "la fecha de compra"] → "Faltan el costo y la fecha de compra"; con más de
+ * tres, nombra los dos primeros y cuenta el resto. Sin faltantes,
+ * `undefined` (la acción queda habilitada).
+ */
+export function motivoDeFaltantes(faltan: readonly string[]): string | undefined {
+  if (faltan.length === 0) return undefined;
+  if (faltan.length === 1) return `Falta ${faltan[0]}`;
+  // Más de dos no entran en una línea a 390px: se nombran los primeros.
+  if (faltan.length > 3) return `Faltan ${faltan[0]}, ${faltan[1]} y ${faltan.length - 2} datos más`;
+  return `Faltan ${faltan.slice(0, -1).join(", ")} y ${faltan[faltan.length - 1]}`;
+}
+
+/**
+ * La misma barra fija con una sola acción primaria, para las pantallas que no
+ * publican nada (registrar un lote, abrirlo, registrar una compra). Si la
+ * acción está deshabilitada, `motivo` dice qué falta, alineado a la derecha.
+ */
+export function BarraAccionUnica({
+  texto,
+  motivo,
+  ...boton
+}: Boton & { motivo?: string }) {
+  return (
+    <div className="acciones">
+      {motivo ? (
+        <p className="acciones-motivo" id="motivo-accion" aria-live="polite">
+          {motivo}
+        </p>
+      ) : null}
+      <div className="acciones-fila acciones-fila-unica">
+        <button
+          type="submit"
+          aria-describedby={motivo ? "motivo-accion" : undefined}
+          {...boton}
+          className="btn btn-primario"
+        >
+          {texto}
+        </button>
+      </div>
+    </div>
+  );
+}

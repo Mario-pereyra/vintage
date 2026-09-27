@@ -2402,3 +2402,203 @@
     }
   }
 }
+
+/* ── Abastecimiento en el panel (#8): proveedores, lotes, apertura y compra a particular ── */
+@layer components {
+  /* La marca con candado en un bloque normal: cede el espacio al título. */
+  .bloque > h2 > .candado {
+    flex: none;
+  }
+  /* Con candado, el conteo va pegado al título y el candado a la derecha. */
+  .bloque-titulo-con-detalle {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--s-2);
+  }
+
+  /* Cifra interna: 24px sobre una línea de tinta de 2px, sin caja. */
+  .campo-cifra {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    border-bottom: 2px solid var(--tinta);
+  }
+  .campo-cifra > b {
+    font: 700 16px var(--f-cifra);
+  }
+  .campo-cifra input {
+    all: unset;
+    width: 100%;
+    min-width: 0;
+    font: 700 24px var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    padding: 6px 0;
+  }
+  .campo-cifra input::placeholder {
+    color: var(--tinta-2);
+  }
+  .campo-cifra > em {
+    font: 400 12px var(--f-cifra);
+    font-style: normal;
+    color: var(--tinta-2);
+  }
+  .campo-cifra:focus-within {
+    outline: 3px solid var(--sello);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+  .campo-cifra:has(input[aria-invalid="true"]) > b {
+    font-weight: 700;
+  }
+  /* Dos cifras lado a lado (costo y transporte, recibidas y descartes). */
+  .par-cifras {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-4);
+  }
+  .par-cifras {
+    margin-bottom: var(--s-5);
+  }
+  .par-cifras > .campo {
+    margin-bottom: 0;
+  }
+  .par-cifras ~ .derivado {
+    margin: calc(var(--s-2) - var(--s-5)) 0 var(--s-5);
+  }
+  .par-cifras ~ .derivado:empty {
+    display: none;
+  }
+  /* El cálculo que se deriva de lo tipeado, en tinta azul (como el tamaño). */
+  .derivado .cifra {
+    font: 700 14px var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+  }
+  .bloque > .derivado:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Renglón calculado (costo de pieza, reparto): el valor en tinta azul. */
+  .renglon-calculado > dd,
+  .renglon-calculado > dd.cifra {
+    color: var(--sello);
+    font-weight: 700;
+  }
+  .renglon-calculado > dd small {
+    font-weight: 400;
+  }
+
+  /* Aviso de lo recién guardado, sobre el papel del bloque. */
+  .guardado {
+    margin: var(--s-3) 0 0;
+    font: 600 13.5px / 1.4 var(--f-texto);
+    color: var(--sello);
+  }
+
+  /* Procedencia de la pieza: el reacondicionamiento y el costo que resulta. */
+  .procedencia-costo {
+    margin-top: var(--s-5);
+  }
+  .procedencia-costo .renglones {
+    margin-top: var(--s-4);
+  }
+  .procedencia-costo .renglon {
+    border-bottom: 0;
+    border-top: 1.5px solid var(--tinta);
+  }
+  .enlace-renglon {
+    color: var(--tinta);
+    font-weight: 700;
+    text-underline-offset: 3px;
+  }
+
+  .guardado-arriba {
+    margin: 0 0 var(--s-3);
+  }
+
+  /* Un atajo en la ayuda de un campo ("¿No está en la lista?"). */
+  .ayuda-enlace {
+    margin: var(--s-2) 0 0;
+  }
+  .ayuda-enlace a {
+    font-weight: 700;
+    color: var(--tinta);
+    text-underline-offset: 3px;
+  }
+
+  /* La barra de acciones con una sola acción primaria. */
+  .acciones-fila-unica {
+    grid-template-columns: 1fr;
+  }
+
+  /* Proveedores: nombre en palabras, contacto en cifra. */
+  .filas-proveedor {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .filas-proveedor > li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: var(--s-1) var(--s-3);
+    padding: 10px 0;
+    border-top: 1.5px dotted var(--linea);
+  }
+  .filas-proveedor > li:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+  .filas-proveedor b {
+    font: 600 15px / 1.35 var(--f-texto);
+    overflow-wrap: anywhere;
+  }
+  .filas-proveedor span {
+    font: 400 13.5px / 1.4 var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+    color: var(--tinta-2);
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  /* Lista de lotes: lo de la derecha en palabras chicas o en cifra. */
+  .fila-lote-estado {
+    font: 500 13px var(--f-texto);
+    color: var(--tinta-2);
+    white-space: nowrap;
+  }
+  .fila-lote-piezas {
+    font: 700 14px var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* Apertura: la condición de todas a la vez y la de cada pieza. */
+  .condiciones {
+    margin-top: var(--s-6);
+  }
+  .condiciones > .grupo {
+    margin: 0 0 var(--s-4);
+  }
+  .condiciones > .campo:first-of-type {
+    padding-bottom: var(--s-5);
+    margin-bottom: var(--s-5);
+    border-bottom: 1.5px dotted var(--linea);
+  }
+  .condicion-pieza {
+    margin-bottom: var(--s-4);
+  }
+  .condicion-pieza:last-of-type {
+    margin-bottom: 0;
+  }
+  .condicion-pieza .etiqueta .cifra {
+    font: 700 13px var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+    margin-left: 4px;
+  }
+  .condiciones-falta {
+    margin: var(--s-2) 0 0;
+    font: 500 13px var(--f-texto);
+    color: var(--tinta-2);
+  }
+}
