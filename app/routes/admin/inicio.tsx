@@ -57,7 +57,7 @@ export default function InicioDelPanel({ loaderData }: Route.ComponentProps) {
             <Link className="seccion" to="/admin/lotes">
               <span>
                 <b>Lotes</b>
-                <span>Registrar, abrir y ver su costo</span>
+                <span>Registrar, abrir y repartir su costo</span>
               </span>
               <Icono nombre="adelante" />
             </Link>
@@ -66,7 +66,7 @@ export default function InicioDelPanel({ loaderData }: Route.ComponentProps) {
             <Link className="seccion" to="/admin/proveedores">
               <span>
                 <b>Proveedores</b>
-                <span>Registrar y ver quién vendió qué</span>
+                <span>A quién le compras lotes y piezas</span>
               </span>
               <Icono nombre="adelante" />
             </Link>

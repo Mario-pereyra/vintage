@@ -5,9 +5,11 @@ import { BarraAccionesPanel } from "~/componentes/barra-acciones";
 import { BloqueNuncaSePublica, BloquePanel } from "~/componentes/bloque-panel";
 import {
   Campo,
+  CampoCifra,
   CampoMedida,
   CampoPrecio,
   CampoTexto,
+  leerMonto,
   Medidas,
   TamanoDerivado,
 } from "~/componentes/campos";
@@ -406,53 +408,11 @@ export function FormularioDePieza({
       </BloquePanel>
 
       {procedencia && pieza ? (
-        <BloqueNuncaSePublica titulo="Procedencia">
-          <Renglones>
-            {procedencia.origen === "lote" ? (
-              <>
-                <Renglon etiqueta="Lote">
-                  <Link to={`/admin/lotes/${procedencia.loteId}`}>Lote #{procedencia.loteId}</Link>
-                </Renglon>
-                <Renglon etiqueta="Proveedor">{procedencia.proveedorNombre}</Renglon>
-                <Renglon etiqueta="Canal">{procedencia.canal}</Renglon>
-                <Renglon etiqueta="Calidad declarada">{procedencia.calidadDeclaradaNombre}</Renglon>
-              </>
-            ) : (
-              <>
-                <Renglon etiqueta="Comprada a">{procedencia.proveedorNombre}</Renglon>
-                <Renglon etiqueta="Costo directo" cifra>
-                  {formatearPrecio(procedencia.costoDirectoCentavos / 100)}
-                </Renglon>
-              </>
-            )}
-            {pieza.condicionIngreso ? (
-              <Renglon etiqueta="Condición de ingreso">
-                {TEXTO_DE_CONDICION[pieza.condicionIngreso]}
-              </Renglon>
-            ) : null}
-          </Renglones>
-
-          <Campo
-            etiqueta="Reacondicionamiento"
-            para="reacondicionamiento"
-            ayuda="Limpieza o reparación de esta pieza."
-          >
-            <CampoPrecio
-              id="reacondicionamiento"
-              name="reacondicionamiento"
-              defaultValue={pieza.costoReacondicionamientoCentavos / 100}
-              aria-invalid={errores.costoReacondicionamientoCentavos ? true : undefined}
-            />
-            <MensajeDeError texto={errores.costoReacondicionamientoCentavos} />
-          </Campo>
-
-          {pieza.costoDePiezaCentavos != null ? (
-            <p className="ayuda">
-              Costo de esta pieza:{" "}
-              <strong className="cifra">{formatearPrecio(pieza.costoDePiezaCentavos / 100)}</strong>
-            </p>
-          ) : null}
-        </BloqueNuncaSePublica>
+        <BloqueDeProcedencia
+          procedencia={procedencia}
+          pieza={pieza}
+          error={errores.costoReacondicionamientoCentavos}
+        />
       ) : null}
 
       <BarraAccionesPanel
@@ -473,5 +433,99 @@ export function FormularioDePieza({
         motivo={motivo}
       />
     </Form>
+  );
+}
+
+/**
+ * El bloque "Nunca se publica" de la pieza (#8): de dónde vino, cómo llegó, su
+ * reacondicionamiento (editable) y el costo de pieza que resulta. El costo se
+ * recalcula en pantalla mientras se escribe el reacondicionamiento; el que
+ * vale es el que calcula el dominio al guardar.
+ */
+function BloqueDeProcedencia({
+  procedencia,
+  pieza,
+  error,
+}: {
+  procedencia: ProcedenciaEnPanel;
+  pieza: PiezaDelPanel;
+  error?: string;
+}) {
+  const guardadoCentavos = pieza.costoReacondicionamientoCentavos;
+  const [reacondicionamiento, setReacondicionamiento] = useState(
+    guardadoCentavos ? String(guardadoCentavos / 100) : "",
+  );
+
+  const tipeado = reacondicionamiento.trim() ? leerMonto(reacondicionamiento) : 0;
+  const baseCentavos =
+    pieza.costoDePiezaCentavos != null ? pieza.costoDePiezaCentavos - guardadoCentavos : null;
+  const costoCentavos =
+    baseCentavos != null && tipeado !== null
+      ? baseCentavos + Math.round(tipeado * 100)
+      : pieza.costoDePiezaCentavos;
+
+  return (
+    <BloqueNuncaSePublica titulo="Procedencia">
+      <Renglones>
+        {procedencia.origen === "lote" ? (
+          <>
+            <Renglon etiqueta="Lote" cifra>
+              <Link className="enlace-renglon" to={`/admin/lotes/${procedencia.loteId}`}>
+                Lote #{procedencia.loteId}
+              </Link>
+            </Renglon>
+            <Renglon etiqueta="Proveedor">{procedencia.proveedorNombre}</Renglon>
+            <Renglon etiqueta="Canal">{procedencia.canal}</Renglon>
+            <Renglon etiqueta="Calidad declarada">{procedencia.calidadDeclaradaNombre}</Renglon>
+          </>
+        ) : (
+          <>
+            <Renglon etiqueta="Comprada a" aclaracion="Compra a particular, sin lote">
+              {procedencia.proveedorNombre}
+            </Renglon>
+            <Renglon etiqueta="Le pagaste" cifra>
+              {formatearPrecio(procedencia.costoDirectoCentavos / 100)}
+            </Renglon>
+          </>
+        )}
+        <Renglon etiqueta="Condición de ingreso">
+          {pieza.condicionIngreso ? TEXTO_DE_CONDICION[pieza.condicionIngreso] : "Sin registrar"}
+        </Renglon>
+      </Renglones>
+
+      <div className="procedencia-costo">
+        <div className="par-cifras">
+          <Campo etiqueta="Reacondicionamiento" para="reacondicionamiento">
+            <CampoCifra
+              id="reacondicionamiento"
+              name="reacondicionamiento"
+              prefijo="Bs"
+              value={reacondicionamiento}
+              onChange={(evento) => setReacondicionamiento(evento.target.value)}
+              aria-invalid={error ? true : undefined}
+            />
+          </Campo>
+        </div>
+        <p className="ayuda ayuda-enlace">Limpieza o reparación de esta pieza.</p>
+        <MensajeDeError texto={error} />
+
+        {costoCentavos != null ? (
+          <Renglones>
+            <Renglon
+              etiqueta="Costo de pieza"
+              cifra
+              calculado
+              aclaracion={
+                procedencia.origen === "lote"
+                  ? "Su parte del lote + reacondicionamiento"
+                  : "Lo pagado + reacondicionamiento"
+              }
+            >
+              {formatearPrecio(costoCentavos / 100)}
+            </Renglon>
+          </Renglones>
+        ) : null}
+      </div>
+    </BloqueNuncaSePublica>
   );
 }

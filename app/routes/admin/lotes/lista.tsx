@@ -3,7 +3,6 @@ import { Link } from "react-router";
 import { BloquePanel } from "~/componentes/bloque-panel";
 import { EstadoVacio } from "~/componentes/estado-vacio";
 import { Icono } from "~/componentes/icono";
-import { Sello } from "~/componentes/sello";
 import { TEXTO_DE_CANAL, type LoteDelPanel } from "~/dominio";
 import { obtenerDominio } from "~/servidor/contexto.server";
 
@@ -16,6 +15,11 @@ export async function loader({ context }: Route.LoaderArgs) {
   return { lotes: await obtenerDominio(context).listarLotes() };
 }
 
+/**
+ * Un lote: su número, proveedor y canal. A la derecha, cuántas piezas dio o,
+ * si todavía no se abrió, "Sin abrir" (el sello queda para el estado de una
+ * pieza).
+ */
 function FilaDeLote({ lote }: { lote: LoteDelPanel }) {
   return (
     <li>
@@ -27,7 +31,13 @@ function FilaDeLote({ lote }: { lote: LoteDelPanel }) {
           </span>
         </span>
         <span className="fila-pieza-derecha">
-          <Sello texto={lote.abierto ? `${lote.piezas} piezas` : "Sin abrir"} />
+          {lote.abierto ? (
+            <span className="fila-lote-piezas">
+              {lote.piezas} {lote.piezas === 1 ? "pieza" : "piezas"}
+            </span>
+          ) : (
+            <span className="fila-lote-estado">Sin abrir</span>
+          )}
           <Icono nombre="adelante" />
         </span>
       </Link>
@@ -37,6 +47,8 @@ function FilaDeLote({ lote }: { lote: LoteDelPanel }) {
 
 export default function ListaDeLotes({ loaderData }: Route.ComponentProps) {
   const { lotes } = loaderData;
+  const sinAbrir = lotes.filter((lote) => !lote.abierto);
+  const abiertos = lotes.filter((lote) => lote.abierto);
 
   return (
     <>
@@ -51,13 +63,30 @@ export default function ListaDeLotes({ loaderData }: Route.ComponentProps) {
           detalle="Registra el primero para poder abrirlo y cargar sus piezas."
         />
       ) : (
-        <BloquePanel titulo="Lotes" detalle={`${lotes.length}`}>
-          <ul className="filas-pieza">
-            {lotes.map((lote) => (
-              <FilaDeLote key={lote.id} lote={lote} />
-            ))}
-          </ul>
-        </BloquePanel>
+        <>
+          {sinAbrir.length > 0 ? (
+            <BloquePanel titulo="Por abrir" detalle={`${sinAbrir.length}`} nuncaSePublica>
+              <ul className="filas-pieza">
+                {sinAbrir.map((lote) => (
+                  <FilaDeLote key={lote.id} lote={lote} />
+                ))}
+              </ul>
+            </BloquePanel>
+          ) : null}
+          {abiertos.length > 0 ? (
+            <BloquePanel
+              titulo="Abiertos"
+              detalle={`${abiertos.length}`}
+              nuncaSePublica={sinAbrir.length === 0}
+            >
+              <ul className="filas-pieza">
+                {abiertos.map((lote) => (
+                  <FilaDeLote key={lote.id} lote={lote} />
+                ))}
+              </ul>
+            </BloquePanel>
+          ) : null}
+        </>
       )}
     </>
   );

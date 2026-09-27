@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Form, Link, redirect, useNavigation } from "react-router";
 
+import { BarraAccionUnica, motivoDeFaltantes } from "~/componentes/barra-acciones";
 import { BloquePanel } from "~/componentes/bloque-panel";
-import { Campo, CampoPrecio, CampoTexto, Seleccion } from "~/componentes/campos";
+import { Campo, CampoCifra, CampoTexto, leerMonto, Seleccion } from "~/componentes/campos";
 import { Chips } from "~/componentes/chips";
 import { ControlSegmentado } from "~/componentes/control-segmentado";
+import { formatearPrecio } from "~/componentes/total";
 import {
   CANALES_DE_ABASTECIMIENTO,
   TEXTO_DE_CANAL,
@@ -36,20 +38,35 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
 }
 
+function MensajeDeError({ texto }: { texto?: string }) {
+  return texto ? (
+    <p className="campo-error" role="alert">
+      {texto}
+    </p>
+  ) : null;
+}
+
 export default function NuevoLote({ loaderData, actionData }: Route.ComponentProps) {
   const { proveedores, calidadesDeclaradas } = loaderData;
   const navegacion = useNavigation();
-  const errores = actionData && "errores" in actionData ? actionData.errores : {};
+  const errores = actionData && "errores" in actionData ? (actionData.errores ?? {}) : {};
   const enviando = navegacion.state === "submitting";
 
+  const [proveedorId, setProveedorId] = useState("");
   const [canal, setCanal] = useState<CanalDeAbastecimiento | null>(null);
   const [calidadId, setCalidadId] = useState<string | null>(null);
   const [otraCalidad, setOtraCalidad] = useState(false);
+  const [calidadNueva, setCalidadNueva] = useState("");
+  const [costo, setCosto] = useState("");
+  const [transporte, setTransporte] = useState("");
+  const [fechaCompra, setFechaCompra] = useState("");
 
   if (proveedores.length === 0) {
     return (
-      <BloquePanel titulo="Falta un proveedor">
-        <p className="ayuda">Registra primero el proveedor de este lote.</p>
+      <BloquePanel titulo="Falta un proveedor" nuncaSePublica>
+        <p className="ayuda">
+          Cada lote se le compra a alguien. Registra primero a ese proveedor y vuelve.
+        </p>
         <Link className="btn btn-primario btn-ancho" to="/admin/proveedores">
           Ir a Proveedores
         </Link>
@@ -57,15 +74,30 @@ export default function NuevoLote({ loaderData, actionData }: Route.ComponentPro
     );
   }
 
+  const costoBs = leerMonto(costo);
+  const transporteBs = transporte.trim() ? leerMonto(transporte) : 0;
+  const tieneCalidad = otraCalidad ? calidadNueva.trim() !== "" : calidadId !== null;
+
+  const motivo = motivoDeFaltantes(
+    [
+      !proveedorId && "el proveedor",
+      !canal && "el canal",
+      !tieneCalidad && "la calidad declarada",
+      !costoBs && "el costo",
+      !fechaCompra && "la fecha de compra",
+    ].filter((falta): falta is string => Boolean(falta)),
+  );
+
   return (
     <Form method="post">
-      <BloquePanel titulo="El lote">
+      <BloquePanel titulo="El lote" nuncaSePublica>
         <Campo etiqueta="Proveedor" para="proveedorId">
           <Seleccion
             id="proveedorId"
             name="proveedorId"
-            defaultValue=""
-            aria-invalid={errores?.proveedorId ? true : undefined}
+            value={proveedorId}
+            onChange={(evento) => setProveedorId(evento.target.value)}
+            aria-invalid={errores.proveedorId ? true : undefined}
           >
             <option value="" disabled>
               Elige un proveedor
@@ -76,9 +108,7 @@ export default function NuevoLote({ loaderData, actionData }: Route.ComponentPro
               </option>
             ))}
           </Seleccion>
-          {errores?.proveedorId ? (
-            <p className="campo-error" role="alert">{errores.proveedorId}</p>
-          ) : null}
+          <MensajeDeError texto={errores.proveedorId} />
         </Campo>
 
         <Campo etiqueta="Canal de abastecimiento" idEtiqueta="et-canal">
@@ -92,10 +122,10 @@ export default function NuevoLote({ loaderData, actionData }: Route.ComponentPro
             valor={canal}
             alCambiar={setCanal}
           />
-          {errores?.canal ? <p className="campo-error" role="alert">{errores.canal}</p> : null}
+          <MensajeDeError texto={errores.canal} />
         </Campo>
 
-        <Campo etiqueta="Calidad declarada" idEtiqueta="et-calidad">
+        <Campo etiqueta="Calidad declarada" idEtiqueta="et-calidad" ayuda="La que prometió el proveedor.">
           <Chips
             etiquetadoPor="et-calidad"
             name="calidadDeclaradaId"
@@ -112,39 +142,54 @@ export default function NuevoLote({ loaderData, actionData }: Route.ComponentPro
               <CampoTexto
                 name="calidadDeclaradaIdNuevo"
                 aria-label="Nueva calidad declarada"
-                placeholder="Ej.: Tercera"
+                placeholder="Ej.: Mixta"
+                value={calidadNueva}
+                onChange={(evento) => setCalidadNueva(evento.target.value)}
                 autoFocus
               />
               <p className="ayuda">Se suma a la lista al guardar.</p>
             </div>
           ) : null}
-          {errores?.calidadDeclaradaId ? (
-            <p className="campo-error" role="alert">{errores.calidadDeclaradaId}</p>
-          ) : null}
+          <MensajeDeError texto={errores.calidadDeclaradaId} />
         </Campo>
       </BloquePanel>
 
       <BloquePanel titulo="Costo">
-        <Campo etiqueta="Costo del lote" para="costo">
-          <CampoPrecio
-            id="costo"
-            name="costo"
-            aria-invalid={errores?.costoCentavos ? true : undefined}
-          />
-          {errores?.costoCentavos ? (
-            <p className="campo-error" role="alert">{errores.costoCentavos}</p>
+        <div className="par-cifras">
+          <Campo etiqueta="Costo del lote" para="costo">
+            <CampoCifra
+              id="costo"
+              name="costo"
+              prefijo="Bs"
+              value={costo}
+              onChange={(evento) => setCosto(evento.target.value)}
+              aria-invalid={errores.costoCentavos ? true : undefined}
+            />
+          </Campo>
+          <Campo etiqueta="Transporte" para="transporte">
+            <CampoCifra
+              id="transporte"
+              name="transporte"
+              prefijo="Bs"
+              value={transporte}
+              onChange={(evento) => setTransporte(evento.target.value)}
+              aria-invalid={errores.transporteCentavos ? true : undefined}
+            />
+          </Campo>
+        </div>
+        <MensajeDeError texto={errores.costoCentavos} />
+        <MensajeDeError texto={errores.transporteCentavos} />
+        <p className="derivado" aria-live="polite">
+          {costoBs !== null && transporteBs !== null ? (
+            <>
+              → Se reparte entre sus piezas:{" "}
+              <span className="cifra">{formatearPrecio(costoBs + transporteBs)}</span>
+            </>
           ) : null}
-        </Campo>
-        <Campo etiqueta="Transporte" para="transporte" ayuda="Déjalo vacío si no hubo.">
-          <CampoPrecio
-            id="transporte"
-            name="transporte"
-            aria-invalid={errores?.transporteCentavos ? true : undefined}
-          />
-          {errores?.transporteCentavos ? (
-            <p className="campo-error" role="alert">{errores.transporteCentavos}</p>
-          ) : null}
-        </Campo>
+        </p>
+        {costoBs === null ? (
+          <p className="ayuda">Deja el transporte vacío si no hubo.</p>
+        ) : null}
       </BloquePanel>
 
       <BloquePanel titulo="Fechas">
@@ -153,28 +198,32 @@ export default function NuevoLote({ loaderData, actionData }: Route.ComponentPro
             id="fechaCompra"
             name="fechaCompra"
             type="date"
-            aria-invalid={errores?.fechaCompra ? true : undefined}
+            value={fechaCompra}
+            onChange={(evento) => setFechaCompra(evento.target.value)}
+            aria-invalid={errores.fechaCompra ? true : undefined}
           />
-          {errores?.fechaCompra ? (
-            <p className="campo-error" role="alert">{errores.fechaCompra}</p>
-          ) : null}
+          <MensajeDeError texto={errores.fechaCompra} />
         </Campo>
-        <Campo etiqueta="Fecha de recepción" para="fechaRecepcion" ayuda="Déjala vacía si todavía no llegó.">
+        <Campo
+          etiqueta="Fecha de recepción"
+          para="fechaRecepcion"
+          ayuda="Déjala vacía si todavía no llegó."
+        >
           <CampoTexto
             id="fechaRecepcion"
             name="fechaRecepcion"
             type="date"
-            aria-invalid={errores?.fechaRecepcion ? true : undefined}
+            aria-invalid={errores.fechaRecepcion ? true : undefined}
           />
-          {errores?.fechaRecepcion ? (
-            <p className="campo-error" role="alert">{errores.fechaRecepcion}</p>
-          ) : null}
+          <MensajeDeError texto={errores.fechaRecepcion} />
         </Campo>
       </BloquePanel>
 
-      <button type="submit" className="btn btn-primario btn-ancho" disabled={enviando}>
-        {enviando ? "Guardando…" : "Registrar lote"}
-      </button>
+      <BarraAccionUnica
+        texto={enviando ? "Guardando…" : "Registrar lote"}
+        motivo={motivo}
+        disabled={enviando || motivo !== undefined}
+      />
     </Form>
   );
 }

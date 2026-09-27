@@ -3,7 +3,6 @@ import { Form, useNavigation } from "react-router";
 import { BloquePanel } from "~/componentes/bloque-panel";
 import { Campo, CampoTexto } from "~/componentes/campos";
 import { EstadoVacio } from "~/componentes/estado-vacio";
-import { Renglon, Renglones } from "~/componentes/renglon";
 import { obtenerDominio } from "~/servidor/contexto.server";
 import { leerFormularioDeProveedor } from "~/servidor/formulario-de-abastecimiento.server";
 import { respuestaDeRechazo } from "~/servidor/formulario-de-pieza.server";
@@ -20,10 +19,10 @@ export async function loader({ context }: Route.LoaderArgs) {
 /** Registra un proveedor. Un particular que vende una sola pieza también es proveedor. */
 export async function action({ request, context }: Route.ActionArgs) {
   try {
-    await obtenerDominio(context).registrarProveedor(
+    const proveedor = await obtenerDominio(context).registrarProveedor(
       leerFormularioDeProveedor(await request.formData()),
     );
-    return { mensaje: "Proveedor registrado." };
+    return { mensaje: `${proveedor.nombre} quedó registrado.` };
   } catch (error) {
     return respuestaDeRechazo(error);
   }
@@ -33,19 +32,21 @@ export default function ListaDeProveedores({ loaderData, actionData }: Route.Com
   const { proveedores } = loaderData;
   const navegacion = useNavigation();
   const errores = actionData && "errores" in actionData ? actionData.errores : {};
+  const mensaje = actionData && "mensaje" in actionData ? actionData.mensaje : undefined;
   const enviando = navegacion.state === "submitting";
 
   return (
     <>
-      <BloquePanel titulo="Nuevo proveedor">
+      <BloquePanel titulo="Nuevo proveedor" nuncaSePublica>
         <p className="ayuda">
           Un particular que te vende una sola cartera también es proveedor.
         </p>
-        <Form method="post" key={actionData?.mensaje}>
+        <Form method="post" key={mensaje}>
           <Campo etiqueta="Nombre" para="prov-nombre">
             <CampoTexto
               id="prov-nombre"
               name="nombre"
+              autoComplete="off"
               placeholder="Ej.: Textiles del Sur, o Ana Gómez"
               aria-invalid={errores?.nombre ? true : undefined}
             />
@@ -55,6 +56,7 @@ export default function ListaDeProveedores({ loaderData, actionData }: Route.Com
             <CampoTexto
               id="prov-contacto"
               name="contacto"
+              autoComplete="off"
               placeholder="WhatsApp u otro medio"
               aria-invalid={errores?.contacto ? true : undefined}
             />
@@ -66,22 +68,31 @@ export default function ListaDeProveedores({ loaderData, actionData }: Route.Com
             {enviando ? "Guardando…" : "Registrar proveedor"}
           </button>
         </Form>
+        {mensaje ? (
+          <p className="guardado" role="status">
+            {mensaje}
+          </p>
+        ) : null}
       </BloquePanel>
 
       {proveedores.length === 0 ? (
         <EstadoVacio
           titulo="Todavía no hay proveedores"
-          detalle="Registra el primero arriba: le podrás asociar lotes y compras."
+          detalle="Registra el primero arriba: le podrás asociar lotes y compras a particulares."
         />
       ) : (
-        <BloquePanel titulo="Proveedores" detalle={`${proveedores.length}`}>
-          <Renglones>
+        <BloquePanel
+          titulo="Proveedores"
+          detalle={proveedores.length === 1 ? "1 proveedor" : `${proveedores.length} proveedores`}
+        >
+          <ul className="filas-proveedor">
             {proveedores.map((proveedor) => (
-              <Renglon key={proveedor.id} etiqueta={proveedor.nombre}>
-                {proveedor.contacto}
-              </Renglon>
+              <li key={proveedor.id}>
+                <b>{proveedor.nombre}</b>
+                <span>{proveedor.contacto}</span>
+              </li>
             ))}
-          </Renglones>
+          </ul>
         </BloquePanel>
       )}
     </>

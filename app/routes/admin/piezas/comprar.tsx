@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Form, Link, redirect, useNavigation } from "react-router";
 
+import { BarraAccionUnica, motivoDeFaltantes } from "~/componentes/barra-acciones";
 import { BloquePanel } from "~/componentes/bloque-panel";
-import { Campo, CampoPrecio, Seleccion } from "~/componentes/campos";
+import { Campo, CampoCifra, leerMonto, Seleccion } from "~/componentes/campos";
 import { ControlSegmentado } from "~/componentes/control-segmentado";
 import { CONDICIONES, TEXTO_DE_CONDICION, type CondicionDePieza } from "~/dominio";
 import { obtenerDominio } from "~/servidor/contexto.server";
@@ -34,18 +35,29 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
 }
 
+function MensajeDeError({ texto }: { texto?: string }) {
+  return texto ? (
+    <p className="campo-error" role="alert">
+      {texto}
+    </p>
+  ) : null;
+}
+
 export default function CompraAParticular({ loaderData, actionData }: Route.ComponentProps) {
   const { proveedores } = loaderData;
   const navegacion = useNavigation();
-  const errores = actionData && "errores" in actionData ? actionData.errores : {};
+  const errores = actionData && "errores" in actionData ? (actionData.errores ?? {}) : {};
   const enviando = navegacion.state === "submitting";
+  const [proveedorId, setProveedorId] = useState("");
+  const [costo, setCosto] = useState("");
   const [condicion, setCondicion] = useState<CondicionDePieza | null>(null);
 
   if (proveedores.length === 0) {
     return (
-      <BloquePanel titulo="Falta registrar a la persona">
+      <BloquePanel titulo="Falta registrar a la persona" nuncaSePublica>
         <p className="ayuda">
-          Registra primero a quien te vende la pieza como proveedor (con su nombre y su WhatsApp).
+          Registra primero a quien te vende la pieza como proveedor, con su nombre y su
+          WhatsApp, y vuelve.
         </p>
         <Link className="btn btn-primario btn-ancho" to="/admin/proveedores">
           Ir a Proveedores
@@ -54,18 +66,26 @@ export default function CompraAParticular({ loaderData, actionData }: Route.Comp
     );
   }
 
+  const motivo = motivoDeFaltantes(
+    [!proveedorId && "la persona", !leerMonto(costo) && "lo que le pagaste"].filter(
+      (falta): falta is string => Boolean(falta),
+    ),
+  );
+
   return (
     <Form method="post">
-      <BloquePanel titulo="Compra a particular">
+      <BloquePanel titulo="La compra" nuncaSePublica>
         <p className="ayuda">
-          Sin lote: el costo de la pieza es directamente lo que le pagaste.
+          Una sola pieza, sin lote: su costo es directamente lo que le pagaste. Después la
+          cargas como cualquier otra.
         </p>
         <Campo etiqueta="Le compraste a" para="proveedorId">
           <Seleccion
             id="proveedorId"
             name="proveedorId"
-            defaultValue=""
-            aria-invalid={errores?.proveedorId ? true : undefined}
+            value={proveedorId}
+            onChange={(evento) => setProveedorId(evento.target.value)}
+            aria-invalid={errores.proveedorId ? true : undefined}
           >
             <option value="" disabled>
               Elige a la persona
@@ -76,19 +96,33 @@ export default function CompraAParticular({ loaderData, actionData }: Route.Comp
               </option>
             ))}
           </Seleccion>
-          {errores?.proveedorId ? (
-            <p className="campo-error" role="alert">{errores.proveedorId}</p>
-          ) : null}
+          <MensajeDeError texto={errores.proveedorId} />
+          <p className="ayuda ayuda-enlace">
+            ¿No está en la lista? <Link to="/admin/proveedores">Regístrala en Proveedores</Link>.
+          </p>
         </Campo>
 
-        <Campo etiqueta="Costo directo" para="costo">
-          <CampoPrecio id="costo" name="costo" aria-invalid={errores?.costoDirectoCentavos ? true : undefined} />
-          {errores?.costoDirectoCentavos ? (
-            <p className="campo-error" role="alert">{errores.costoDirectoCentavos}</p>
-          ) : null}
-        </Campo>
+        <div className="par-cifras">
+          <Campo etiqueta="Le pagaste" para="costo">
+            <CampoCifra
+              id="costo"
+              name="costo"
+              prefijo="Bs"
+              value={costo}
+              onChange={(evento) => setCosto(evento.target.value)}
+              aria-invalid={errores.costoDirectoCentavos ? true : undefined}
+            />
+          </Campo>
+        </div>
+        <MensajeDeError texto={errores.costoDirectoCentavos} />
+      </BloquePanel>
 
-        <Campo etiqueta="Condición de ingreso" idEtiqueta="et-condicion" ayuda="Opcional.">
+      <BloquePanel titulo="Cómo llegó">
+        <Campo
+          etiqueta="Condición de ingreso"
+          idEtiqueta="et-condicion"
+          ayuda="Opcional. Es la condición antes de limpiarla o repararla."
+        >
           <ControlSegmentado
             etiquetadoPor="et-condicion"
             name="condicionIngreso"
@@ -96,12 +130,15 @@ export default function CompraAParticular({ loaderData, actionData }: Route.Comp
             valor={condicion}
             alCambiar={setCondicion}
           />
+          <MensajeDeError texto={errores.condicionIngreso} />
         </Campo>
       </BloquePanel>
 
-      <button type="submit" className="btn btn-primario btn-ancho" disabled={enviando}>
-        {enviando ? "Guardando…" : "Registrar compra"}
-      </button>
+      <BarraAccionUnica
+        texto={enviando ? "Guardando…" : "Registrar compra"}
+        motivo={motivo}
+        disabled={enviando || motivo !== undefined}
+      />
     </Form>
   );
 }
