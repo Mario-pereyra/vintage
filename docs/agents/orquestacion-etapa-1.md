@@ -69,7 +69,7 @@ Tope: **4 tickets a la vez**. Una ola empieza solo con `main` en verde y los tic
 - La marca es **Vintage Secret's** (ver el commit aa9f911).
 
 **Ola 1 (#2): PR #15 abierto, CI en verde y rebasado sobre `main`.**
-- La primera verificación dio 5 ✅, 0 ❌ y 3 ⏸️, estos por falta de credenciales. Hay una re-verificación en curso con Neon `dev`, y su resultado queda en los comentarios del PR.
+- Verificado: 7 ✅ y 0 ❌. La re-verificación contra Neon `dev` en workerd local confirmó la conexión de Prisma a Neon y la home con SSR mostrando "Pronto nuevas carteras". Quedan 2 ⏸️: el despliegue real y la vista previa por PR, que se confirman con el primer despliegue desde `main`. Listo para merge.
 - Después del merge, que hace el usuario, hay que confirmar que el primer despliegue desde `main` funcione. Recién entonces se activan las vistas previas.
 - Riesgo abierto: las vistas previas usan `secrets.DATABASE_URL`, que es la base de producción. Las opciones son usar la rama `dev` (secrets `DEV_DATABASE_URL` y `DEV_DIRECT_URL`) o una rama por PR con `neonctl` (`NEON_API_KEY`). Decide el usuario.
 
