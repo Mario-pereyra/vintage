@@ -46,9 +46,38 @@ Tope: **4 tickets a la vez**. Una ola empieza solo con `main` en verde y los tic
 
 - Se usa la identidad de git del usuario.
 - **No** se agrega `Co-Authored-By` en los commits ni el pie "Generated with Claude Code" en los PR (ver `AGENTS.md`).
-- Pendiente: reescribir el primer commit, que tiene `Co-Authored-By`, y hacer force push. El usuario ya lo aprobó.
+- El primer commit ya se reescribió sin `Co-Authored-By` y se subió con force push.
+- El `~/.gitignore_global` del usuario ignora `AGENTS.md`: si se crea uno nuevo, hay que agregarlo con `git add -f`.
 
 ## Pruebas
 
 - El único punto de prueba automática en el CI es el módulo de dominio (Vitest con PGlite).
 - Playwright se usa para verificar cada PR, no como suite end-to-end.
+
+## Estado (2026-09-26)
+
+**Ola 0: terminada.**
+- Las definiciones de agentes están en `.claude/agents/`: `implementador-nucleo`, `implementador` y `verificador`. Se cargan al iniciar una sesión. Si una sesión no las ve, lanza `general-purpose` con el modelo del rol y pídele que lea y siga su archivo de definición.
+- El #3 tiene el criterio del login de desarrollo. El #2 tiene los criterios de CI y de vistas previas.
+- Las credenciales están cargadas y probadas, así que no hay que repetir el wizard:
+  - GitHub secrets: `DATABASE_URL`, `DIRECT_URL` (rama `main` de Neon, producción), `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ADMIN_EMAILS`, `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`.
+  - GitHub vars: `APP_URL=https://vintage.marioelprogamer710.workers.dev`, `R2_BUCKET=vintage-fotos`, `R2_PUBLIC_URL` y `WHATSAPP_NUMBER`.
+  - Neon: el proyecto está en `aws-sa-east-1`, con la rama `main` para producción y la rama `dev` para local.
+  - R2: el bucket es `vintage-fotos`, con URL pública r2.dev.
+- El `.env` está en la raíz del repo principal y apunta a la rama `dev` de Neon. Los worktrees no lo tienen: el agente que necesite correr la app lo copia y lo borra al terminar, y nunca lo commitea.
+- Google OAuth está en modo prueba, con Mario e Ingrid como usuarios de prueba. Los orígenes y redirects registrados son `http://localhost:5173` y la `APP_URL`, con el path `/api/auth/callback/google`. Las vistas previas no pueden usar Google, así que entran con el login de desarrollo.
+- La marca es **Vintage Secret's** (ver el commit aa9f911).
+
+**Ola 1 (#2): PR #15 abierto, CI en verde y rebasado sobre `main`.**
+- La primera verificación dio 5 ✅, 0 ❌ y 3 ⏸️, estos por falta de credenciales. Hay una re-verificación en curso con Neon `dev`, y su resultado queda en los comentarios del PR.
+- Después del merge, que hace el usuario, hay que confirmar que el primer despliegue desde `main` funcione. Recién entonces se activan las vistas previas.
+- Riesgo abierto: las vistas previas usan `secrets.DATABASE_URL`, que es la base de producción. Las opciones son usar la rama `dev` (secrets `DEV_DATABASE_URL` y `DEV_DIRECT_URL`) o una rama por PR con `neonctl` (`NEON_API_KEY`). Decide el usuario.
+
+**Próximos pasos**
+1. Cuando se mergee el #2, avisar al usuario para que la sesión de diseño pase los tokens y componentes a la app.
+2. Lanzar la ola 2 (#3) con `implementador-nucleo`. La interfaz es sobria y provisional, o usa los componentes base si ya se pasaron. La marca es "Vintage Secret's".
+3. La puerta de diseño sigue cerrada hasta que el usuario apruebe `DESIGN.md` y los componentes base.
+
+## Cómo retomar
+
+En una sesión nueva, di: "Actúa como orquestador según `docs/agents/orquestacion-etapa-1.md` y continúa desde la sección Estado". Antes de lanzar una ola, el orquestador revisa `gh pr list`, `gh issue list` y el CI de `main`.
