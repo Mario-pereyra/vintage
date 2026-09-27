@@ -1,19 +1,37 @@
-/** Mensaje para cuando una lista no tiene nada que mostrar todavía. */
+import type { ReactNode } from "react";
+
+import { Comprobante } from "./comprobante";
+import { Sello } from "./sello";
+
+/**
+ * Mensaje para cuando una lista no tiene nada que mostrar todavía: un
+ * comprobante sobre el rosa con el título, un sello opcional, el detalle y,
+ * si hace falta, renglones. `accion` va debajo, sobre el rosa.
+ */
 export function EstadoVacio({
   titulo,
   detalle,
+  sello,
+  children,
+  accion,
 }: {
   titulo: string;
-  detalle?: string;
+  detalle?: ReactNode;
+  sello?: { texto: string; detalle?: string };
+  children?: ReactNode;
+  accion?: ReactNode;
 }) {
   return (
-    <section className="flex flex-col items-center gap-2 py-24 text-center">
-      <p className="text-xl font-medium">{titulo}</p>
-      {detalle ? (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          {detalle}
-        </p>
-      ) : null}
+    <section className="vacio">
+      <Comprobante>
+        <div className="vacio-encabezado">
+          <h2 className="vacio-titulo">{titulo}</h2>
+          {sello ? <Sello texto={sello.texto} detalle={sello.detalle} /> : null}
+        </div>
+        {detalle ? <p className="vacio-detalle">{detalle}</p> : null}
+        {children}
+      </Comprobante>
+      {accion ? <div className="vacio-accion">{accion}</div> : null}
     </section>
   );
 }

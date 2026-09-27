@@ -1,21 +1,30 @@
 import type { ReactNode } from "react";
 
-/** Marco común de las páginas públicas: cabecera con la marca y contenido centrado. */
+import { configuracionTienda } from "~/configuracion/tienda";
+
+import { BarraPublica, MigaDePan } from "./navegacion";
+
+/**
+ * Marco de las páginas públicas: el campo rosa, la barra con la marca y el
+ * contenido en una columna de 1120px como máximo.
+ */
 export function Pagina({
   titulo,
+  miga,
+  busqueda,
   children,
 }: {
+  /** Título de la página para lectores de pantalla (el `<h1>`). */
   titulo: string;
+  miga?: readonly { texto: string; href?: string }[];
+  busqueda?: { accion: string; valor?: string };
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-dvh flex flex-col">
-      <header className="border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
-        <p className="mx-auto max-w-5xl text-lg font-semibold tracking-wide">
-          Vintage
-        </p>
-      </header>
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
+    <div className="campo-rosa min-h-dvh">
+      <BarraPublica marca={configuracionTienda.marca} busqueda={busqueda} />
+      {miga ? <MigaDePan pasos={miga} /> : null}
+      <main className="pagina-publica">
         <h1 className="sr-only">{titulo}</h1>
         {children}
       </main>
