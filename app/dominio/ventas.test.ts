@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { ErrorDeDominio, PRECIO_MAXIMO_CENTAVOS, type DatosDeVenta, type Dominio } from "./index";
+import {
+  ErrorDeDominio,
+  PRECIO_MAXIMO_CENTAVOS,
+  TOMAS_REQUERIDAS,
+  type DatosDeVenta,
+  type Dominio,
+} from "./index";
 import { crearBaseDePrueba, type BaseDePrueba } from "./pruebas/base-de-prueba";
 
 const INICIO = new Date("2026-09-26T14:00:00Z");
@@ -43,6 +49,13 @@ describe("ventas, entregas y retiros", () => {
 
   async function piezaDisponible(nombre?: string) {
     const pieza = await piezaEnPreparacion(nombre);
+    for (const tipo of TOMAS_REQUERIDAS) {
+      await dominio.agregarFoto(pieza.codigo, tipo, {
+        claveMiniatura: `${tipo}-mini.jpg`,
+        claveCatalogo: `${tipo}-cat.jpg`,
+        claveDetalle: `${tipo}-det.jpg`,
+      });
+    }
     await dominio.publicarPieza(pieza.codigo);
     return pieza;
   }
