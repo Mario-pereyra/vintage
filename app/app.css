@@ -987,6 +987,9 @@
   .filtros-mas[open] > summary > .icono {
     transform: rotate(90deg);
   }
+  .chip .cifra {
+    font-size: 13px;
+  }
   .chip[aria-current="true"] .chip-muestra {
     border-color: color-mix(in srgb, var(--papel) 70%, transparent);
   }
@@ -1020,6 +1023,7 @@
     gap: var(--s-5);
     padding: var(--s-2) 0 var(--s-5);
   }
+  /* Enlace sobre el rosa: tinta, subrayado de 1.5px. */
   .filtros-quitar {
     align-self: flex-start;
     font: 600 14px var(--f-texto);
@@ -1027,6 +1031,9 @@
     min-height: 40px;
     display: inline-flex;
     align-items: center;
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 4px;
   }
 
   /* Segmento de filtro: enlaces con el tamaño y su rango de ancho. */
@@ -1162,18 +1169,23 @@
       top: var(--s-4);
       margin-bottom: 0;
     }
-    /* En la columna de filtros sobra lugar: color, tamaño y precio siempre a la vista. */
-    .filtros-mas::details-content {
-      content-visibility: visible;
-      display: contents;
-    }
-    .filtros-mas > summary {
-      pointer-events: none;
-    }
-    .filtros-mas > summary > .icono,
-    .filtros-mas .filtros-elegidos,
-    .filtros-mas .filtros-cuenta {
-      display: none;
+    /*
+     * En la columna de filtros sobra lugar: color, tamaño y precio siempre a
+     * la vista. El summary sale del todo (ni foco ni "desplegable" para los
+     * lectores de pantalla); cada grupo ya tiene su título. Sin soporte de
+     * ::details-content, el desplegable sigue funcionando como en el celular.
+     */
+    @supports selector(::details-content) {
+      .filtros-mas::details-content {
+        content-visibility: visible;
+        display: contents;
+      }
+      .filtros-mas > summary {
+        display: none;
+      }
+      .filtros-cuerpo {
+        padding-top: var(--s-4);
+      }
     }
     .chips-carril {
       flex-wrap: wrap;

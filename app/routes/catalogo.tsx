@@ -130,9 +130,36 @@ function rangoCorto(tamano: Tamano, umbrales: UmbralesDeTamano) {
 
 /** Atajos de precio para un toque; los precios van de unos Bs 30 a Bs 500. */
 const BANDAS_DE_PRECIO = [
-  { clave: "hasta-100", texto: "Hasta Bs 100", precioMin: "", precioMax: "100" },
-  { clave: "100-300", texto: "Bs 100 a 300", precioMin: "100", precioMax: "300" },
-  { clave: "desde-300", texto: "Bs 300 o más", precioMin: "300", precioMax: "" },
+  {
+    clave: "hasta-100",
+    texto: (
+      <>
+        Hasta <span className="cifra">Bs 100</span>
+      </>
+    ),
+    precioMin: "",
+    precioMax: "100",
+  },
+  {
+    clave: "100-300",
+    texto: (
+      <>
+        <span className="cifra">Bs 100</span> a <span className="cifra">300</span>
+      </>
+    ),
+    precioMin: "100",
+    precioMax: "300",
+  },
+  {
+    clave: "desde-300",
+    texto: (
+      <>
+        <span className="cifra">Bs 300</span> o más
+      </>
+    ),
+    precioMin: "300",
+    precioMax: "",
+  },
 ] as const;
 
 /**
@@ -173,7 +200,14 @@ function filtrosEnPalabras({ filtrosCrudos, listas }: DatosDelCatalogo) {
  * precio" para que las piezas entren en el primer viewport del celular. Todo
  * es un enlace o un formulario GET: la URL es el estado.
  */
-function Filtros({ datos }: { datos: DatosDelCatalogo }) {
+function Filtros({
+  datos,
+  conQuitar,
+}: {
+  datos: DatosDelCatalogo;
+  /** "Quitar filtros" al pie; sin coincidencias, esa acción la lleva el estado vacío. */
+  conQuitar: boolean;
+}) {
   const { listas, filtrosCrudos, umbrales } = datos;
   const cambiar = (cambios: Partial<FiltrosCrudos>) => urlDeCatalogo(filtrosCrudos, cambios);
 
@@ -331,7 +365,7 @@ function Filtros({ datos }: { datos: DatosDelCatalogo }) {
         </div>
       </details>
 
-      {hayFiltros ? (
+      {hayFiltros && conQuitar ? (
         <Link to="/" className="filtros-quitar" preventScrollReset replace>
           Quitar filtros
         </Link>
@@ -395,7 +429,7 @@ export default function Catalogo({ loaderData }: Route.ComponentProps) {
   return (
     <Pagina titulo="Catálogo">
       <div className="catalogo">
-        <Filtros datos={loaderData} />
+        <Filtros datos={loaderData} conQuitar={piezas.length > 0} />
 
         <div className="catalogo-resultados">
           {piezas.length === 0 ? (
@@ -404,7 +438,7 @@ export default function Catalogo({ loaderData }: Route.ComponentProps) {
               detalle="Cada cartera es única y el catálogo cambia con cada drop. Probá con menos filtros."
               accion={
                 <Link to="/" className="btn btn-ancho" replace>
-                  Ver todo el catálogo
+                  Quitar filtros y ver todo
                 </Link>
               }
             >

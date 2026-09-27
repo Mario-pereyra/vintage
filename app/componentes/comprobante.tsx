@@ -103,7 +103,8 @@ export function ComprobanteMini({
         ) : (
           <>
             <Icono nombre="camara" tamano={24} />
-            <span>Fotos en camino</span>
+            {/* Decorativo: el nombre accesible de la tarjeta empieza por la pieza. */}
+            <span aria-hidden="true">Fotos en camino</span>
           </>
         )}
       </div>
