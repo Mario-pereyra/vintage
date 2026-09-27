@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
+import { AvisoSinConexion } from "~/componentes/aviso-sin-conexion";
 import { BarraAccionesPanel } from "~/componentes/barra-acciones";
 import { BloqueNuncaSePublica, BloquePanel } from "~/componentes/bloque-panel";
 import { BotonWhatsApp } from "~/componentes/boton-whatsapp";
@@ -177,7 +178,11 @@ function VistaPanel() {
   const [ancho, setAncho] = useState(String(ANCHO_DE_EJEMPLO));
 
   return (
-    <PaginaPanel titulo="Muestrario" inicio="/sistema?vista=panel">
+    <PaginaPanel
+      titulo="Muestrario"
+      inicio="/sistema?vista=panel"
+      aviso={<AvisoSinConexion siempre />}
+    >
       <OtraVista panel />
 
       <BloquePanel titulo="La pieza">
