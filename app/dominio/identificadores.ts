@@ -63,6 +63,17 @@ export function sufijoDeDireccion(direccion: string): string | null {
   return coincidencia ? coincidencia[1] : null;
 }
 
+const PATRON_DE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Si el texto tiene forma de UUID (no valida que exista, solo el formato).
+ * Sirve para descartar un id que llega de la URL antes de consultarlo: así un
+ * error real de la base (no "no es un UUID") se propaga en vez de tragarse.
+ */
+export function esUuidValido(id: string): boolean {
+  return PATRON_DE_UUID.test(id);
+}
+
 /** El código para mostrar: prefijo más al menos 4 cifras (`VT-0001`). */
 export function formatearCodigo(numero: number, prefijo: string): string {
   return `${prefijo}${String(numero).padStart(4, "0")}`;

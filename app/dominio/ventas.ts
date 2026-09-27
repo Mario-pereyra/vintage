@@ -7,7 +7,7 @@ import type {
 } from "~/generated/prisma/client";
 
 import { ErrorDeDominio } from "./errores";
-import { formatearCodigo, numeroDeCodigo, uuidV7 } from "./identificadores";
+import { esUuidValido, formatearCodigo, numeroDeCodigo, uuidV7 } from "./identificadores";
 import { PRECIO_MAXIMO_CENTAVOS } from "./piezas";
 import { buscarOCrearCompradora, normalizarWhatsapp, type CompradoraDeReserva } from "./reservas";
 
@@ -442,6 +442,21 @@ export function crearVentas(db: PrismaClient, config: ConfiguracionDeVentas) {
       return aVenta(
         await db.venta.update({ where: { id: fila.id }, data: { guia }, include: detalleDeVenta }),
       );
+    },
+
+    /**
+     * Las compras de una compradora, la más reciente primero: su historial en
+     * el panel (#13). Un id que no existe (o que no es un UUID) trae una
+     * lista vacía.
+     */
+    async comprasDeCompradora(compradoraId: string): Promise<Venta[]> {
+      if (!esUuidValido(compradoraId)) return [];
+      const filas = await db.venta.findMany({
+        where: { compradoraId },
+        include: detalleDeVenta,
+        orderBy: [{ vendidaEn: "desc" }, { id: "desc" }],
+      });
+      return filas.map(aVenta);
     },
 
     /** Las ventas con la entrega pendiente, la más antigua primero. */

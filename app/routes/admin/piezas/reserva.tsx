@@ -7,6 +7,7 @@ import { Campo, CampoTexto } from "~/componentes/campos";
 import { ControlSegmentado } from "~/componentes/control-segmentado";
 import { horaDeBolivia } from "~/componentes/hora";
 import { Icono } from "~/componentes/icono";
+import { MarcaVencidas } from "~/componentes/marca-vencidas";
 import { Renglon, Renglones } from "~/componentes/renglon";
 import { Sello } from "~/componentes/sello";
 import { TiempoRestante, useRefrescarCada } from "~/componentes/tiempo-restante";
@@ -145,15 +146,6 @@ function whatsAppDe(persona: { nombre: string; whatsapp: string }, codigo: strin
   );
 }
 
-/** El contador de vencidas, como marca pequeña junto a la compradora. Nunca se publica. */
-function Vencidas({ cantidad }: { cantidad: number }) {
-  if (cantidad === 0) return null;
-  return (
-    <span className="marca-vencidas">
-      <span className="cifra">{cantidad}</span> {cantidad === 1 ? "vencida" : "vencidas"}
-    </span>
-  );
-}
 
 export default function ReservaDePieza({ loaderData, actionData }: Route.ComponentProps) {
   const { pieza, reserva, interesadas, q, encontradas, elegida } = loaderData;
@@ -229,7 +221,7 @@ export default function ReservaDePieza({ loaderData, actionData }: Route.Compone
           <Renglones>
             <Renglon etiqueta="Compradora">
               {reserva.compradora.nombre}{" "}
-              <Vencidas cantidad={reserva.compradora.reservasVencidas} />
+              <MarcaVencidas cantidad={reserva.compradora.reservasVencidas} />
             </Renglon>
             <Renglon etiqueta="WhatsApp" cifra>
               +{reserva.compradora.whatsapp}
@@ -298,7 +290,7 @@ export default function ReservaDePieza({ loaderData, actionData }: Route.Compone
               <p>
                 <b>{elegida.nombre}</b>
                 <span className="cifra">+{elegida.whatsapp}</span>
-                <Vencidas cantidad={elegida.reservasVencidas} />
+                <MarcaVencidas cantidad={elegida.reservasVencidas} />
               </p>
               <Link to="." className="enlace-ficha">
                 Cambiar
@@ -335,7 +327,7 @@ export default function ReservaDePieza({ loaderData, actionData }: Route.Compone
                             <span className="cifra">+{c.whatsapp}</span>
                           </span>
                           <span className="compradora-fila-derecha">
-                            <Vencidas cantidad={c.reservasVencidas} />
+                            <MarcaVencidas cantidad={c.reservasVencidas} />
                             <Icono nombre="adelante" />
                           </span>
                         </Link>
