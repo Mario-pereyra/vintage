@@ -3,9 +3,11 @@ import { data, Form, Link, useNavigation } from "react-router";
 
 import { BloquePanel } from "~/componentes/bloque-panel";
 import { Campo, CampoPrecio } from "~/componentes/campos";
+import { Icono } from "~/componentes/icono";
 import { Renglon, Renglones } from "~/componentes/renglon";
-import { formatearPrecio } from "~/componentes/total";
-import { ErrorDeDominio } from "~/dominio";
+import { Sello } from "~/componentes/sello";
+import { formatearPrecio, Total } from "~/componentes/total";
+import { ErrorDeDominio, type PiezaDelPanel } from "~/dominio";
 import { obtenerDominio } from "~/servidor/contexto.server";
 
 import type { BarraDelPanel } from "../layout";
@@ -39,7 +41,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
       params.codigo,
       leerPrecio(formulario.get("precio")) ?? Number.NaN,
     );
-    return { mensaje: "Precio actualizado: se guardó en el historial." };
+    return { mensaje: "Precio cambiado. El anterior quedó en el historial." };
   } catch (error) {
     if (!(error instanceof ErrorDeDominio)) throw error;
     return data(
@@ -58,15 +60,57 @@ function fecha(valor: Date) {
   });
 }
 
+const TEXTO_DEL_ESTADO: Record<PiezaDelPanel["estado"], string> = {
+  en_preparacion: "En preparación",
+  disponible: "Disponible",
+  reservada: "Reservada",
+  vendida: "Vendida",
+  retirada: "Retirada",
+};
+
+/** "Rebaja de Bs 30 (−17 %)" o "Sube Bs 20 (+13 %)", en centavos. */
+function diferencia(antes: number, despues: number): string {
+  const delta = despues - antes;
+  const porcentaje = Math.round((Math.abs(delta) / antes) * 100);
+  const monto = formatearPrecio(Math.abs(delta) / 100);
+  return delta < 0 ? `Rebaja de ${monto} (−${porcentaje} %)` : `Sube ${monto} (+${porcentaje} %)`;
+}
+
+/** "−Bs 30" o "+Bs 20": el cambio respecto del precio anterior del historial. */
+function cambioCorto(antes: number, despues: number): string {
+  const delta = despues - antes;
+  return `${delta < 0 ? "−" : "+"}${formatearPrecio(Math.abs(delta) / 100)}`;
+}
+
 export default function PrecioDePieza({ loaderData, actionData }: Route.ComponentProps) {
   const { pieza, historial } = loaderData;
   const navegacion = useNavigation();
   const enviando = navegacion.state === "submitting";
   const errores = actionData && "errores" in actionData ? (actionData.errores ?? {}) : {};
   const publicada = pieza.estado !== "en_preparacion";
-  const [precio, setPrecio] = useState(
-    pieza.precioCentavos != null ? String(pieza.precioCentavos / 100) : "",
-  );
+  const actual = pieza.precioCentavos;
+  // El historial va del más reciente al más viejo: el segundo es el anterior.
+  const anterior =
+    historial.length > 1 && historial[0].precioCentavos === actual
+      ? historial[1].precioCentavos
+      : undefined;
+
+  const [precio, setPrecio] = useState("");
+  const [ultimoResultado, setUltimoResultado] = useState(actionData);
+  if (actionData !== ultimoResultado) {
+    setUltimoResultado(actionData);
+    // Guardado: el campo vuelve a quedar vacío, listo para otro cambio.
+    if (actionData && !("errores" in actionData)) setPrecio("");
+  }
+  const nuevo = precio.trim() ? leerPrecio(precio) : null;
+  const motivo =
+    !precio.trim()
+      ? "Escribe el nuevo precio"
+      : nuevo === null || nuevo <= 0
+        ? "Escribe un precio en bolivianos, por ejemplo 150"
+        : nuevo === actual
+          ? "Es el mismo precio que ya tiene"
+          : undefined;
 
   return (
     <>
@@ -78,40 +122,58 @@ export default function PrecioDePieza({ loaderData, actionData }: Route.Componen
           </p>
           <p className="pieza-cabecera-detalle">{pieza.nombre ?? "Sin nombre todavía"}</p>
           <Link className="enlace-ficha" to={`/admin/piezas/${pieza.codigo}`}>
-            Editar pieza
+            Volver a la pieza
+            <Icono nombre="adelante" />
           </Link>
         </div>
+        <Sello texto={TEXTO_DEL_ESTADO[pieza.estado]} />
       </div>
 
       {!publicada ? (
-        <BloquePanel titulo="Precio publicado" nuncaSePublica>
+        <BloquePanel titulo="Precio publicado">
           <p className="ayuda">
-            Todavía está En preparación: cambia el precio desde la pieza. El
-            historial solo empieza a guardarse cuando ya está publicada.
+            Todavía está En preparación: su precio se cambia desde la pieza, sin dejar
+            rastro. El historial empieza a guardarse cuando se publica.
           </p>
+          <Link className="btn btn-ancho" to={`/admin/piezas/${pieza.codigo}`}>
+            Ir a la pieza
+          </Link>
         </BloquePanel>
       ) : (
         <Form method="post">
-          <BloquePanel titulo="Cambiar el precio publicado">
-            <Renglones>
-              <Renglon etiqueta="Precio actual" cifra>
-                {pieza.precioCentavos != null ? formatearPrecio(pieza.precioCentavos / 100) : "—"}
-              </Renglon>
-            </Renglones>
-            <Campo etiqueta="Nuevo precio publicado" para="precio">
-              <CampoPrecio
-                id="precio"
-                name="precio"
-                value={precio}
-                onChange={(evento) => setPrecio(evento.target.value)}
-                aria-invalid={errores.precioCentavos ? true : undefined}
-              />
-              {errores.precioCentavos ? (
-                <p className="campo-error" role="alert">
-                  {errores.precioCentavos}
+          <BloquePanel titulo="Precio publicado">
+            {actual != null ? (
+              <div className="precio-vigente">
+                <Total
+                  precio={actual / 100}
+                  precioAnterior={anterior != null ? anterior / 100 : undefined}
+                />
+              </div>
+            ) : null}
+
+            <div className="precio-nuevo">
+              <Campo etiqueta="Nuevo precio" para="precio">
+                <CampoPrecio
+                  id="precio"
+                  name="precio"
+                  value={precio}
+                  onChange={(evento) => setPrecio(evento.target.value)}
+                  aria-invalid={errores.precioCentavos ? true : undefined}
+                  aria-describedby="precio-cambio"
+                />
+                <p className="derivado" id="precio-cambio" aria-live="polite">
+                  {nuevo != null && nuevo > 0 && actual != null && nuevo !== actual
+                    ? diferencia(actual, nuevo)
+                    : null}
                 </p>
-              ) : null}
-            </Campo>
+                {errores.precioCentavos ? (
+                  <p className="campo-error" role="alert">
+                    {errores.precioCentavos}
+                  </p>
+                ) : null}
+              </Campo>
+            </div>
+
             {actionData?.mensaje ? (
               <p
                 className={errores.precioCentavos ? "panel-aviso panel-aviso-fuerte" : "panel-aviso"}
@@ -120,8 +182,13 @@ export default function PrecioDePieza({ loaderData, actionData }: Route.Componen
                 {actionData.mensaje}
               </p>
             ) : null}
-            <button type="submit" className="btn btn-primario btn-ancho" disabled={enviando}>
-              {enviando ? "Guardando…" : "Guardar el nuevo precio"}
+            {motivo ? <p className="acciones-motivo precio-motivo">{motivo}</p> : null}
+            <button
+              type="submit"
+              className="btn btn-primario btn-ancho precio-guardar"
+              disabled={enviando || motivo !== undefined}
+            >
+              {enviando ? "Guardando…" : "Cambiar el precio"}
             </button>
           </BloquePanel>
         </Form>
@@ -129,17 +196,51 @@ export default function PrecioDePieza({ loaderData, actionData }: Route.Componen
 
       <BloquePanel
         titulo="Historial de precios"
-        detalle={historial.length > 0 ? `${historial.length}` : undefined}
+        detalle={historial.length > 0 ? `${historial.length} precios` : undefined}
       >
         {historial.length === 0 ? (
-          <p className="ayuda">El precio publicado todavía no cambió.</p>
+          <p className="ayuda">
+            {publicada && actual != null && pieza.publicadaEn ? (
+              <>
+                Conserva el precio con el que se publicó:{" "}
+                <span className="cifra">{formatearPrecio(actual / 100)}</span> desde el{" "}
+                <span className="cifra">{fecha(pieza.publicadaEn)}</span>. Cada cambio queda
+                aquí, con su fecha.
+              </>
+            ) : (
+              "Cada cambio del precio publicado queda aquí, con su fecha."
+            )}
+          </p>
         ) : (
           <Renglones>
-            {historial.map((cambio) => (
-              <Renglon key={cambio.fecha.toISOString()} etiqueta={fecha(cambio.fecha)} cifra>
-                {formatearPrecio(cambio.precioCentavos / 100)}
-              </Renglon>
-            ))}
+            {historial.map((cambio, indice) => {
+              const previo = historial[indice + 1];
+              const vigente = indice === 0;
+              return (
+                <Renglon
+                  key={cambio.fecha.toISOString()}
+                  etiqueta={
+                    <span className={vigente ? "historial-fecha historial-vigente" : "historial-fecha"}>
+                      {fecha(cambio.fecha)}
+                    </span>
+                  }
+                  cifra
+                  aclaracion={
+                    vigente
+                      ? previo
+                        ? `vigente · ${cambioCorto(previo.precioCentavos, cambio.precioCentavos)}`
+                        : "vigente"
+                      : previo
+                        ? cambioCorto(previo.precioCentavos, cambio.precioCentavos)
+                        : "al publicar"
+                  }
+                >
+                  <span className={vigente ? "historial-precio-vigente" : "historial-precio"}>
+                    {formatearPrecio(cambio.precioCentavos / 100)}
+                  </span>
+                </Renglon>
+              );
+            })}
           </Renglones>
         )}
       </BloquePanel>
