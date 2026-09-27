@@ -23,7 +23,10 @@ import { TomasDelPanel } from "~/componentes/tomas-panel";
 import { formatearPrecio } from "~/componentes/total";
 import { configuracionTienda } from "~/configuracion/tienda";
 import {
+  ATRIBUTO_TEXTO_MAXIMO,
   CONDICIONES,
+  DESCRIPCION_MAXIMA,
+  NOTA_CONDICION_MAXIMA,
   TEXTO_DE_AUTENTICIDAD,
   TEXTO_DE_CONDICION,
   TOMAS_REQUERIDAS,
@@ -219,12 +222,80 @@ function ListaAmpliable({
   );
 }
 
+// --- Atributos y visibilidad (#6) -------------------------------------------
+
+/**
+ * Un atributo opcional de texto con su interruptor "Mostrar". Apagado, el
+ * campo se sigue pudiendo editar, pero queda en segundo plano: se guarda y
+ * nunca llega a la ficha.
+ */
+function AtributoOpcional({
+  id,
+  etiqueta,
+  campo,
+  visible,
+  valorInicial,
+  placeholder,
+  error,
+  largoMaximo = ATRIBUTO_TEXTO_MAXIMO,
+  nota = false,
+}: {
+  id: "notaCondicion" | "cierre" | "interior" | "colorHerrajes" | "incluye" | "queCabe";
+  etiqueta: string;
+  /** Cómo lo nombra el lector de pantalla: "Mostrar cierre en la ficha". */
+  campo: string;
+  /** El interruptor: su `name` (p. ej. `visibleCierre`) y si arranca encendido. */
+  visible: { name: string; inicial: boolean };
+  valorInicial: string | null | undefined;
+  placeholder: string;
+  error?: string;
+  largoMaximo?: number;
+  /** Texto de una o dos líneas (nota de condición) en vez de un renglón. */
+  nota?: boolean;
+}) {
+  const comun = {
+    id,
+    name: id,
+    defaultValue: valorInicial ?? "",
+    placeholder,
+    maxLength: largoMaximo,
+    autoCapitalize: "sentences",
+    enterKeyHint: "next",
+    "aria-invalid": error ? true : undefined,
+  } as const;
+  return (
+    <Campo
+      etiqueta={etiqueta}
+      para={id}
+      mostrar={
+        <InterruptorMostrar campo={campo} name={visible.name} defaultChecked={visible.inicial} />
+      }
+    >
+      {nota ? <AreaTexto {...comun} /> : <CampoTexto {...comun} autoComplete="off" />}
+      <MensajeDeError texto={error} />
+    </Campo>
+  );
+}
+
+/** Lo que elige la operadora en el control de marca: las dos autenticidades o "Sin marca". */
+type EleccionDeMarca = AutenticidadDePieza | "sin_marca";
+
+const OPCIONES_DE_MARCA: readonly { valor: EleccionDeMarca; texto: string }[] = [
+  { valor: "comprobada", texto: TEXTO_DE_AUTENTICIDAD.comprobada },
+  { valor: "atribuida", texto: TEXTO_DE_AUTENTICIDAD.atribuida },
+  { valor: "sin_marca", texto: "Sin marca" },
+];
+
 /**
  * Marca (lista ampliable) y autenticidad, con un solo interruptor "Mostrar"
- * para ambas (ADR 0002, #6): se publican juntas o no se publica ninguna. Sin
- * marca elegida no hay control de autenticidad que mostrar.
+ * para ambas (ADR 0002): se publican juntas o no se publica ninguna.
+ *
+ * Primero la escala fija (Comprobada, Atribuida, Sin marca), porque "Sin
+ * marca" es un solo toque; con marca aparecen los chips para elegir cuál. Si
+ * no se elige ninguna, la pieza se guarda como "Sin marca" (el dominio limpia
+ * la autenticidad), y se avisa antes.
  */
-function BloqueDeMarca({
+function CampoDeMarca({
   pieza,
   marcas,
   errorMarca,
@@ -235,20 +306,19 @@ function BloqueDeMarca({
   errorMarca?: string;
   errorAutenticidad?: string;
 }) {
+  const [eleccion, setEleccion] = useState<EleccionDeMarca>(
+    pieza?.marcaId ? (pieza.autenticidad ?? "atribuida") : "sin_marca",
+  );
   const [marcaId, setMarcaId] = useState<string | null>(
     pieza?.marcaId ? String(pieza.marcaId) : null,
   );
   const [otro, setOtro] = useState(false);
-  const [autenticidad, setAutenticidad] = useState<AutenticidadDePieza | null>(
-    pieza?.autenticidad ?? null,
-  );
-  const hayMarca = otro || marcaId !== null;
+  const conMarca = eleccion !== "sin_marca";
 
   return (
     <Campo
       etiqueta="Marca y autenticidad"
       idEtiqueta="et-marca"
-      ayuda="Se publican juntas o no se publica ninguna."
       mostrar={
         <InterruptorMostrar
           campo="marca y autenticidad"
@@ -257,47 +327,217 @@ function BloqueDeMarca({
         />
       }
     >
-      <Chips
+      <ControlSegmentado
         etiquetadoPor="et-marca"
-        name="marcaId"
-        opciones={marcas.map((marca) => ({ valor: String(marca.id), texto: marca.nombre }))}
-        valor={otro ? null : marcaId}
-        alCambiar={(nuevo) => {
-          setMarcaId(nuevo);
-          setOtro(false);
-        }}
-        alPedirOtro={() => setOtro(true)}
+        opciones={OPCIONES_DE_MARCA}
+        valor={eleccion}
+        alCambiar={setEleccion}
       />
-      {otro ? (
-        <div className="campo-otro">
-          <CampoTexto
-            name="marcaIdNuevo"
-            aria-label="Nueva marca"
-            placeholder="Escribe la marca nueva"
-            autoFocus
-          />
-          <p className="ayuda">Se suma a la lista al guardar.</p>
-        </div>
-      ) : null}
-      <MensajeDeError texto={errorMarca} />
+      <input type="hidden" name="autenticidad" value={conMarca ? eleccion : ""} />
+      <MensajeDeError texto={errorAutenticidad} />
+      <p className="ayuda marca-ayuda">
+        {eleccion === "comprobada"
+          ? "La ficha dirá «Original». Elígela solo si la verificaste."
+          : eleccion === "atribuida"
+            ? "La ficha dirá «Atribuida, sin autenticar»."
+            : "Marca y autenticidad se publican juntas: un solo «Mostrar» para las dos."}
+      </p>
 
-      {hayMarca ? (
-        <>
-          <p className="ayuda">¿Está comprobada o solo atribuida?</p>
-          <ControlSegmentado
-            etiquetadoPor="et-marca"
-            name="autenticidad"
-            opciones={(["comprobada", "atribuida"] as const).map((valor) => ({
-              valor,
-              texto: TEXTO_DE_AUTENTICIDAD[valor],
-            }))}
-            valor={autenticidad}
-            alCambiar={setAutenticidad}
+      {conMarca ? (
+        <div className="marca-cual">
+          <p className="marca-cual-titulo" id="et-marca-cual">
+            ¿Qué marca?
+          </p>
+          <Chips
+            etiquetadoPor="et-marca-cual"
+            name="marcaId"
+            opciones={marcas.map((marca) => ({ valor: String(marca.id), texto: marca.nombre }))}
+            valor={otro ? null : marcaId}
+            alCambiar={(nuevo) => {
+              setMarcaId(nuevo);
+              setOtro(false);
+            }}
+            alPedirOtro={() => setOtro(true)}
+            textoOtro="+ Otra"
           />
-          <MensajeDeError texto={errorAutenticidad} />
-        </>
-      ) : null}
+          {otro ? (
+            <div className="campo-otro">
+              <CampoTexto
+                name="marcaIdNuevo"
+                aria-label="Nueva marca"
+                placeholder="Escribe la marca nueva"
+                autoComplete="off"
+                autoCapitalize="words"
+                autoFocus
+              />
+              <p className="ayuda">Se suma a la lista al guardar.</p>
+            </div>
+          ) : marcaId === null ? (
+            <p className="ayuda marca-falta">Elige la marca: sin ella se guarda como «Sin marca».</p>
+          ) : null}
+          <MensajeDeError texto={errorMarca} />
+        </div>
+      ) : (
+        <input type="hidden" name="marcaId" value="" />
+      )}
     </Campo>
+  );
+}
+
+/** Frases de un texto: cada tramo con letras que termina en punto o signo, o al final. */
+function contarFrases(texto: string): number {
+  return texto.split(/[.!?…]+/).filter((frase) => /\p{L}/u.test(frase)).length;
+}
+
+/**
+ * Descripción libre: no tiene interruptor, se publica siempre que exista. A
+ * la derecha de la etiqueta va la cuenta de frases (la guía es de 2 a 4), en
+ * tinta azul cuando está dentro de la guía, como todo lo calculado.
+ */
+function CampoDescripcion({ inicial, error }: { inicial: string; error?: string }) {
+  const [texto, setTexto] = useState(inicial);
+  const frases = contarFrases(texto);
+  const enGuia = frases >= 2 && frases <= 4;
+  return (
+    <Campo
+      etiqueta="Descripción"
+      para="descripcion"
+      mostrar={
+        <span className={enGuia ? "cuenta-frases cuenta-frases-ok" : "cuenta-frases"}>
+          {frases === 1 ? "1 frase" : `${frases} frases`}
+          <span className="sr-only"> de 2 a 4</span>
+        </span>
+      }
+      ayuda="De 2 a 4 frases. Se publica siempre que la escribas: no tiene «Mostrar»."
+    >
+      <AreaTexto
+        id="descripcion"
+        name="descripcion"
+        rows={4}
+        value={texto}
+        onChange={(evento) => setTexto(evento.target.value)}
+        maxLength={DESCRIPCION_MAXIMA}
+        autoCapitalize="sentences"
+        placeholder="Ej.: Bandolera de cuero liso con solapa y correa regulable. La limpiamos y revisamos cierres y costuras."
+        aria-invalid={error ? true : undefined}
+      />
+      <MensajeDeError texto={error} />
+    </Campo>
+  );
+}
+
+/**
+ * El bloque "Atributos y visibilidad" (#6): los datos opcionales de la pieza,
+ * cada uno con su "Mostrar", en el orden en que la compradora los lee en la
+ * ficha (Revisión, La pieza, Sobre esta pieza).
+ */
+function BloqueDeAtributos({
+  pieza,
+  marcas,
+  errores,
+}: {
+  pieza: PiezaDelPanel | null;
+  marcas: readonly { id: number; nombre: string }[];
+  errores: Partial<Record<string, string>>;
+}) {
+  const [condicion, setCondicion] = useState<CondicionDePieza | null>(pieza?.condicion ?? null);
+  return (
+    <BloquePanel titulo="Atributos y visibilidad">
+      <p className="ayuda">
+        Todo es opcional. Con «Mostrar» apagado, el dato se guarda pero no llega a la ficha.
+      </p>
+
+      <div className="atributos">
+        <h3 className="grupo">Revisión</h3>
+        <Campo
+          etiqueta="Condición"
+          idEtiqueta="et-condicion"
+          mostrar={
+            <InterruptorMostrar
+              campo="condición"
+              name="visibleCondicion"
+              defaultChecked={pieza?.visibleCondicion ?? true}
+            />
+          }
+        >
+          <ControlSegmentado
+            etiquetadoPor="et-condicion"
+            name="condicion"
+            opciones={CONDICIONES.map((c) => ({ valor: c, texto: TEXTO_DE_CONDICION[c] }))}
+            valor={condicion}
+            alCambiar={setCondicion}
+          />
+          <MensajeDeError texto={errores.condicion} />
+        </Campo>
+        <AtributoOpcional
+          id="notaCondicion"
+          etiqueta="Detalle que conserva"
+          campo="nota de condición"
+          visible={{ name: "visibleNotaCondicion", inicial: pieza?.visibleNotaCondicion ?? true }}
+          valorInicial={pieza?.notaCondicion}
+          placeholder="Ej.: leve marca de uso en una esquina de la base (foto 4)."
+          largoMaximo={NOTA_CONDICION_MAXIMA}
+          error={errores.notaCondicion}
+          nota
+        />
+        <CampoDeMarca
+          pieza={pieza}
+          marcas={marcas}
+          errorMarca={errores.marcaId}
+          errorAutenticidad={errores.autenticidad}
+        />
+
+        <h3 className="grupo">La pieza</h3>
+        <AtributoOpcional
+          id="cierre"
+          etiqueta="Cierre"
+          campo="cierre"
+          visible={{ name: "visibleCierre", inicial: pieza?.visibleCierre ?? true }}
+          valorInicial={pieza?.cierre}
+          placeholder="Ej.: solapa con imán"
+          error={errores.cierre}
+        />
+        <AtributoOpcional
+          id="interior"
+          etiqueta="Interior"
+          campo="interior"
+          visible={{ name: "visibleInterior", inicial: pieza?.visibleInterior ?? true }}
+          valorInicial={pieza?.interior}
+          placeholder="Ej.: forrado, 1 bolsillo con cierre"
+          error={errores.interior}
+        />
+        <AtributoOpcional
+          id="colorHerrajes"
+          etiqueta="Color de herrajes"
+          campo="color de herrajes"
+          visible={{ name: "visibleHerrajes", inicial: pieza?.visibleHerrajes ?? true }}
+          valorInicial={pieza?.colorHerrajes}
+          placeholder="Ej.: dorados"
+          error={errores.colorHerrajes}
+        />
+        <AtributoOpcional
+          id="incluye"
+          etiqueta="Incluye"
+          campo="incluye"
+          visible={{ name: "visibleIncluye", inicial: pieza?.visibleIncluye ?? true }}
+          valorInicial={pieza?.incluye}
+          placeholder="Ej.: correa larga, bolsa guardapolvo"
+          error={errores.incluye}
+        />
+        <AtributoOpcional
+          id="queCabe"
+          etiqueta="Qué cabe"
+          campo="qué cabe"
+          visible={{ name: "visibleQueCabe", inicial: pieza?.visibleQueCabe ?? true }}
+          valorInicial={pieza?.queCabe}
+          placeholder="Ej.: celular grande, billetera, lentes"
+          error={errores.queCabe}
+        />
+
+        <h3 className="grupo">Sobre esta pieza</h3>
+        <CampoDescripcion inicial={pieza?.descripcion ?? ""} error={errores.descripcion} />
+      </div>
+    </BloquePanel>
   );
 }
 
@@ -330,9 +570,6 @@ export function FormularioDePieza({
   );
   const [tomas, setTomas] = useState<readonly FotoDelPanel[]>(fotos);
   const tomasQueFaltan = textoDeTomasFaltantes(tomas);
-  const [condicion, setCondicion] = useState<CondicionDePieza | null>(
-    pieza?.condicion ?? null,
-  );
   /** Mientras no se toque nada, la barra muestra el resultado del último envío. */
   const [tocado, setTocado] = useState(false);
   const [ultimoResultado, setUltimoResultado] = useState(resultado);
@@ -499,178 +736,7 @@ export function FormularioDePieza({
         <MensajeDeError texto={errores.precioCentavos} />
       </BloquePanel>
 
-      <BloquePanel titulo="Atributos y visibilidad">
-        <p className="ayuda">
-          Cada "Mostrar" decide si ese dato llega a la ficha pública. Apagado
-          nunca se publica.
-        </p>
-
-        <Campo
-          etiqueta="Condición"
-          idEtiqueta="et-condicion"
-          mostrar={
-            <InterruptorMostrar
-              campo="condición"
-              name="visibleCondicion"
-              defaultChecked={pieza?.visibleCondicion ?? true}
-            />
-          }
-        >
-          <ControlSegmentado
-            etiquetadoPor="et-condicion"
-            name="condicion"
-            opciones={CONDICIONES.map((c) => ({ valor: c, texto: TEXTO_DE_CONDICION[c] }))}
-            valor={condicion}
-            alCambiar={setCondicion}
-          />
-          <MensajeDeError texto={errores.condicion} />
-        </Campo>
-
-        <Campo
-          etiqueta="Detalle que conserva"
-          para="notaCondicion"
-          mostrar={
-            <InterruptorMostrar
-              campo="nota de condición"
-              name="visibleNotaCondicion"
-              defaultChecked={pieza?.visibleNotaCondicion ?? true}
-            />
-          }
-        >
-          <AreaTexto
-            id="notaCondicion"
-            name="notaCondicion"
-            defaultValue={pieza?.notaCondicion ?? ""}
-            placeholder="Opcional. Ej.: leve marca de uso en la base."
-            aria-invalid={errores.notaCondicion ? true : undefined}
-          />
-          <MensajeDeError texto={errores.notaCondicion} />
-        </Campo>
-
-        <BloqueDeMarca
-          pieza={pieza}
-          marcas={listas.marcas}
-          errorMarca={errores.marcaId}
-          errorAutenticidad={errores.autenticidad}
-        />
-
-        <Campo
-          etiqueta="Cierre"
-          para="cierre"
-          mostrar={
-            <InterruptorMostrar
-              campo="cierre"
-              name="visibleCierre"
-              defaultChecked={pieza?.visibleCierre ?? true}
-            />
-          }
-        >
-          <CampoTexto
-            id="cierre"
-            name="cierre"
-            defaultValue={pieza?.cierre ?? ""}
-            placeholder="Ej.: Solapa con imán"
-            aria-invalid={errores.cierre ? true : undefined}
-          />
-          <MensajeDeError texto={errores.cierre} />
-        </Campo>
-
-        <Campo
-          etiqueta="Interior"
-          para="interior"
-          mostrar={
-            <InterruptorMostrar
-              campo="interior"
-              name="visibleInterior"
-              defaultChecked={pieza?.visibleInterior ?? true}
-            />
-          }
-        >
-          <CampoTexto
-            id="interior"
-            name="interior"
-            defaultValue={pieza?.interior ?? ""}
-            placeholder="Ej.: Forrado, un bolsillo con cierre"
-            aria-invalid={errores.interior ? true : undefined}
-          />
-          <MensajeDeError texto={errores.interior} />
-        </Campo>
-
-        <Campo
-          etiqueta="Color de herrajes"
-          para="colorHerrajes"
-          mostrar={
-            <InterruptorMostrar
-              campo="color de herrajes"
-              name="visibleHerrajes"
-              defaultChecked={pieza?.visibleHerrajes ?? true}
-            />
-          }
-        >
-          <CampoTexto
-            id="colorHerrajes"
-            name="colorHerrajes"
-            defaultValue={pieza?.colorHerrajes ?? ""}
-            placeholder="Ej.: Dorados"
-            aria-invalid={errores.colorHerrajes ? true : undefined}
-          />
-          <MensajeDeError texto={errores.colorHerrajes} />
-        </Campo>
-
-        <Campo
-          etiqueta="Incluye"
-          para="incluye"
-          mostrar={
-            <InterruptorMostrar
-              campo="Incluye"
-              name="visibleIncluye"
-              defaultChecked={pieza?.visibleIncluye ?? true}
-            />
-          }
-        >
-          <CampoTexto
-            id="incluye"
-            name="incluye"
-            defaultValue={pieza?.incluye ?? ""}
-            placeholder="Ej.: Correa larga"
-            aria-invalid={errores.incluye ? true : undefined}
-          />
-          <MensajeDeError texto={errores.incluye} />
-        </Campo>
-
-        <Campo
-          etiqueta="Qué cabe"
-          para="queCabe"
-          mostrar={
-            <InterruptorMostrar
-              campo="Qué cabe"
-              name="visibleQueCabe"
-              defaultChecked={pieza?.visibleQueCabe ?? true}
-            />
-          }
-        >
-          <CampoTexto
-            id="queCabe"
-            name="queCabe"
-            defaultValue={pieza?.queCabe ?? ""}
-            placeholder="Ej.: Celular grande, billetera, lentes"
-            aria-invalid={errores.queCabe ? true : undefined}
-          />
-          <MensajeDeError texto={errores.queCabe} />
-        </Campo>
-
-        <Campo etiqueta="Descripción" para="descripcion">
-          <AreaTexto
-            id="descripcion"
-            name="descripcion"
-            rows={3}
-            defaultValue={pieza?.descripcion ?? ""}
-            placeholder="2 a 4 frases. Se publica siempre que exista: no tiene interruptor."
-            aria-invalid={errores.descripcion ? true : undefined}
-          />
-          <MensajeDeError texto={errores.descripcion} />
-        </Campo>
-      </BloquePanel>
+      <BloqueDeAtributos pieza={pieza} marcas={listas.marcas} errores={errores} />
 
       {procedencia && pieza ? (
         <BloqueDeProcedencia

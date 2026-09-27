@@ -207,11 +207,15 @@ export default function Ficha({ loaderData }: Route.ComponentProps) {
                     <Renglon
                       etiqueta="Marca"
                       aclaracion={
-                        ficha.marca.nombre
-                          ? ficha.marca.original
-                            ? "Original"
-                            : "Atribuida, sin autenticar"
-                          : undefined
+                        // "Original" solo con marca comprobada (ADR 0002), en
+                        // tinta azul: es lo verificado.
+                        ficha.marca.nombre ? (
+                          ficha.marca.original ? (
+                            <span className="marca-original">Original · comprobada</span>
+                          ) : (
+                            "Atribuida, sin autenticar"
+                          )
+                        ) : undefined
                       }
                     >
                       {ficha.marca.nombre ?? "Sin marca"}

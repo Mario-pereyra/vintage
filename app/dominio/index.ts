@@ -143,7 +143,13 @@ export {
   type PiezaDelPanel,
   type PiezaEnPanel,
 } from "./piezas";
-export { COSTO_DIRECTO_MAXIMO_CENTAVOS, repartoDeLote } from "./piezas";
+export {
+  ATRIBUTO_TEXTO_MAXIMO,
+  COSTO_DIRECTO_MAXIMO_CENTAVOS,
+  DESCRIPCION_MAXIMA,
+  NOTA_CONDICION_MAXIMA,
+  repartoDeLote,
+} from "./piezas";
 export {
   PLAZO_POR_DEFECTO,
   type Compradora,

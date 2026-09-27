@@ -157,11 +157,11 @@ export const COSTO_DIRECTO_MAXIMO_CENTAVOS = 10_000_000;
 const REACONDICIONAMIENTO_MAXIMO_CENTAVOS = 500_000;
 
 /** Largo máximo de la nota de condición: es un detalle breve, no un reporte. */
-const NOTA_CONDICION_MAXIMA = 200;
+export const NOTA_CONDICION_MAXIMA = 200;
 /** Largo máximo de cierre, interior, color de herrajes, "Incluye" y "Qué cabe". */
-const ATRIBUTO_TEXTO_MAXIMO = 160;
+export const ATRIBUTO_TEXTO_MAXIMO = 160;
 /** Largo máximo de la descripción libre (guía: 2 a 4 frases). */
-const DESCRIPCION_MAXIMA = 600;
+export const DESCRIPCION_MAXIMA = 600;
 
 /** Los campos de texto libre opcionales, con su tope. */
 const TEXTOS_OPCIONALES = [
