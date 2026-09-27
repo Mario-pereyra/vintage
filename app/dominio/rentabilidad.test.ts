@@ -7,6 +7,7 @@ import {
   type Dominio,
   type Proveedor,
 } from "./index";
+import { porcentajeRecuperado } from "./rentabilidad";
 import { crearBaseDePrueba, type BaseDePrueba } from "./pruebas/base-de-prueba";
 
 const AHORA = new Date("2026-09-27T15:00:00Z");
@@ -29,9 +30,11 @@ describe("rentabilidad por lote y proveedor", () => {
   let base: BaseDePrueba;
   let dominio: Dominio;
   let tipos: { id: number; nombre: string }[];
+  let ahora: Date;
 
   beforeEach(async () => {
-    base = await crearBaseDePrueba({ ahora: () => AHORA });
+    ahora = AHORA;
+    base = await crearBaseDePrueba({ ahora: () => ahora });
     dominio = base.dominio;
     tipos = (await dominio.listas()).tipos;
   });
@@ -544,6 +547,141 @@ describe("rentabilidad por lote y proveedor", () => {
       expect(await dominio.rentabilidadDeProveedor(999)).toBeNull();
       expect(await dominio.rentabilidadDeProveedor(-1)).toBeNull();
       expect(await dominio.rentabilidadDeProveedor(2 ** 40)).toBeNull();
+    });
+  });
+
+  describe("casos de borde", () => {
+    it("una pieza reservada cuenta como sin vender y deja el lote en curso", async () => {
+      const prov = await proveedor("Fardos Norte");
+      const { lote, codigos } = await loteAbierto(prov, {
+        costo: 10000,
+        unidades: 2,
+        condiciones: ["buena", "buena"],
+      });
+      await publicar(codigos[0], 0);
+      await publicar(codigos[1], 0);
+      await vender(codigos[0], 12000, 0);
+      await dominio.reservar({
+        codigo: codigos[1],
+        compradora: { nombre: "Bea Suárez", whatsapp: "77654321" },
+        origen: "fuera_de_live",
+      });
+
+      expect(await dominio.rentabilidadDeLote(lote.id)).toMatchObject({
+        estado: "en_curso",
+        vendidas: 1,
+        sinVender: 1,
+        ingresosCentavos: 12000,
+        costoImputadoCentavos: 10000,
+      });
+    });
+
+    it("un lote con todo descartado: terminado, sin piezas, 100 % de descarte y todo su costo perdido", async () => {
+      const prov = await proveedor("Fardos Norte");
+      const { lote } = await loteAbierto(prov, {
+        costo: 8000,
+        transporte: 1000,
+        unidades: 3,
+        descartes: 3,
+        condiciones: [],
+      });
+
+      const rentabilidad = await dominio.rentabilidadDeLote(lote.id);
+
+      expect(rentabilidad).toMatchObject({
+        estado: "terminado",
+        piezas: 0,
+        costoImputadoCentavos: 9000,
+        ingresosCentavos: 0,
+        margenCentavos: -9000,
+        porcentajeRecuperado: 0,
+        calidadDetectada: { unidadesRecibidas: 3, descartes: 3, porcentajeDescarte: 100 },
+      });
+      expect(rentabilidad?.porTipo).toEqual([]);
+    });
+
+    it("reparto no exacto: 100.000 entre 3 piezas da 33.333 a cada una en el desglose, y el lote conserva su costo exacto", async () => {
+      const prov = await proveedor("Fardos Norte");
+      const { lote, codigos } = await loteAbierto(prov, {
+        costo: 100000,
+        unidades: 3,
+        condiciones: ["excelente", "buena", "buena"],
+      });
+      for (const codigo of codigos) await dominio.editarPieza(codigo, { tipoId: tipos[0].id });
+
+      const rentabilidad = await dominio.rentabilidadDeLote(lote.id);
+
+      expect(rentabilidad?.costoImputadoCentavos).toBe(100000);
+      expect(rentabilidad?.porTipo.map((f) => f.costoImputadoCentavos)).toEqual([99999]);
+      expect(rentabilidad?.porCondicion.map((f) => [f.condicion, f.costoImputadoCentavos])).toEqual([
+        ["excelente", 33333],
+        ["buena", 66666],
+      ]);
+    });
+
+    it("% recuperado sin costo imputado es null, no 0 %", () => {
+      expect(porcentajeRecuperado(5000, 0)).toBeNull();
+      expect(porcentajeRecuperado(0, 0)).toBeNull();
+      expect(porcentajeRecuperado(5000, 10000)).toBe(50);
+    });
+
+    it("en el límite del filtro, el lote aparece con todas sus piezas e ingresos", async () => {
+      const prov = await proveedor("Fardos Norte");
+      const dia = new Date("2026-09-15T00:00:00Z");
+      const { lote, codigos } = await loteAbierto(prov, {
+        costo: 10000,
+        unidades: 2,
+        condiciones: ["buena", "buena"],
+        fechaCompra: dia,
+      });
+      await publicar(codigos[0], 0);
+      await vender(codigos[0], 15000, 500);
+      // Un lote del día siguiente queda fuera.
+      await loteAbierto(prov, {
+        costo: 4000,
+        unidades: 1,
+        condiciones: ["buena"],
+        fechaCompra: new Date("2026-09-16T00:00:00Z"),
+      });
+
+      const lotes = await dominio.rentabilidadDeLotes({ desde: dia, hasta: dia });
+      const [proveedorDelDia] = await dominio.rentabilidadDeProveedores({ desde: dia, hasta: dia });
+
+      expect(lotes).toHaveLength(1);
+      expect(lotes[0]).toMatchObject({
+        id: lote.id,
+        piezas: 2,
+        vendidas: 1,
+        ingresosCentavos: 15000,
+        costoImputadoCentavos: 10500,
+      });
+      expect(proveedorDelDia).toMatchObject({
+        lotes: 1,
+        piezas: 2,
+        ingresosCentavos: 15000,
+        costoImputadoCentavos: 10500,
+      });
+    });
+
+    it("una compra a particular se filtra por su día en Bolivia, no en UTC", async () => {
+      const prov = await proveedor("Ana (particular)");
+      // 27/09 a las 22:00 en Bolivia es ya 28/09 en UTC.
+      ahora = new Date("2026-09-28T02:00:00Z");
+      await dominio.registrarCompraAParticular({ proveedorId: prov.id, costoDirectoCentavos: 3000 });
+
+      const del27 = await dominio.rentabilidadDeProveedores({
+        desde: new Date("2026-09-27T00:00:00Z"),
+        hasta: new Date("2026-09-27T00:00:00Z"),
+      });
+      const del28 = await dominio.rentabilidadDeProveedores({
+        desde: new Date("2026-09-28T00:00:00Z"),
+        hasta: new Date("2026-09-28T00:00:00Z"),
+      });
+
+      expect(del27.map((p) => [p.nombre, p.comprasAParticular, p.costoImputadoCentavos])).toEqual([
+        ["Ana (particular)", 1, 3000],
+      ]);
+      expect(del28).toEqual([]);
     });
   });
 });

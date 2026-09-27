@@ -735,6 +735,7 @@ export function crearPiezas(db: Prisma.TransactionClient, config: ConfiguracionD
             data: {
               ...aDatosPrisma(limpios),
               id: uuidV7(config.ahora().getTime()),
+              creadaEn: config.ahora(),
               sufijo: sufijoAleatorio(),
             },
             include: { fotos: true },

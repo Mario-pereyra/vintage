@@ -21,6 +21,18 @@ export function meta(_: Route.MetaArgs) {
   return [{ title: "Rentabilidad — Vintage Secret's" }];
 }
 
+/**
+ * El filtro que se pasa al detalle del proveedor: solo `desde` y `hasta`, ya
+ * validados, nunca el resto de la URL.
+ */
+function consultaDeFechas(desde: string, hasta: string): string {
+  const parametros = new URLSearchParams();
+  if (desde) parametros.set("desde", desde);
+  if (hasta) parametros.set("hasta", hasta);
+  const texto = parametros.toString();
+  return texto ? `?${texto}` : "";
+}
+
 export async function loader({ request, context }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const { filtros, desde, hasta } = leerFiltrosDeRentabilidad(url);
@@ -30,7 +42,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       dominio.rentabilidadDeProveedores(filtros),
       dominio.rentabilidadDeLotes(filtros),
     ]);
-    return { proveedores, lotes, desde, hasta, errores: {}, consulta: url.search };
+    return { proveedores, lotes, desde, hasta, errores: {}, consulta: consultaDeFechas(desde, hasta) };
   } catch (error) {
     if (!(error instanceof ErrorDeDominio)) throw error;
     return { proveedores: [], lotes: [], desde, hasta, errores: error.errores, consulta: "" };

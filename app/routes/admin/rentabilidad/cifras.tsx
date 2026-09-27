@@ -195,7 +195,7 @@ export function CifrasDeRentabilidadBloque({
   pie,
 }: {
   cifras: CifrasDeRentabilidad;
-  porcentajeRecuperado: number;
+  porcentajeRecuperado: number | null;
   terminado?: boolean;
   /** Los renglones que suman el costo imputado (costo, transporte…). */
   costos?: ReactNode;
@@ -487,7 +487,7 @@ export function FilaDeRentabilidad({
 export function valorDeLote(lote: {
   estado: EstadoDelLote;
   margenCentavos: number;
-  porcentajeRecuperado: number;
+  porcentajeRecuperado: number | null;
 }): { valor: string; que: string } {
   if (lote.estado === "terminado") return { valor: monto(lote.margenCentavos), que: "rentabilidad" };
   return { valor: porcentajeTexto(lote.porcentajeRecuperado), que: "recuperado" };

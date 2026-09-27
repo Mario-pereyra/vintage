@@ -70,8 +70,8 @@ export interface RentabilidadDeLote extends CifrasDeRentabilidad {
   costoLoteCentavos: number;
   reacondicionamientoCentavos: number;
   entregasCentavos: number;
-  /** Ingresos ÷ costo imputado, en %, con un decimal. */
-  porcentajeRecuperado: number;
+  /** Ingresos ÷ costo imputado, en %, con un decimal. `null` sin costo imputado. */
+  porcentajeRecuperado: number | null;
   calidadDetectada: CalidadDetectada;
 }
 
@@ -95,7 +95,7 @@ export interface RentabilidadDeProveedor extends CifrasDeRentabilidad {
   nombre: string;
   lotes: number;
   comprasAParticular: number;
-  porcentajeRecuperado: number;
+  porcentajeRecuperado: number | null;
   /** De sus lotes (una compra a particular no tiene calidad declarada). */
   calidadDetectada: CalidadDetectada;
 }
@@ -131,7 +131,23 @@ function esIdValido(id: number): boolean {
   return Number.isSafeInteger(id) && id > 0 && id <= ID_MAXIMO;
 }
 
-function validarFiltros(filtros: FiltrosDeRentabilidad): { desde: Date | null; antesDe: Date | null } {
+/**
+ * El filtro ya validado. Los lotes se filtran por su fecha de compra (un día
+ * a medianoche, como la guarda el formulario) con `desde` y `antesDe`; las
+ * compras a particular, por el día de Bolivia en que se registraron, con
+ * `desdeDia` y `hastaDia` (`AAAA-MM-DD`, ambos incluidos).
+ */
+interface FiltroDeFechas {
+  desde: Date | null;
+  antesDe: Date | null;
+  desdeDia: string | null;
+  hastaDia: string | null;
+}
+
+/** El día calendario de un filtro: la fecha a medianoche que armó la ruta. */
+const diaDe = (fecha: Date | null) => (fecha ? fecha.toISOString().slice(0, 10) : null);
+
+function validarFiltros(filtros: FiltrosDeRentabilidad): FiltroDeFechas {
   const errores: Record<string, string> = {};
   const revisar = (campo: "desde" | "hasta", valor: Date | null | undefined) => {
     if (valor == null) return null;
@@ -153,7 +169,20 @@ function validarFiltros(filtros: FiltrosDeRentabilidad): { desde: Date | null; a
   if (Object.keys(errores).length > 0) {
     throw new ErrorDeDominio("datos_invalidos", "Revisa las fechas del filtro.", errores);
   }
-  return { desde, antesDe: hasta ? new Date(hasta.getTime() + DIA_MS) : null };
+  return {
+    desde,
+    antesDe: hasta ? new Date(hasta.getTime() + DIA_MS) : null,
+    desdeDia: diaDe(desde),
+    hastaDia: diaDe(hasta),
+  };
+}
+
+/**
+ * Ingresos ÷ costo imputado, en %, con un decimal. `null` sin costo imputado:
+ * con costo 0 no hay nada que recuperar, y 0 % diría lo contrario.
+ */
+export function porcentajeRecuperado(ingresosCentavos: number, costoCentavos: number): number | null {
+  return costoCentavos > 0 ? porcentaje(ingresosCentavos, costoCentavos) : null;
 }
 
 /** `parte ÷ total` en %, con un decimal. */
@@ -180,21 +209,28 @@ interface GrupoDePiezas {
   entregasCentavos: number;
 }
 
-interface FiltroDeConsulta {
-  desde: Date | null;
-  antesDe: Date | null;
+interface FiltroDeConsulta extends FiltroDeFechas {
   loteId?: number;
   proveedorId?: number;
 }
 
-async function gruposDePiezas(db: PrismaClient, filtro: FiltroDeConsulta): Promise<GrupoDePiezas[]> {
+/**
+ * Los grupos de piezas de los lotes `loteIds` (salen de la misma consulta que
+ * lista los lotes, así un lote nunca aparece sin sus piezas) y, si
+ * `incluirParticulares`, de las compras a particular del filtro.
+ */
+async function gruposDePiezas(
+  db: PrismaClient,
+  loteIds: number[],
+  incluirParticulares: boolean,
+  filtro: FiltroDeConsulta,
+): Promise<GrupoDePiezas[]> {
   // Cada filtro ausente viaja como NULL y su condición se anula: una sola
   // consulta fija, con todos los valores como parámetros. No se usa
   // `Prisma.sql`: importar `Prisma` como valor mete el cliente generado (y su
   // wasm) en el bundle del navegador, porque las rutas importan de `~/dominio`.
-  const desde = filtro.desde ?? null;
-  const antesDe = filtro.antesDe ?? null;
-  const loteId = filtro.loteId ?? null;
+  const desdeDia = filtro.desdeDia;
+  const hastaDia = filtro.hastaDia;
   const proveedorId = filtro.proveedorId ?? null;
 
   const filas = await db.$queryRaw<
@@ -228,12 +264,19 @@ async function gruposDePiezas(db: PrismaClient, filtro: FiltroDeConsulta): Promi
     LEFT JOIN lote l ON l.id = p.lote_id
     LEFT JOIN venta v ON v.pieza_id = p.id
     LEFT JOIN retiro r ON r.pieza_id = p.id
-    -- Solo piezas con procedencia: de un lote o de una compra a particular.
-    WHERE (p.lote_id IS NOT NULL OR (p.proveedor_id IS NOT NULL AND p.costo_directo_centavos IS NOT NULL))
-      AND (${desde}::timestamp IS NULL OR COALESCE(l.fecha_compra, p.creada_en) >= ${desde}::timestamp)
-      AND (${antesDe}::timestamp IS NULL OR COALESCE(l.fecha_compra, p.creada_en) < ${antesDe}::timestamp)
-      AND (${loteId}::int IS NULL OR p.lote_id = ${loteId}::int)
-      AND (${proveedorId}::int IS NULL OR COALESCE(l.proveedor_id, p.proveedor_id) = ${proveedorId}::int)
+    WHERE p.lote_id = ANY(${loteIds}::int[])
+      OR (
+        ${incluirParticulares}::boolean
+        AND p.lote_id IS NULL
+        AND p.proveedor_id IS NOT NULL
+        AND p.costo_directo_centavos IS NOT NULL
+        AND (${proveedorId}::int IS NULL OR p.proveedor_id = ${proveedorId}::int)
+        -- El día de Bolivia en que se registró la compra (creada_en va en UTC).
+        AND (${desdeDia}::date IS NULL
+          OR ((p.creada_en AT TIME ZONE 'UTC') AT TIME ZONE 'America/La_Paz')::date >= ${desdeDia}::date)
+        AND (${hastaDia}::date IS NULL
+          OR ((p.creada_en AT TIME ZONE 'UTC') AT TIME ZONE 'America/La_Paz')::date <= ${hastaDia}::date)
+      )
     GROUP BY 1, 2, 3, 4, 5
   `;
 
@@ -362,7 +405,7 @@ function rentabilidadDeUnLote(fila: FilaDeLote, grupos: GrupoDePiezas[]): Rentab
     costoLoteCentavos,
     reacondicionamientoCentavos,
     entregasCentavos,
-    porcentajeRecuperado: porcentaje(cifras.ingresosCentavos, cifras.costoImputadoCentavos),
+    porcentajeRecuperado: porcentajeRecuperado(cifras.ingresosCentavos, cifras.costoImputadoCentavos),
     calidadDetectada: calidad,
     ...cifras,
   };
@@ -435,18 +478,22 @@ function filtroDeFechaDeLote(filtro: { desde: Date | null; antesDe: Date | null 
 export function crearRentabilidad(db: PrismaClient) {
   /** Lotes y grupos de piezas de un alcance, ya filtrados. */
   async function datos(filtro: FiltroDeConsulta) {
-    const [filasDeLote, grupos] = await Promise.all([
-      db.lote.findMany({
-        where: {
-          ...filtroDeFechaDeLote(filtro),
-          ...(filtro.loteId !== undefined ? { id: filtro.loteId } : {}),
-          ...(filtro.proveedorId !== undefined ? { proveedorId: filtro.proveedorId } : {}),
-        },
-        include: INCLUIR_NOMBRES,
-        orderBy: { id: "desc" },
-      }),
-      gruposDePiezas(db, filtro),
-    ]);
+    // Una sola fuente para el conjunto de lotes: sus piezas se piden por id.
+    const filasDeLote = await db.lote.findMany({
+      where: {
+        ...filtroDeFechaDeLote(filtro),
+        ...(filtro.loteId !== undefined ? { id: filtro.loteId } : {}),
+        ...(filtro.proveedorId !== undefined ? { proveedorId: filtro.proveedorId } : {}),
+      },
+      include: INCLUIR_NOMBRES,
+      orderBy: { id: "desc" },
+    });
+    const grupos = await gruposDePiezas(
+      db,
+      filasDeLote.map((fila) => fila.id),
+      filtro.loteId === undefined,
+      filtro,
+    );
     return { filasDeLote, grupos };
   }
 
@@ -489,7 +536,7 @@ export function crearRentabilidad(db: PrismaClient) {
       nombre: proveedor.nombre,
       lotes: lotes.length,
       comprasAParticular,
-      porcentajeRecuperado: porcentaje(cifras.ingresosCentavos, cifras.costoImputadoCentavos),
+      porcentajeRecuperado: porcentajeRecuperado(cifras.ingresosCentavos, cifras.costoImputadoCentavos),
       calidadDetectada: calidad,
       ...cifras,
     };
@@ -506,7 +553,7 @@ export function crearRentabilidad(db: PrismaClient) {
     async rentabilidadDeLote(id: number): Promise<DetalleDeLote | null> {
       if (!esIdValido(id)) return null;
       const [{ filasDeLote, grupos }, tipos] = await Promise.all([
-        datos({ desde: null, antesDe: null, loteId: id }),
+        datos({ desde: null, antesDe: null, desdeDia: null, hastaDia: null, loteId: id }),
         nombresDeTipos(db),
       ]);
       const [fila] = filasDeLote;
