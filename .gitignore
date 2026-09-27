@@ -17,3 +17,9 @@ build/
 .impeccable/questions/
 .impeccable/mocks/
 .impeccable/build/
+
+# Generados
+app/generated/
+worker-configuration.d.ts
+*.tsbuildinfo
+.mf/

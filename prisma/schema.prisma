@@ -1,0 +1,34 @@
+// Esquema de la base de datos de Vintage.
+// El vocabulario sigue CONTEXT.md. Las migraciones viven en prisma/migrations
+// y son las mismas que usan las pruebas del dominio (PGlite) y producción (Neon).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+  runtime  = "cloudflare"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Etapa de una pieza en su ciclo de vida (ver "Estado de pieza" en CONTEXT.md).
+enum EstadoPieza {
+  EN_PREPARACION
+  DISPONIBLE
+  RESERVADA
+  VENDIDA
+  RETIRADA
+}
+
+/// Un artículo físico único del inventario. El ticket #4 completa sus
+/// identificadores (código, slug), atributos, procedencia y visibilidad.
+model Pieza {
+  id          String      @id @db.Uuid
+  estado      EstadoPieza @default(EN_PREPARACION)
+  publicadaEn DateTime?   @map("publicada_en")
+  creadaEn    DateTime    @default(now()) @map("creada_en")
+
+  @@index([estado, publicadaEn])
+  @@map("pieza")
+}
