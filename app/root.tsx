@@ -7,17 +7,38 @@ import {
   ScrollRestoration,
 } from "react-router";
 
+import { BotonWhatsApp } from "~/componentes/boton-whatsapp";
+import { EstadoVacio } from "~/componentes/estado-vacio";
 import { Pagina } from "~/componentes/pagina";
+import { tituloDePagina } from "~/configuracion/tienda";
 
 import type { Route } from "./+types/root";
 import "./app.css";
+
+/** Archivo (palabras) y Martian Mono (cifras), ver DESIGN.md. */
+export const links: Route.LinksFunction = () => [
+  { rel: "preconnect", href: "https://fonts.googleapis.com" },
+  {
+    rel: "preconnect",
+    href: "https://fonts.gstatic.com",
+    crossOrigin: "anonymous",
+  },
+  {
+    rel: "stylesheet",
+    href: "https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Martian+Mono:wght@400;600;700&display=swap",
+  },
+];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
+        <meta name="theme-color" content="#e0457b" />
         <Meta />
         <Links />
       </head>
@@ -52,13 +73,20 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
   return (
     <Pagina titulo={titulo}>
-      <p className="text-xl font-medium">{titulo}</p>
-      <p className="mt-2 text-neutral-600 dark:text-neutral-400">{detalle}</p>
-      {stack ? (
-        <pre className="mt-4 w-full overflow-x-auto p-4 text-xs">
-          <code>{stack}</code>
-        </pre>
-      ) : null}
+      <title>{tituloDePagina(titulo)}</title>
+      <EstadoVacio
+        titulo={titulo}
+        detalle={detalle}
+        accion={
+          <BotonWhatsApp variante="secundario" href="/" texto="Ver el catálogo" />
+        }
+      >
+        {stack ? (
+          <pre className="cifra mt-s-4 overflow-x-auto text-xs text-tinta-2">
+            <code>{stack}</code>
+          </pre>
+        ) : null}
+      </EstadoVacio>
     </Pagina>
   );
 }
