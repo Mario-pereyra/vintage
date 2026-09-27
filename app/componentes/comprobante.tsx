@@ -67,21 +67,25 @@ export function PieComprobante({ children }: { children: ReactNode }) {
 }
 
 /**
- * Comprobante mini (148px, dientes de 5px): una vendida reciente con su foto
- * 1:1 entera, nombre, Ref., precio y un sello "Vendida" pequeño.
+ * Comprobante mini (148px, dientes de 5px): nombre, Ref., precio y su foto 1:1
+ * entera. Con `sello` (por ejemplo, "Vendida" o "Reservada") lleva el sello
+ * pequeño; sin él, ninguno. También arma la fila del listado del catálogo.
  */
 export function ComprobanteMini({
   href,
   codigo,
   nombre,
   precio,
+  tamano,
   foto,
-  sello = "Vendida",
+  sello,
 }: {
   href: string;
   codigo: string;
   nombre: string;
   precio: number;
+  /** Tamaño derivado del ancho ("Mediana"), si corresponde mostrarlo. */
+  tamano?: string;
   /** URL de la foto de frente; se muestra entera sobre rosa claro. */
   foto?: { src: string; alt: string };
   sello?: string;
@@ -91,9 +95,12 @@ export function ComprobanteMini({
       <div className="mini-foto">
         {foto ? <img src={foto.src} alt={foto.alt} loading="lazy" /> : null}
       </div>
-      <Sello texto={sello} />
+      {sello ? <Sello texto={sello} /> : null}
       <div className="mini-nombre">{nombre}</div>
-      <div className="mini-ref">Ref. {codigo}</div>
+      <div className="mini-ref">
+        Ref. {codigo}
+        {tamano ? ` · ${tamano}` : ""}
+      </div>
       <div className="mini-precio">{formatearPrecio(precio)}</div>
     </a>
   );

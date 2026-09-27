@@ -1,7 +1,7 @@
 import { configuracionTienda } from "~/configuracion/tienda";
 import type { PrismaClient } from "~/generated/prisma/client";
 
-import { listarCatalogo } from "./catalogo";
+import { listarCatalogo, type FiltrosDeCatalogo } from "./catalogo";
 import { ampliarLista, obtenerListas, type Lista } from "./listas";
 import { crearPiezas, type ConfiguracionDePiezas } from "./piezas";
 
@@ -26,9 +26,18 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
     ahora: opciones.ahora ?? (() => new Date()),
   });
 
+  const configuracionDeCatalogo = {
+    prefijoDeCodigo: opciones.prefijoDeCodigo ?? configuracionTienda.prefijoDeCodigo,
+    umbralesDeTamano: opciones.umbralesDeTamano ?? configuracionTienda.umbralesDeTamano,
+  };
+
   return {
-    /** Piezas que ve la compradora en el listado principal, más recientes primero. */
-    listarCatalogo: () => listarCatalogo(db),
+    /**
+     * Piezas que ve la compradora en el listado principal, más recientes
+     * primero, con los filtros de `filtros` y hasta `limite` piezas.
+     */
+    listarCatalogo: (filtros?: FiltrosDeCatalogo, limite?: number) =>
+      listarCatalogo(db, configuracionDeCatalogo, filtros, limite),
 
     // --- Inventario ---
     ...piezas,
@@ -43,7 +52,12 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
 
 export type Dominio = ReturnType<typeof crearDominio>;
 
-export type { PiezaEnCatalogo } from "./catalogo";
+export type {
+  FiltrosDeCatalogo,
+  PaginaDeCatalogo,
+  PiezaEnCatalogo,
+} from "./catalogo";
+export { PIEZAS_POR_PAGINA } from "./catalogo";
 export { ErrorDeDominio, type MotivoDeRechazo } from "./errores";
 export type { Lista, Listas, OpcionDeColor, OpcionDeLista } from "./listas";
 export type {

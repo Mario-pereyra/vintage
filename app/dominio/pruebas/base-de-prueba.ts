@@ -49,8 +49,23 @@ export interface BaseDePrueba {
    * Provisorio: existe solo para los estados que todavía no tienen operación
    * (Reservada, Vendida y Retirada, tickets #9 y #10). Para En preparación y
    * Disponible, usa `crearPieza` y `publicarPieza`.
+   *
+   * Los datos obligatorios (nombre, tipo, color, material, medidas y precio)
+   * traen un valor por defecto válido, como los tendría cualquier pieza que
+   * llegó a publicarse; pásalos para probar un filtro o un dato del listado.
    */
-  sembrarPieza(pieza: { estado: EstadoPieza; publicadaEn?: Date }): Promise<void>;
+  sembrarPieza(pieza: {
+    estado: EstadoPieza;
+    publicadaEn?: Date;
+    nombre?: string;
+    tipoId?: number;
+    colorId?: number;
+    materialId?: number;
+    altoCm?: number;
+    anchoCm?: number;
+    profundidadCm?: number;
+    precioCentavos?: number;
+  }): Promise<void>;
   /**
    * Borra una pieza por fuera del dominio (el dominio nunca borra piezas), para
    * comprobar que su código no vuelve a asignarse.
@@ -69,11 +84,39 @@ export async function crearBaseDePrueba(
 ): Promise<BaseDePrueba> {
   const { prisma, cerrar } = await crearPrismaDePrueba();
 
+  const primerId = async (
+    modelo: { findFirstOrThrow: (args: { orderBy: { id: "asc" } }) => Promise<{ id: number }> },
+  ) => (await modelo.findFirstOrThrow({ orderBy: { id: "asc" } })).id;
+
   return {
     dominio: crearDominio(prisma, opciones),
-    async sembrarPieza({ estado, publicadaEn }) {
+    async sembrarPieza({
+      estado,
+      publicadaEn,
+      nombre,
+      tipoId,
+      colorId,
+      materialId,
+      altoCm,
+      anchoCm,
+      profundidadCm,
+      precioCentavos,
+    }) {
       await prisma.pieza.create({
-        data: { id: crypto.randomUUID(), sufijo: sufijoAleatorio(), estado, publicadaEn },
+        data: {
+          id: crypto.randomUUID(),
+          sufijo: sufijoAleatorio(),
+          estado,
+          publicadaEn,
+          nombre: nombre ?? "Pieza de prueba",
+          tipoId: tipoId ?? (await primerId(prisma.tipoDeCartera)),
+          colorId: colorId ?? (await primerId(prisma.color)),
+          materialId: materialId ?? (await primerId(prisma.material)),
+          altoCm: altoCm ?? 20,
+          anchoCm: anchoCm ?? 20,
+          profundidadCm: profundidadCm ?? 10,
+          precioCentavos: precioCentavos ?? 10000,
+        },
       });
     },
     async borrarPiezaSinDominio(codigo) {

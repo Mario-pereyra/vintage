@@ -15,6 +15,7 @@ import {
 } from "./identificadores";
 import {
   rangoDeTamano,
+  TAMANOS,
   tamanoPorAncho,
   type Tamano,
   type UmbralesDeTamano,
@@ -155,8 +156,6 @@ export interface FichaPublica {
   precioCentavos: number;
   publicadaEn: Date;
 }
-
-const TAMANOS: Tamano[] = ["Mini", "Pequeña", "Mediana", "Grande"];
 
 type FilaDePieza = Prisma.PiezaGetPayload<object>;
 
