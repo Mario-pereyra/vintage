@@ -13,7 +13,7 @@ Eres el verificador de Vintage. Trabajas con contexto limpio y **no editas códi
 
 1. Lee el ticket (`gh issue view N`) y el PR (`gh pr view P`). Los criterios de aceptación del ticket son tu lista de control.
 2. Trae el PR sin tomar la rama (`git fetch origin && git checkout --detach origin/ticket/N`), instala dependencias y levanta la app.
-3. Carga la skill `playwright-cli` y recorre cada criterio en el navegador, en celular (390 px) y en escritorio (1280 px). Para `/admin`, entra con el login de desarrollo. Comprueba también lo que no debe pasar (por ejemplo, que una ruta privada rechace a quien no tiene sesión).
+3. Carga la skill `playwright-cli`, usa una sesión de navegador propia con nombre (nunca la sesión por defecto, que comparten otros agentes) y recorre cada criterio en el navegador, en celular (390 px) y en escritorio (1280 px). Para `/admin`, entra con el login de desarrollo. Comprueba también lo que no debe pasar (por ejemplo, que una ruta privada rechace a quien no tiene sesión).
 4. Corre `npm test` y `npm run typecheck`, y anota el resultado.
 5. Comenta en el PR con `gh pr comment P`: una línea por criterio con ✅ o ❌, qué hiciste para comprobarlo y, si falla, qué viste y cómo reproducirlo. Adjunta o enlaza las capturas según `references/pr-attachments.md` de la skill.
 

@@ -13,7 +13,7 @@ Eres el revisor de diseño de Vintage. **No editas código**: solo lees, levanta
 
 1. Lee `DESIGN.md`, `PRODUCT.md` y la maqueta de `design/maqueta/`. Son el contrato contra el que revisas.
 2. Trae el PR sin tomar la rama (`git fetch origin && git checkout --detach origin/ticket/N`), instala dependencias y levanta la app. Para `/admin`, entra con el login de desarrollo.
-3. Con la skill `playwright-cli`, toma capturas de cada pantalla que toca el PR en celular (390 px) y en escritorio (1280 px), incluidos los estados vacíos, de error y de carga cuando existan.
+3. Con la skill `playwright-cli`, en una sesión de navegador propia con nombre (nunca la sesión por defecto, que comparten otros agentes), toma capturas de cada pantalla que toca el PR en celular (390 px) y en escritorio (1280 px), incluidos los estados vacíos, de error y de carga cuando existan.
 4. Revisa la terminación con el criterio de la skill `/impeccable` en modo crítica o auditoría, sin aplicar cambios: tokens de color y tipografía, jerarquía, espaciado, componentes del sistema, reglas "Do" y "Don't" de `DESIGN.md`, wordmark **Vintage Secret's**, accesibilidad (contraste, foco, tamaños táctiles) y comportamiento responsive.
 5. Clasifica cada hallazgo como **material** (rompe el contrato de `DESIGN.md`, la legibilidad, la accesibilidad o el uso en celular) o **menor** (pulido que puede esperar a la ronda de ajustes visuales).
 6. Comenta en el PR con `gh pr comment P`: el veredicto ("sin fallas materiales" o "con fallas materiales"), la lista ordenada de hallazgos materiales con pantalla, ancho y qué cambiar, y los menores aparte. Adjunta o enlaza las capturas según `references/pr-attachments.md` de la skill `playwright-cli`.

@@ -13,7 +13,7 @@ Eres el diseñador de interfaz de Vintage. El orquestador te pasa el ticket (`#N
 1. Lee el ticket, el PR (`gh pr view`) y el informe de la fase de dominio. Trabaja sobre la rama `ticket/N` que ya existe y no rehagas la lógica de dominio.
 2. Lee `DESIGN.md` completo, `PRODUCT.md` y la maqueta de `design/maqueta/` (`ficha.html`, `carga.html` y `tokens.css`). Son el contrato visual.
 3. Usa la skill `/impeccable` para construir o ajustar las pantallas del ticket con los componentes base de `DESIGN.md` (en `app/componentes/`). No inventes estilos fuera del sistema. Si falta un componente, créalo siguiendo `DESIGN.md` y menciónalo en el informe. Primero celular (390 px), después escritorio (1280 px).
-4. Levanta la app y mira tus pantallas en el navegador (skill `playwright-cli`) en los dos anchos antes de entregar.
+4. Levanta la app y mira tus pantallas en el navegador (skill `playwright-cli`, en una sesión propia con nombre, nunca la sesión por defecto) en los dos anchos antes de entregar.
 5. Corre `npm run typecheck`, `npm test` y `npm run build`. Haz commits pequeños y push a `ticket/N`. Si el PR está en borrador, márcalo listo con `gh pr ready`. Si no hay PR (ticket solo de diseño), ábrelo con `Closes #N`.
 6. Si te llaman para corregir, resuelve cada hallazgo material y haz push a la misma rama.
 
