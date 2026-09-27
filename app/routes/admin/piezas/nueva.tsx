@@ -1,5 +1,6 @@
 import { redirect } from "react-router";
 
+import { Sello } from "~/componentes/sello";
 import { obtenerDominio } from "~/servidor/contexto.server";
 import {
   leerFormularioDePieza,
@@ -11,7 +12,7 @@ import type { Route } from "./+types/nueva";
 import { FormularioDePieza } from "./formulario-de-pieza";
 
 export const handle = {
-  titulo: "Cargar pieza",
+  titulo: "Nueva pieza",
   volverA: "/admin/piezas",
 } satisfies BarraDelPanel;
 
@@ -34,8 +35,9 @@ export async function action({ request, context }: Route.ActionArgs) {
     const pieza = await dominio.crearPieza(datos);
     if (intencion === "publicar" && pieza.faltanParaPublicar.length === 0) {
       await dominio.publicarPieza(pieza.codigo);
+      return redirect(`/admin/piezas/${pieza.codigo}?nueva=publicada`);
     }
-    return redirect(`/admin/piezas/${pieza.codigo}`);
+    return redirect(`/admin/piezas/${pieza.codigo}?nueva=guardada`);
   } catch (error) {
     return respuestaDeRechazo(error);
   }
@@ -46,10 +48,18 @@ export default function NuevaPieza({
   actionData,
 }: Route.ComponentProps) {
   return (
-    <FormularioDePieza
-      pieza={null}
-      listas={loaderData.listas}
-      resultado={actionData}
-    />
+    <>
+      <div className="pieza-cabecera">
+        <p className="pieza-cabecera-detalle">
+          La Ref. se asigna al guardar y ya no cambia: es la que va en la etiqueta.
+        </p>
+        <Sello texto="En preparación" />
+      </div>
+      <FormularioDePieza
+        pieza={null}
+        listas={loaderData.listas}
+        resultado={actionData}
+      />
+    </>
   );
 }

@@ -1,7 +1,7 @@
-import { data } from "react-router";
+import { data, useSearchParams } from "react-router";
 
-import { BloquePanel } from "~/componentes/bloque-panel";
-import { Renglon, Renglones } from "~/componentes/renglon";
+import { Icono } from "~/componentes/icono";
+import { Sello } from "~/componentes/sello";
 import { obtenerDominio } from "~/servidor/contexto.server";
 import {
   leerFormularioDePieza,
@@ -13,7 +13,7 @@ import type { Route } from "./+types/editar";
 import { FormularioDePieza, TEXTO_DEL_ESTADO } from "./formulario-de-pieza";
 
 export const handle = {
-  titulo: "Pieza",
+  titulo: "Editar pieza",
   volverA: "/admin/piezas",
 } satisfies BarraDelPanel;
 
@@ -55,41 +55,59 @@ function fecha(valor: Date) {
   });
 }
 
+/** Lo que dice la pantalla al llegar desde "Cargar pieza" (`?nueva=`). */
+const AL_LLEGAR: Record<string, string> = {
+  guardada: "Pieza creada.",
+  publicada: "Pieza creada y publicada: ya está en el catálogo.",
+};
+
 export default function EditarPieza({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
   const { pieza, listas } = loaderData;
+  const [busqueda] = useSearchParams();
   const publicada = pieza.estado !== "en_preparacion";
+  const alLlegar = AL_LLEGAR[busqueda.get("nueva") ?? ""];
 
   return (
     <>
-      <BloquePanel titulo={`Ref. ${pieza.codigo}`}>
-        <Renglones>
-          <Renglon etiqueta="Estado">{TEXTO_DEL_ESTADO[pieza.estado]}</Renglon>
-          {pieza.publicadaEn ? (
-            <Renglon etiqueta="Publicada" cifra>
-              {fecha(pieza.publicadaEn)}
-            </Renglon>
-          ) : null}
-          <Renglon etiqueta="Ficha pública">
-            {publicada ? (
-              <a href={pieza.rutaPublica} target="_blank" rel="noopener">
-                {pieza.rutaPublica}
-              </a>
+      <div className="pieza-cabecera">
+        <div>
+          <p className="pieza-cabecera-ref">
+            <span>Ref.</span>
+            {pieza.codigo}
+          </p>
+          <p className="pieza-cabecera-detalle">
+            {pieza.publicadaEn ? (
+              <>
+                Publicada el <span className="cifra">{fecha(pieza.publicadaEn)}</span>
+              </>
             ) : (
-              "Se activa al publicar"
+              "La ficha pública se activa al publicar."
             )}
-          </Renglon>
-        </Renglones>
-      </BloquePanel>
+          </p>
+          {publicada ? (
+            <a
+              className="enlace-ficha"
+              href={pieza.rutaPublica}
+              target="_blank"
+              rel="noopener"
+            >
+              Ver ficha pública
+              <Icono nombre="externo" />
+            </a>
+          ) : null}
+        </div>
+        <Sello texto={TEXTO_DEL_ESTADO[pieza.estado]} />
+      </div>
 
       {/* La key reinicia el formulario cuando cambia la pieza guardada. */}
       <FormularioDePieza
         key={`${pieza.codigo}-${pieza.estado}`}
         pieza={pieza}
         listas={listas}
-        resultado={actionData}
+        resultado={actionData ?? (alLlegar ? { mensaje: alLlegar } : undefined)}
       />
     </>
   );

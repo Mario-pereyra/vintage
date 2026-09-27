@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Form } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { Form, useNavigation } from "react-router";
 
 import { BarraAccionesPanel } from "~/componentes/barra-acciones";
 import { BloquePanel } from "~/componentes/bloque-panel";
@@ -12,6 +12,7 @@ import {
   TamanoDerivado,
 } from "~/componentes/campos";
 import { Chips } from "~/componentes/chips";
+import { TomasDelPanel } from "~/componentes/tomas-panel";
 import { configuracionTienda } from "~/configuracion/tienda";
 import type {
   CampoDePieza,
@@ -42,11 +43,64 @@ export const TEXTO_DEL_ESTADO: Record<EstadoDePieza, string> = {
   retirada: "Retirada",
 };
 
+// --- Qué falta para publicar ------------------------------------------------
+
+/**
+ * Los datos sin los que el dominio no publica, en el orden del formulario, con
+ * su artículo para armar la línea de motivo. Es un reflejo para la barra de
+ * acciones: quien decide es `publicarPieza`.
+ */
+const OBLIGATORIOS = [
+  ["nombre", "el nombre", "nombre"],
+  ["tipoId", "el tipo", "tipoId"],
+  ["colorId", "el color", "colorId"],
+  ["materialId", "el material", "materialId"],
+  ["altoCm", "el alto", "altoCm"],
+  ["anchoCm", "el ancho", "anchoCm"],
+  ["profundidadCm", "la profundidad", "profundidadCm"],
+  ["precioCentavos", "el precio", "precio"],
+] as const satisfies readonly (readonly [CampoDePieza, string, string])[];
+
+type Obligatorio = (typeof OBLIGATORIOS)[number][0];
+
+const MEDIDAS: readonly Obligatorio[] = ["altoCm", "anchoCm", "profundidadCm"];
+
+/** Lo que falta según lo escrito ahora en el formulario (sin guardar). */
+function faltanEnElFormulario(formulario: HTMLFormElement): Obligatorio[] {
+  const datos = new FormData(formulario);
+  const texto = (nombre: string) => String(datos.get(nombre) ?? "").trim();
+  return OBLIGATORIOS.filter(([campo, , nombre]) => {
+    if (campo === "tipoId" || campo === "colorId" || campo === "materialId") {
+      return !texto(nombre) && !texto(`${nombre}Nuevo`);
+    }
+    if (campo === "nombre") return !texto(nombre);
+    const numero = Number(texto(nombre).replace(",", "."));
+    return !(numero > 0);
+  }).map(([campo]) => campo);
+}
+
+/** "Para publicar falta el tipo, las medidas y el precio." */
+function lineaDeFaltantes(faltan: readonly CampoDePieza[]): string | undefined {
+  if (faltan.length === 0) return undefined;
+  const todasLasMedidas = MEDIDAS.every((medida) => faltan.includes(medida));
+  const partes: string[] = [];
+  for (const [campo, texto] of OBLIGATORIOS) {
+    if (!faltan.includes(campo)) continue;
+    if (todasLasMedidas && MEDIDAS.includes(campo)) {
+      if (campo === "altoCm") partes.push("las medidas");
+      continue;
+    }
+    partes.push(texto);
+  }
+  const lista = new Intl.ListFormat("es", { type: "conjunction" }).format(partes);
+  return `Para publicar falta ${lista}.`;
+}
+
 // --- Interfaz --------------------------------------------------------------
 
-function MensajeDeError({ texto }: { texto?: string }) {
+function MensajeDeError({ texto, id }: { texto?: string; id?: string }) {
   return texto ? (
-    <p className="ayuda" role="alert">
+    <p className="campo-error" id={id} role="alert">
       {texto}
     </p>
   ) : null;
@@ -59,18 +113,21 @@ function ListaAmpliable({
   opciones,
   valorInicial,
   error,
+  alCambiar,
 }: {
   campo: "tipoId" | "colorId" | "materialId";
   etiqueta: string;
   opciones: readonly { id: number; nombre: string; muestra?: string | null }[];
   valorInicial: number | null;
   error?: string;
+  alCambiar: () => void;
 }) {
   const [valor, setValor] = useState<string | null>(
     valorInicial === null ? null : String(valorInicial),
   );
   const [otro, setOtro] = useState(false);
   const idEtiqueta = `et-${campo}`;
+  const nombre = etiqueta.toLowerCase();
 
   return (
     <Campo etiqueta={etiqueta} idEtiqueta={idEtiqueta}>
@@ -82,47 +139,31 @@ function ListaAmpliable({
           texto: opcion.nombre,
           muestra: opcion.muestra ?? undefined,
         }))}
-        valor={valor}
+        valor={otro ? null : valor}
         alCambiar={(nuevo) => {
           setValor(nuevo);
           setOtro(false);
+          alCambiar();
         }}
-        alPedirOtro={() => setOtro(true)}
+        alPedirOtro={() => {
+          setOtro(true);
+          alCambiar();
+        }}
       />
       {otro ? (
-        <CampoTexto
-          name={`${campo}Nuevo`}
-          aria-label={`Nuevo valor de ${etiqueta.toLowerCase()}`}
-          placeholder={`Escribe el nuevo ${etiqueta.toLowerCase()}`}
-          autoFocus
-        />
+        <div className="campo-otro">
+          <CampoTexto
+            name={`${campo}Nuevo`}
+            aria-label={`Nuevo ${nombre}`}
+            placeholder={`Escribe el ${nombre} nuevo`}
+            autoFocus
+          />
+          <p className="ayuda">Se suma a la lista al guardar.</p>
+        </div>
       ) : null}
       <MensajeDeError texto={error} />
     </Campo>
   );
-}
-
-const TEXTO_DEL_CAMPO: Record<CampoDePieza, string> = {
-  nombre: "nombre",
-  tipoId: "tipo",
-  colorId: "color",
-  materialId: "material",
-  altoCm: "alto",
-  anchoCm: "ancho",
-  profundidadCm: "profundidad",
-  caidaCm: "caída",
-  precioCentavos: "precio",
-};
-
-function motivoParaPublicar(pieza: PiezaDelPanel | null): string | undefined {
-  if (!pieza) return undefined;
-  if (pieza.estado !== "en_preparacion") {
-    return "Ya está publicada. Los cambios se ven en la ficha al guardar.";
-  }
-  if (pieza.faltanParaPublicar.length === 0) return undefined;
-  return `Para publicar falta: ${pieza.faltanParaPublicar
-    .map((campo) => TEXTO_DEL_CAMPO[campo])
-    .join(", ")}.`;
 }
 
 export function FormularioDePieza({
@@ -135,17 +176,67 @@ export function FormularioDePieza({
   listas: Listas;
   resultado?: ResultadoDelFormulario;
 }) {
+  const formulario = useRef<HTMLFormElement>(null);
+  const navegacion = useNavigation();
   const [ancho, setAncho] = useState(pieza?.anchoCm?.toString() ?? "");
+  const [faltan, setFaltan] = useState<readonly CampoDePieza[]>(
+    pieza ? pieza.faltanParaPublicar : OBLIGATORIOS.map(([campo]) => campo),
+  );
+  /** Mientras no se toque nada, la barra muestra el resultado del último envío. */
+  const [tocado, setTocado] = useState(false);
+  const [ultimoResultado, setUltimoResultado] = useState(resultado);
+  if (resultado !== ultimoResultado) {
+    setUltimoResultado(resultado);
+    setTocado(false);
+  }
+
   const errores = resultado?.errores ?? {};
+
+  // Tras un rechazo, lleva a la operadora al primer dato marcado: la barra de
+  // acciones solo dice "Revisa los datos marcados".
+  useEffect(() => {
+    if (!resultado?.errores || Object.keys(resultado.errores).length === 0) return;
+    const primero = formulario.current?.querySelector<HTMLElement>(
+      '[aria-invalid="true"], .campo-error',
+    );
+    if (!primero) return;
+    primero.scrollIntoView({ block: "center" });
+    if (primero.matches("input")) primero.focus({ preventScroll: true });
+  }, [resultado]);
   const publicada = pieza !== null && pieza.estado !== "en_preparacion";
+  const enviando = navegacion.state === "submitting";
+  const intencion = navegacion.formData?.get("intencion");
+
+  // Los chips cambian un <input hidden>, que no dispara `change`: se recalcula
+  // después de que React lo actualice.
+  const recalcular = () => {
+    setTocado(true);
+    requestAnimationFrame(() => {
+      if (formulario.current) setFaltan(faltanEnElFormulario(formulario.current));
+    });
+  };
+
+  // Publicar deshabilitado siempre dice por qué, aunque haya un mensaje del envío.
+  const porQue = publicada
+    ? "Ya está publicada: al guardar, la ficha se actualiza."
+    : lineaDeFaltantes(faltan);
+  const motivo = enviando
+    ? intencion === "publicar"
+      ? "Publicando…"
+      : "Guardando…"
+    : !tocado && resultado?.mensaje
+      ? [resultado.mensaje, publicada ? undefined : porQue].filter(Boolean).join(" ")
+      : porQue;
 
   return (
-    <Form method="post">
-      {resultado?.mensaje ? (
-        <p className="ayuda" role="status">
-          {resultado.mensaje}
+    <Form method="post" ref={formulario} onChange={recalcular}>
+      <BloquePanel titulo="Fotos" detalle="0 de 8 tomas">
+        <p className="ayuda">
+          Todavía no se pueden subir fotos desde el panel. Las tomas van siempre en
+          este orden.
         </p>
-      ) : null}
+        <TomasDelPanel />
+      </BloquePanel>
 
       <BloquePanel titulo="La pieza">
         <ListaAmpliable
@@ -154,6 +245,7 @@ export function FormularioDePieza({
           opciones={listas.tipos}
           valorInicial={pieza?.tipoId ?? null}
           error={errores.tipoId}
+          alCambiar={recalcular}
         />
         <ListaAmpliable
           campo="colorId"
@@ -161,6 +253,7 @@ export function FormularioDePieza({
           opciones={listas.colores}
           valorInicial={pieza?.colorId ?? null}
           error={errores.colorId}
+          alCambiar={recalcular}
         />
         <ListaAmpliable
           campo="materialId"
@@ -168,6 +261,7 @@ export function FormularioDePieza({
           opciones={listas.materiales}
           valorInicial={pieza?.materialId ?? null}
           error={errores.materialId}
+          alCambiar={recalcular}
         />
         <Campo etiqueta="Nombre" para="nombre">
           <CampoTexto
@@ -175,29 +269,34 @@ export function FormularioDePieza({
             name="nombre"
             defaultValue={pieza?.nombre ?? ""}
             placeholder="Ej.: Bandolera de cuero negra"
+            autoComplete="off"
+            aria-invalid={errores.nombre ? true : undefined}
           />
           <MensajeDeError texto={errores.nombre} />
         </Campo>
       </BloquePanel>
 
       <BloquePanel titulo="Medidas">
-        <p className="ayuda">En cm, cerrada y sin contar asas.</p>
+        <p className="ayuda">Cerrada, sin contar asas.</p>
         <Medidas>
           <CampoMedida
             etiqueta="Alto"
             name="altoCm"
             defaultValue={pieza?.altoCm ?? ""}
+            aria-invalid={errores.altoCm ? true : undefined}
           />
           <CampoMedida
             etiqueta="Ancho"
             name="anchoCm"
             value={ancho}
             onChange={(evento) => setAncho(evento.target.value)}
+            aria-invalid={errores.anchoCm ? true : undefined}
           />
           <CampoMedida
             etiqueta="Profundidad"
             name="profundidadCm"
             defaultValue={pieza?.profundidadCm ?? ""}
+            aria-invalid={errores.profundidadCm ? true : undefined}
           />
         </Medidas>
         <TamanoDerivado
@@ -207,19 +306,17 @@ export function FormularioDePieza({
         <MensajeDeError texto={errores.altoCm} />
         <MensajeDeError texto={errores.anchoCm} />
         <MensajeDeError texto={errores.profundidadCm} />
-        <Campo
-          etiqueta="Caída del asa o de la correa"
-          para="caidaCm"
-          ayuda="En cm. Déjala vacía si no tiene asa ni correa."
-        >
-          <CampoTexto
-            id="caidaCm"
+        <div className="medida-sola">
+          <CampoMedida
+            etiqueta="Caída del asa o de la correa"
             name="caidaCm"
-            inputMode="decimal"
+            placeholder="—"
             defaultValue={pieza?.caidaCm ?? ""}
+            aria-invalid={errores.caidaCm ? true : undefined}
           />
-          <MensajeDeError texto={errores.caidaCm} />
-        </Campo>
+          <p className="ayuda">Opcional: déjala vacía si no tiene asa ni correa.</p>
+        </div>
+        <MensajeDeError texto={errores.caidaCm} />
       </BloquePanel>
 
       <BloquePanel titulo="Precio publicado">
@@ -229,18 +326,27 @@ export function FormularioDePieza({
           defaultValue={
             pieza?.precioCentavos != null ? pieza.precioCentavos / 100 : ""
           }
+          aria-invalid={errores.precioCentavos ? true : undefined}
         />
         <MensajeDeError texto={errores.precioCentavos} />
       </BloquePanel>
 
       <BarraAccionesPanel
-        guardar={{ name: "intencion", value: "guardar" }}
+        guardar={{
+          name: "intencion",
+          value: "guardar",
+          disabled: enviando,
+        }}
         publicar={
           publicada
             ? { type: "button", disabled: true, texto: "Publicada" }
-            : { name: "intencion", value: "publicar" }
+            : {
+                name: "intencion",
+                value: "publicar",
+                disabled: enviando || faltan.length > 0,
+              }
         }
-        motivo={motivoParaPublicar(pieza)}
+        motivo={motivo}
       />
     </Form>
   );
