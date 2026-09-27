@@ -7,7 +7,7 @@ import type {
 } from "~/generated/prisma/client";
 
 import { ErrorDeDominio } from "./errores";
-import { formatearCodigo, numeroDeCodigo, uuidV7 } from "./identificadores";
+import { esUuidValido, formatearCodigo, numeroDeCodigo, uuidV7 } from "./identificadores";
 import { PRECIO_MAXIMO_CENTAVOS } from "./piezas";
 import { buscarOCrearCompradora, normalizarWhatsapp, type CompradoraDeReserva } from "./reservas";
 
@@ -450,13 +450,12 @@ export function crearVentas(db: PrismaClient, config: ConfiguracionDeVentas) {
      * lista vacía.
      */
     async comprasDeCompradora(compradoraId: string): Promise<Venta[]> {
-      const filas = await db.venta
-        .findMany({
-          where: { compradoraId },
-          include: detalleDeVenta,
-          orderBy: [{ vendidaEn: "desc" }, { id: "desc" }],
-        })
-        .catch(() => []); // un id que no es UUID
+      if (!esUuidValido(compradoraId)) return [];
+      const filas = await db.venta.findMany({
+        where: { compradoraId },
+        include: detalleDeVenta,
+        orderBy: [{ vendidaEn: "desc" }, { id: "desc" }],
+      });
       return filas.map(aVenta);
     },
 

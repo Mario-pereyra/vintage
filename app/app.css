@@ -1174,16 +1174,21 @@
      * la vista. El summary sale del todo (ni foco ni "desplegable" para los
      * lectores de pantalla); cada grupo ya tiene su título. Sin soporte de
      * ::details-content, el desplegable sigue funcionando como en el celular.
+     *
+     * Acotado a `.filtros` (el contenedor del catálogo): los filtros del
+     * inventario del panel (`.inventario-buscar .filtros-mas.filtros-panel`)
+     * comparten la clase `.filtros-mas`, pero siguen plegables hasta 1280px
+     * (ver "Consultas en el panel" más abajo).
      */
     @supports selector(::details-content) {
-      .filtros-mas::details-content {
+      .filtros .filtros-mas::details-content {
         content-visibility: visible;
         display: contents;
       }
-      .filtros-mas > summary {
+      .filtros .filtros-mas > summary {
         display: none;
       }
-      .filtros-cuerpo {
+      .filtros .filtros-cuerpo {
         padding-top: var(--s-4);
       }
     }

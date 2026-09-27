@@ -27,11 +27,11 @@ export interface ConfiguracionDeConsultas {
 }
 
 /**
- * Largo máximo del texto de búsqueda: de sobra para un código completo
- * (`VT-0142`) o un fragmento de sus dígitos. Un texto más largo se acota en
- * vez de rechazarse: esto es una búsqueda, no un formulario.
+ * Tope de dígitos de búsqueda: de sobra para el código de cualquier pieza real
+ * (`VT-0142` son 4). Un texto más largo se acota en vez de rechazarse: esto es
+ * una búsqueda, no un formulario.
  */
-const TEXTO_DE_BUSQUEDA_MAXIMO = 20;
+const DIGITOS_DE_BUSQUEDA_MAXIMO = 20;
 
 /** Los filtros del inventario del panel, todos opcionales y combinables. */
 export interface FiltrosDeInventario {
@@ -88,23 +88,29 @@ export function diasPublicada(publicadaEn: Date, vendidaEn: Date): number {
   return diaEnBolivia(vendidaEn) - diaEnBolivia(publicadaEn);
 }
 
-/** Recorta y deja solo letras y dígitos, en minúsculas: para comparar códigos. */
-function normalizar(texto: string): string {
-  return texto
-    .trim()
-    .slice(0, TEXTO_DE_BUSQUEDA_MAXIMO)
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
+/**
+ * Solo los dígitos del texto buscado, acotados: el prefijo (`VT-`) y
+ * cualquier separador se descartan, así "VT-142" busca lo mismo que "142". Sin
+ * dígitos (p. ej. buscar "v", "t" o "vt", que son parte de todos los códigos)
+ * no queda nada que comparar contra el código.
+ */
+function digitosDeBusqueda(texto: string): string {
+  return texto.replace(/\D/g, "").slice(0, DIGITOS_DE_BUSQUEDA_MAXIMO);
 }
 
 /**
- * Si el código formateado (`VT-0142`) coincide con el texto buscado, completo
- * o parcial ("142", que es un fragmento de "0142"). Sin texto, coincide
- * siempre.
+ * Si el número de una pieza coincide con los dígitos buscados, contra el
+ * número sin relleno (`142`) y con relleno a como se muestra (`0142`): un
+ * número completo coincide exacto contra alguna de las dos formas, y uno
+ * parcial coincide por "contiene". Sin dígitos buscados, no coincide con
+ * nada: una pieza no se encuentra por su Ref. con un texto que no tiene
+ * cifras.
  */
-function coincideConTexto(codigoFormateado: string, textoNormalizado: string): boolean {
-  if (!textoNormalizado) return true;
-  return normalizar(codigoFormateado).includes(textoNormalizado);
+function coincideConCodigo(numero: number, digitosBuscados: string): boolean {
+  if (!digitosBuscados) return false;
+  const sinRelleno = String(numero);
+  const conRelleno = sinRelleno.padStart(4, "0");
+  return sinRelleno.includes(digitosBuscados) || conRelleno.includes(digitosBuscados);
 }
 
 type FilaDeInventario = Prisma.PiezaGetPayload<{
@@ -158,7 +164,11 @@ export async function buscarInventario(
     where.condicionIngreso = condicionAPrisma(filtrosCrudos.condicionIngreso);
   }
 
-  const textoNormalizado = normalizar(filtrosCrudos.texto ?? "");
+  const textoBuscado = (filtrosCrudos.texto ?? "").trim();
+  const digitosBuscados = digitosDeBusqueda(textoBuscado);
+  // Se escribió algo, pero no tiene ninguna cifra ("bandolera", "vt"): no hay
+  // Ref. que pueda coincidir, así que no tiene sentido consultar la base.
+  if (textoBuscado && !digitosBuscados) return [];
 
   const filas = await db.pieza.findMany({
     where,
@@ -166,7 +176,9 @@ export async function buscarInventario(
     include: { venta: { select: { vendidaEn: true } } },
   });
 
-  return filas
-    .map((fila) => aPiezaDelInventario(fila, config))
-    .filter((pieza) => coincideConTexto(pieza.codigo, textoNormalizado));
+  const filasQueCoinciden = digitosBuscados
+    ? filas.filter((fila) => coincideConCodigo(fila.codigo, digitosBuscados))
+    : filas;
+
+  return filasQueCoinciden.map((fila) => aPiezaDelInventario(fila, config));
 }

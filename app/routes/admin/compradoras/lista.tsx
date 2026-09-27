@@ -14,8 +14,12 @@ export const handle = { titulo: "Compradoras", volverA: "/admin" } satisfies Bar
 /** Tope de la búsqueda del dominio: con tantas, conviene escribir más. */
 const TOPE_DE_LA_BUSQUEDA = 20;
 
+/** Tope del texto de búsqueda: de sobra para un nombre o un WhatsApp. */
+const Q_MAXIMO = 80;
+
 export async function loader({ request, context }: Route.LoaderArgs) {
-  const q = new URL(request.url).searchParams.get("q");
+  const qCrudo = new URL(request.url).searchParams.get("q");
+  const q = qCrudo !== null ? qCrudo.trim().slice(0, Q_MAXIMO) : null;
   const encontradas = q !== null ? await obtenerDominio(context).buscarCompradoras(q) : null;
   return { q, encontradas };
 }

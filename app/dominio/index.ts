@@ -10,7 +10,13 @@ import { crearHistorialDePrecio } from "./historial-de-precio";
 import { ampliarLista, obtenerListas, type Lista } from "./listas";
 import { crearPiezas, type ConfiguracionDePiezas } from "./piezas";
 import { crearRentabilidad } from "./rentabilidad";
-import { crearReservas, type Compradora, type ReservaVencidaDeCompradora } from "./reservas";
+import {
+  compradoraSinVencer,
+  crearReservas,
+  reservasVencidasDeCompradoraSinVencer,
+  type Compradora,
+  type ReservaVencidaDeCompradora,
+} from "./reservas";
 import { crearRetiros } from "./retiros";
 import { crearVentas, type Venta } from "./ventas";
 
@@ -79,14 +85,19 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
   /**
    * El historial de una compradora (#13): sus compras y sus reservas
    * vencidas, la más reciente primero. `null` si la compradora no existe.
+   *
+   * Vence las reservas una sola vez para toda la carga (por eso no se envuelve
+   * con `trasVencer`, que volvería a hacerlo) y usa las variantes "sin vencer"
+   * de `reservas.ts` para no repetirlo dentro de cada lectura.
    */
   async function historialDeCompradora(
     compradoraId: string,
   ): Promise<HistorialDeCompradora | null> {
+    await reservas.vencerReservas();
     const [compradora, compras, reservasVencidas] = await Promise.all([
-      reservas.compradora(compradoraId),
+      compradoraSinVencer(db, compradoraId),
       ventas.comprasDeCompradora(compradoraId),
-      reservas.reservasVencidasDeCompradora(compradoraId),
+      reservasVencidasDeCompradoraSinVencer(db, compradoraId, configDePiezas.prefijoDeCodigo),
     ]);
     return compradora ? { compradora, compras, reservasVencidas } : null;
   }
@@ -142,7 +153,9 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
     ...historialDePrecio,
 
     // --- Historial de compradora (#13): compras y reservas vencidas ---
-    historialDeCompradora: trasVencer(historialDeCompradora),
+    // Sin `trasVencer`: `historialDeCompradora` ya vence una sola vez por sí
+    // misma (ver su comentario más arriba).
+    historialDeCompradora,
 
     // --- Listas ampliables (tipo de cartera, color, material, calidad declarada) ---
     /** Los valores de cada lista, en orden de alta. */

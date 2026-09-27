@@ -37,10 +37,13 @@ function condicionValida(valor: string | null): CondicionDePieza | undefined {
     : undefined;
 }
 
+/** Tope de la búsqueda por Ref.: de sobra para un código completo. */
+const CODIGO_MAXIMO = 20;
+
 export async function loader({ request, context }: Route.LoaderArgs) {
   const parametros = new URL(request.url).searchParams;
   const filtrosCrudos = {
-    q: parametros.get("q") ?? "",
+    q: (parametros.get("q") ?? "").trim().slice(0, CODIGO_MAXIMO),
     loteId: parametros.get("loteId") ?? "",
     tipoId: parametros.get("tipoId") ?? "",
     condicionIngreso: parametros.get("condicionIngreso") ?? "",
@@ -294,9 +297,30 @@ function BuscarYFiltrar({ datos }: { datos: DatosDelInventario }) {
   );
 }
 
+/**
+ * El aviso de "nada coincide", según lo que realmente se usó: solo mencionar
+ * la Ref. cuando hubo una búsqueda por código, nunca cuando el vacío viene
+ * solo de tipo, lote o condición.
+ */
+function avisoDeInventarioVacio(filtrosCrudos: FiltrosCrudos): string {
+  const hayTexto = Boolean(filtrosCrudos.q);
+  const hayOtrosFiltros = Boolean(
+    filtrosCrudos.loteId || filtrosCrudos.tipoId || filtrosCrudos.condicionIngreso,
+  );
+  if (hayTexto && hayOtrosFiltros) {
+    return "Ninguna pieza coincide. Prueba con menos cifras de la Ref. o quita un filtro.";
+  }
+  if (hayTexto) {
+    return "Ninguna pieza coincide con esa Ref. Prueba con menos cifras, o solo con números.";
+  }
+  if (hayOtrosFiltros) {
+    return "Ninguna pieza coincide. Quita un filtro.";
+  }
+  return "Todavía no hay piezas. Cada una recibe su Ref. al guardarla por primera vez, aunque le falten datos: la completas y la publicas después.";
+}
+
 export default function ListaDePiezas({ loaderData }: Route.ComponentProps) {
   const { piezas, filtrosCrudos } = loaderData;
-  const hayFiltros = Object.values(filtrosCrudos).some(Boolean);
 
   // Agrupadas por estado, en el orden del ciclo de la pieza.
   const porEstado = (
@@ -321,11 +345,7 @@ export default function ListaDePiezas({ loaderData }: Route.ComponentProps) {
       >
         <BuscarYFiltrar datos={loaderData} />
         {piezas.length === 0 ? (
-          <p className="panel-aviso inventario-vacio">
-            {hayFiltros
-              ? "Ninguna pieza coincide. Prueba con menos cifras de la Ref. o quita un filtro."
-              : "Todavía no hay piezas. Cada una recibe su Ref. al guardarla por primera vez, aunque le falten datos: la completas y la publicas después."}
-          </p>
+          <p className="panel-aviso inventario-vacio">{avisoDeInventarioVacio(filtrosCrudos)}</p>
         ) : null}
       </BloquePanel>
 

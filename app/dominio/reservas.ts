@@ -5,7 +5,7 @@ import type {
 } from "~/generated/prisma/client";
 
 import { ErrorDeDominio } from "./errores";
-import { formatearCodigo, numeroDeCodigo, uuidV7 } from "./identificadores";
+import { esUuidValido, formatearCodigo, numeroDeCodigo, uuidV7 } from "./identificadores";
 
 /** Lo que las reservas necesitan saber de la tienda y del reloj. */
 export interface ConfiguracionDeReservas {
@@ -201,18 +201,57 @@ export async function buscarOCrearCompradora(
 }
 
 
-export function crearReservas(db: PrismaClient, config: ConfiguracionDeReservas) {
-  function aCompradora(fila: FilaDeCompradora): Compradora {
-    const reservasVencidas = fila._count.reservas;
-    return {
-      id: fila.id,
-      nombre: fila.nombre,
-      whatsapp: fila.whatsapp,
-      reservasVencidas,
-      regla: reglaDeCompradora(reservasVencidas),
-    };
-  }
+/** No depende de `db` ni de `config`: solo transforma la fila ya leída. */
+function aCompradora(fila: FilaDeCompradora): Compradora {
+  const reservasVencidas = fila._count.reservas;
+  return {
+    id: fila.id,
+    nombre: fila.nombre,
+    whatsapp: fila.whatsapp,
+    reservasVencidas,
+    regla: reglaDeCompradora(reservasVencidas),
+  };
+}
 
+/**
+ * La compradora por su id, sin vencer reservas primero. La usa
+ * `historialDeCompradora` (index.ts), que ya vence una sola vez para toda la
+ * carga; el resto del dominio usa `compradora()` (más abajo), que sí vence.
+ *
+ * Un id que no tiene forma de UUID trae `null` en vez de consultar la base:
+ * así un error real de la base (no "no es un UUID") se propaga.
+ */
+export async function compradoraSinVencer(db: Cliente, id: string): Promise<Compradora | null> {
+  if (!esUuidValido(id)) return null;
+  const fila = await db.compradora.findUnique({ where: { id }, include: conVencidas });
+  return fila ? aCompradora(fila) : null;
+}
+
+/**
+ * Las reservas vencidas de una compradora, sin vencer reservas primero (ver
+ * `compradoraSinVencer`). Un id que no tiene forma de UUID trae una lista
+ * vacía en vez de consultar la base.
+ */
+export async function reservasVencidasDeCompradoraSinVencer(
+  db: Cliente,
+  compradoraId: string,
+  prefijoDeCodigo: string,
+): Promise<ReservaVencidaDeCompradora[]> {
+  if (!esUuidValido(compradoraId)) return [];
+  const filas = await db.reserva.findMany({
+    where: { compradoraId, estado: "VENCIDA" },
+    include: { pieza: { select: { codigo: true, nombre: true } } },
+    orderBy: { venceEn: "desc" },
+  });
+  return filas.map((fila) => ({
+    codigo: formatearCodigo(fila.pieza.codigo, prefijoDeCodigo),
+    nombrePieza: fila.pieza.nombre,
+    origen: fila.origen === "LIVE" ? "live" : "fuera_de_live",
+    venceEn: fila.venceEn,
+  }));
+}
+
+export function crearReservas(db: PrismaClient, config: ConfiguracionDeReservas) {
   function aReservaActiva(fila: FilaDeReserva): ReservaActiva {
     const ahora = config.ahora();
     return {
@@ -502,19 +541,7 @@ export function crearReservas(db: PrismaClient, config: ConfiguracionDeReservas)
      */
     async reservasVencidasDeCompradora(compradoraId: string): Promise<ReservaVencidaDeCompradora[]> {
       await vencerReservas();
-      const filas = await db.reserva
-        .findMany({
-          where: { compradoraId, estado: "VENCIDA" },
-          include: { pieza: { select: { codigo: true, nombre: true } } },
-          orderBy: { venceEn: "desc" },
-        })
-        .catch(() => []); // un id que no es UUID
-      return filas.map((fila) => ({
-        codigo: formatearCodigo(fila.pieza.codigo, config.prefijoDeCodigo),
-        nombrePieza: fila.pieza.nombre,
-        origen: fila.origen === "LIVE" ? "live" : "fuera_de_live",
-        venceEn: fila.venceEn,
-      }));
+      return reservasVencidasDeCompradoraSinVencer(db, compradoraId, config.prefijoDeCodigo);
     },
 
     /** Registra a alguien interesado en una pieza, para contactarlo a mano. */

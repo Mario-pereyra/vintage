@@ -117,6 +117,27 @@ describe("consultas del inventario del panel", () => {
       const conTextoLargo = await dominio.buscarInventario({ texto: "x".repeat(500) });
       expect(conTextoLargo).toEqual([]);
     });
+
+    it("encuentra un código completo aunque el texto traiga el prefijo sin los ceros de relleno", async () => {
+      await piezaEnPreparacion("Primera"); // VT-0001
+      const segunda = await piezaEnPreparacion("Segunda"); // VT-0002
+
+      // Mismo defecto reportado con "VT-142" contra "VT-0142": el prefijo más
+      // el número sin relleno debe encontrar el código con relleno.
+      for (const texto of ["VT-0002", "VT-2", "vt-2", "0002", "2"]) {
+        expect((await dominio.buscarInventario({ texto })).map((p) => p.codigo)).toEqual([
+          segunda.codigo,
+        ]);
+      }
+    });
+
+    it("un texto sin ninguna cifra no filtra por Ref.: no encuentra nada, ni siquiera con letras del prefijo", async () => {
+      await piezaEnPreparacion("Pieza");
+
+      for (const texto of ["v", "t", "vt", "VT", "bandolera"]) {
+        expect(await dominio.buscarInventario({ texto })).toEqual([]);
+      }
+    });
   });
 
   describe("agrupación por estado", () => {
@@ -374,5 +395,26 @@ describe("historial de compradora", () => {
       await dominio.historialDeCompradora("00000000-0000-7000-8000-000000000000"),
     ).toBeNull();
     expect(await dominio.historialDeCompradora("no-es-un-uuid")).toBeNull();
+  });
+
+  it("comprasDeCompradora y reservasVencidasDeCompradora no truenan con un id que no es UUID", async () => {
+    expect(await dominio.comprasDeCompradora("no-es-un-uuid")).toEqual([]);
+    expect(await dominio.reservasVencidasDeCompradora("no-es-un-uuid")).toEqual([]);
+  });
+
+  it("el historial ya deja vencida (y la pieza Disponible) una reserva que venció justo antes de leerlo", async () => {
+    const ana = await dominio.registrarCompradora({ nombre: "Ana Rojas", whatsapp: "71234567" });
+    const vencida = await piezaDisponible("Se le venció");
+    const { reserva } = await dominio.reservar({
+      codigo: vencida,
+      compradora: { id: ana.id },
+      origen: "live",
+    });
+    ahora = reserva.venceEn; // el plazo termina justo ahora, sin que nadie la venza todavía
+
+    const historial = await dominio.historialDeCompradora(ana.id);
+
+    expect(historial?.reservasVencidas.map((r) => r.codigo)).toEqual([vencida]);
+    expect((await dominio.piezaDelPanel(vencida))?.estado).toBe("disponible");
   });
 });
