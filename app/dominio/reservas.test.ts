@@ -123,6 +123,15 @@ describe("reservas", () => {
       expect((await dominio.listarCatalogo()).piezas.map((p) => p.estado)).toEqual(["reservada"]);
     });
 
+    it("la ficha pública dice hasta qué hora está reservada, y nada de la compradora", async () => {
+      const { codigo, direccion } = await piezaDisponible();
+      expect((await dominio.fichaPublica(direccion))?.reservadaHasta).toBeNull();
+
+      const { reserva } = await dominio.reservar({ codigo, compradora: ANA, origen: "live" });
+
+      expect((await dominio.fichaPublica(direccion))?.reservadaHasta).toEqual(reserva.venceEn);
+    });
+
     it("dura 15 minutos si nace de un live", async () => {
       const { codigo } = await piezaDisponible();
 
