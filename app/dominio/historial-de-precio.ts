@@ -1,8 +1,17 @@
-import type { PrismaClient } from "~/generated/prisma/client";
+import type { EstadoPieza, PrismaClient } from "~/generated/prisma/client";
 
 import { ErrorDeDominio } from "./errores";
 import { formatearCodigo, numeroDeCodigo, uuidV7 } from "./identificadores";
 import { PRECIO_MAXIMO_CENTAVOS } from "./piezas";
+
+/** Nombre del estado, tal como se lee fuera del dominio, para el mensaje de rechazo. */
+const NOMBRE_DE_ESTADO: Record<EstadoPieza, string> = {
+  EN_PREPARACION: "en preparación",
+  DISPONIBLE: "disponible",
+  RESERVADA: "reservada",
+  VENDIDA: "vendida",
+  RETIRADA: "retirada",
+};
 
 /**
  * Historial del precio publicado (ticket #12, ver "Precio publicado" en
@@ -22,6 +31,8 @@ export interface ConfiguracionDeHistorialDePrecio {
 
 /** Un precio que tuvo la pieza y desde cuándo, el más reciente primero. */
 export interface PrecioDelHistorial {
+  /** Id de la fila del historial: sirve de `key` estable en el panel. */
+  id: string;
   precioCentavos: number;
   fecha: Date;
 }
@@ -44,7 +55,11 @@ export function crearHistorialDePrecio(
       where: { piezaId },
       orderBy: { fecha: "desc" },
     });
-    return filas.map((fila) => ({ precioCentavos: fila.precioCentavos, fecha: fila.fecha }));
+    return filas.map((fila) => ({
+      id: fila.id,
+      precioCentavos: fila.precioCentavos,
+      fecha: fila.fecha,
+    }));
   }
 
   return {
@@ -53,7 +68,12 @@ export function crearHistorialDePrecio(
      * primera vez que el precio de una pieza cambia, siembra también el
      * precio con el que se publicó (fechado el día de la publicación), para
      * que el historial quede completo desde el principio. Solo se puede
-     * cambiar el precio de una pieza que ya está publicada.
+     * cambiar el precio de una pieza Disponible o Reservada: una vez Vendida
+     * o Retirada, el precio publicado queda fijo. El cambio es atómico: el
+     * `updateMany` exige el estado permitido y su `count` se verifica dentro
+     * de la misma transacción, así que una venta concurrente (que mueve la
+     * pieza a Vendida) gana la carrera sin dejar un precio ni un historial
+     * inconsistentes.
      */
     async cambiarPrecioPublicado(
       codigo: string,
@@ -65,6 +85,14 @@ export function crearHistorialDePrecio(
           "transicion_no_permitida",
           `La pieza ${formatearCodigo(fila.codigo, config.prefijoDeCodigo)} todavía no está publicada.`,
         );
+      }
+      const rechazoPorEstado = () =>
+        new ErrorDeDominio(
+          "transicion_no_permitida",
+          `El precio de ${formatearCodigo(fila.codigo, config.prefijoDeCodigo)} ya no se puede cambiar: está ${NOMBRE_DE_ESTADO[fila.estado]}.`,
+        );
+      if (fila.estado !== "DISPONIBLE" && fila.estado !== "RESERVADA") {
+        throw rechazoPorEstado();
       }
       if (
         !(
@@ -89,6 +117,14 @@ export function crearHistorialDePrecio(
       const precioAnterior = fila.precioCentavos;
       const publicadaEn = fila.publicadaEn;
       await db.$transaction(async (tx) => {
+        // El filtro por estado evita cambiar el precio si la pieza se vendió
+        // (o se retiró) justo entre la lectura de arriba y esta transacción.
+        const { count } = await tx.pieza.updateMany({
+          where: { id: fila.id, estado: { in: ["DISPONIBLE", "RESERVADA"] } },
+          data: { precioCentavos: nuevoPrecioCentavos },
+        });
+        if (count === 0) throw rechazoPorEstado();
+
         const yaTieneHistorial = (await tx.historialPrecio.count({ where: { piezaId: fila.id } })) > 0;
         if (!yaTieneHistorial) {
           await tx.historialPrecio.create({
@@ -100,10 +136,6 @@ export function crearHistorialDePrecio(
             },
           });
         }
-        await tx.pieza.update({
-          where: { id: fila.id },
-          data: { precioCentavos: nuevoPrecioCentavos },
-        });
         await tx.historialPrecio.create({
           data: {
             id: uuidV7(ahora.getTime()),

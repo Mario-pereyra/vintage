@@ -101,6 +101,9 @@ export default function EditarPieza({
   const { pieza, listas, fotos, r2PublicUrl, procedencia } = loaderData;
   const [busqueda] = useSearchParams();
   const publicada = pieza.estado !== "en_preparacion";
+  // Solo Disponible o Reservada admiten cambiar el precio (ver
+  // `cambiarPrecioPublicado`): Vendida o Retirada no muestran el enlace.
+  const puedeCambiarPrecio = pieza.estado === "disponible" || pieza.estado === "reservada";
   const alLlegar = AL_LLEGAR[busqueda.get("nueva") ?? ""];
   // Solo presentación (DESIGN.md, Sello): en preparación con las 8 tomas, el
   // sello del panel dice "Lista". El estado de la pieza no cambia.
@@ -148,7 +151,7 @@ export default function EditarPieza({
               <Icono nombre="adelante" />
             </Link>
           ) : null}
-          {publicada ? (
+          {puedeCambiarPrecio ? (
             <Link className="enlace-ficha" to={`/admin/piezas/${pieza.codigo}/precio`}>
               Precio publicado e historial
               <Icono nombre="adelante" />

@@ -140,7 +140,12 @@ export {
   TEXTO_DE_AUTENTICIDAD,
   type AutenticidadDePieza,
 } from "./autenticidad";
-export { numeroDeDrop, type DropDelPanel, type PiezaDeDrop } from "./drops";
+export {
+  CODIGOS_MAXIMOS_POR_ASIGNACION,
+  numeroDeDrop,
+  type DropDelPanel,
+  type PiezaDeDrop,
+} from "./drops";
 export { ErrorDeDominio, type MotivoDeRechazo } from "./errores";
 export {
   TOMAS_REQUERIDAS,

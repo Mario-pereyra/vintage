@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { ErrorDeDominio, TOMAS_REQUERIDAS, type Dominio } from "./index";
+import {
+  CODIGOS_MAXIMOS_POR_ASIGNACION,
+  ErrorDeDominio,
+  TOMAS_REQUERIDAS,
+  type Dominio,
+} from "./index";
 import { crearBaseDePrueba, type BaseDePrueba } from "./pruebas/base-de-prueba";
 
 describe("drops", () => {
@@ -98,6 +103,18 @@ describe("drops", () => {
     await expect(dominio.asignarPiezasADrop(drop.id, [])).rejects.toBeInstanceOf(ErrorDeDominio);
   });
 
+  it("no asigna más del tope de piezas por vez", async () => {
+    const drop = await dominio.crearDrop();
+    const demasiados = Array.from(
+      { length: CODIGOS_MAXIMOS_POR_ASIGNACION + 1 },
+      (_, indice) => `VT-${String(indice + 1).padStart(4, "0")}`,
+    );
+
+    await expect(dominio.asignarPiezasADrop(drop.id, demasiados)).rejects.toMatchObject({
+      motivo: "datos_invalidos",
+    });
+  });
+
   describe("publicación del drop", () => {
     it("publica todas las piezas listas del drop, sin tocar las incompletas", async () => {
       const drop = await dominio.crearDrop();
@@ -152,6 +169,27 @@ describe("drops", () => {
       await expect(dominio.publicarDrop(9999)).rejects.toMatchObject({
         motivo: "drop_no_encontrado",
       });
+    });
+
+    it("una lista de elegidas vacía no publica todo el drop: la rechaza", async () => {
+      const drop = await dominio.crearDrop();
+      const lista = await piezaEnPreparacion("Lista", true);
+      await dominio.asignarPiezasADrop(drop.id, [lista]);
+
+      await expect(dominio.publicarDrop(drop.id, [])).rejects.toMatchObject({
+        motivo: "datos_invalidos",
+      });
+      expect((await dominio.piezaDelPanel(lista))?.estado).toBe("en_preparacion");
+    });
+
+    it("deduplica los códigos elegidos: no falla al elegir la misma pieza dos veces", async () => {
+      const drop = await dominio.crearDrop();
+      const primera = await piezaEnPreparacion("Primera", true);
+      await dominio.asignarPiezasADrop(drop.id, [primera]);
+
+      const publicadas = await dominio.publicarDrop(drop.id, [primera, primera]);
+
+      expect(publicadas.map((p) => p.codigo)).toEqual([primera]);
     });
   });
 

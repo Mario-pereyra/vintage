@@ -63,8 +63,8 @@ describe("historial de precio", () => {
     await dominio.cambiarPrecioPublicado(codigo, 15000);
 
     expect(await dominio.historialDePrecio(codigo)).toEqual([
-      { precioCentavos: 15000, fecha: ahora },
-      { precioCentavos: 18000, fecha: PUBLICADA_EL },
+      { id: expect.any(String), precioCentavos: 15000, fecha: ahora },
+      { id: expect.any(String), precioCentavos: 18000, fecha: PUBLICADA_EL },
     ]);
     expect((await dominio.piezaDelPanel(codigo))?.precioCentavos).toBe(15000);
   });
@@ -79,9 +79,9 @@ describe("historial de precio", () => {
     await dominio.cambiarPrecioPublicado(codigo, 12000);
 
     expect(await dominio.historialDePrecio(codigo)).toEqual([
-      { precioCentavos: 12000, fecha: ahora },
-      { precioCentavos: 15000, fecha: primerCambio },
-      { precioCentavos: 18000, fecha: PUBLICADA_EL },
+      { id: expect.any(String), precioCentavos: 12000, fecha: ahora },
+      { id: expect.any(String), precioCentavos: 15000, fecha: primerCambio },
+      { id: expect.any(String), precioCentavos: 18000, fecha: PUBLICADA_EL },
     ]);
   });
 
@@ -101,6 +101,48 @@ describe("historial de precio", () => {
     await expect(dominio.cambiarPrecioPublicado(codigo, 15000)).rejects.toMatchObject({
       motivo: "transicion_no_permitida",
     });
+  });
+
+  it("no cambia el precio de una pieza Vendida", async () => {
+    const codigo = await piezaPublicada(18000);
+    await dominio.registrarVenta({
+      codigo,
+      pagoVerificado: true,
+      precioFinalCentavos: 15000,
+      compradora: { nombre: "Ana Rojas", whatsapp: "71234567" },
+      canal: "tiktok_live",
+      entrega: { modalidad: "delivery_santa_cruz", costoCentavos: 1500 },
+    });
+
+    await expect(dominio.cambiarPrecioPublicado(codigo, 12000)).rejects.toMatchObject({
+      motivo: "transicion_no_permitida",
+    });
+    expect((await dominio.piezaDelPanel(codigo))?.precioCentavos).toBe(18000);
+  });
+
+  it("no cambia el precio de una pieza Retirada", async () => {
+    const codigo = await piezaPublicada(18000);
+    await dominio.retirarPieza(codigo, { motivo: "irrecuperable" });
+
+    await expect(dominio.cambiarPrecioPublicado(codigo, 12000)).rejects.toMatchObject({
+      motivo: "transicion_no_permitida",
+    });
+    expect((await dominio.piezaDelPanel(codigo))?.precioCentavos).toBe(18000);
+  });
+
+  it("cambia el precio de una pieza Reservada", async () => {
+    const codigo = await piezaPublicada(18000);
+    await dominio.reservar({
+      codigo,
+      compradora: { nombre: "Ana Rojas", whatsapp: "71234567" },
+      origen: "live",
+    });
+    pasan(1);
+
+    const historial = await dominio.cambiarPrecioPublicado(codigo, 15000);
+
+    expect(historial[0]).toMatchObject({ precioCentavos: 15000 });
+    expect((await dominio.piezaDelPanel(codigo))?.precioCentavos).toBe(15000);
   });
 
   it("no cambia el precio de una pieza que no existe", async () => {

@@ -20,6 +20,12 @@ export interface ConfiguracionDeDrops {
   prefijoDeCodigo: string;
 }
 
+/**
+ * Tope de códigos que se asignan a un drop de una sola vez: una lista mucho
+ * más larga no es un uso real del panel y solo encarece la consulta.
+ */
+export const CODIGOS_MAXIMOS_POR_ASIGNACION = 200;
+
 /** "DROP #03": el número visible de un drop, con al menos 2 cifras. */
 export function numeroDeDrop(id: number): string {
   return `DROP #${String(id).padStart(2, "0")}`;
@@ -193,8 +199,14 @@ export function crearDrops(
           piezas: "Elige al menos una pieza En preparación.",
         });
       }
+      const codigosUnicos = Array.from(new Set(codigos));
+      if (codigosUnicos.length > CODIGOS_MAXIMOS_POR_ASIGNACION) {
+        throw new ErrorDeDominio("datos_invalidos", "Elige menos piezas.", {
+          piezas: `Elige como máximo ${CODIGOS_MAXIMOS_POR_ASIGNACION} piezas por vez.`,
+        });
+      }
 
-      const numeros = codigos.map(numeroDeCodigo);
+      const numeros = codigosUnicos.map(numeroDeCodigo);
       if (numeros.some((numero) => numero === null)) {
         throw new ErrorDeDominio("datos_invalidos", "Revisa las piezas elegidas.", {
           piezas: "Alguna Ref. no es válida.",
@@ -219,18 +231,23 @@ export function crearDrops(
         );
       }
 
+      // El filtro por estado evita reasignar una pieza que se publicó (o se
+      // vendió) justo entre la validación de arriba y este `updateMany`.
       await db.pieza.updateMany({
-        where: { codigo: { in: numerosValidos } },
+        where: { codigo: { in: numerosValidos }, estado: "EN_PREPARACION" },
         data: { dropId: drop.id },
       });
       return resumenDe(drop.id, drop.creadoEn);
     },
 
     /**
-     * Publica las piezas listas de un drop: todas, o solo las de `codigos` (que
-     * deben estar listas y pertenecer al drop). Publicar de a poco es normal:
-     * las demás quedan En preparación para un envío posterior. Reusa
-     * `publicarPieza`, que ya exige los datos obligatorios y las 8 tomas.
+     * Publica las piezas listas de un drop: todas (`codigos` sin definir), o
+     * solo las de `codigos` (que deben estar listas y pertenecer al drop).
+     * `codigos` es distinto de una lista vacía: publicar "las elegidas" sin
+     * elegir ninguna se rechaza, no publica todo el drop. Publicar de a poco
+     * es normal: las demás quedan En preparación para un envío posterior.
+     * Reusa `publicarPieza`, que ya exige los datos obligatorios y las 8
+     * tomas.
      */
     async publicarDrop(id: number, codigos?: string[]): Promise<PiezaDelPanel[]> {
       await exigirDrop(id);
@@ -239,9 +256,15 @@ export function crearDrops(
       const listasPorNumero = new Map(listas.map((fila) => [fila.codigo, fila]));
 
       let objetivo: FilaParaDrop[];
-      if (codigos && codigos.length > 0) {
-        const numeros = codigos.map(numeroDeCodigo);
-        const noListas = codigos.filter((codigo, indice) => {
+      if (codigos !== undefined) {
+        if (codigos.length === 0) {
+          throw new ErrorDeDominio("datos_invalidos", "Elige al menos una pieza.", {
+            piezas: "Elige al menos una pieza lista para publicar.",
+          });
+        }
+        const codigosUnicos = Array.from(new Set(codigos));
+        const numeros = codigosUnicos.map(numeroDeCodigo);
+        const noListas = codigosUnicos.filter((codigo, indice) => {
           const numero = numeros[indice];
           return numero === null || !listasPorNumero.has(numero);
         });

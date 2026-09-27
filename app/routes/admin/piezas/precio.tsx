@@ -87,6 +87,9 @@ export default function PrecioDePieza({ loaderData, actionData }: Route.Componen
   const navegacion = useNavigation();
   const enviando = navegacion.state === "submitting";
   const errores = actionData && "errores" in actionData ? (actionData.errores ?? {}) : {};
+  // Solo Disponible o Reservada admiten cambiar el precio (ver
+  // `cambiarPrecioPublicado`); Vendida o Retirada lo dejan fijo.
+  const puedeCambiarPrecio = pieza.estado === "disponible" || pieza.estado === "reservada";
   const publicada = pieza.estado !== "en_preparacion";
   const actual = pieza.precioCentavos;
   // El historial va del más reciente al más viejo: el segundo es el anterior.
@@ -138,6 +141,22 @@ export default function PrecioDePieza({ loaderData, actionData }: Route.Componen
           <Link className="btn btn-ancho" to={`/admin/piezas/${pieza.codigo}`}>
             Ir a la pieza
           </Link>
+        </BloquePanel>
+      ) : !puedeCambiarPrecio ? (
+        <BloquePanel titulo="Precio publicado">
+          {actual != null ? (
+            <div className="precio-vigente">
+              <Total
+                precio={actual / 100}
+                precioAnterior={anterior != null ? anterior / 100 : undefined}
+              />
+            </div>
+          ) : null}
+          <p className="ayuda">
+            {pieza.estado === "vendida"
+              ? "La pieza ya se vendió: su precio publicado queda fijo."
+              : "La pieza está retirada: su precio publicado queda fijo."}
+          </p>
         </BloquePanel>
       ) : (
         <Form method="post">
@@ -218,7 +237,7 @@ export default function PrecioDePieza({ loaderData, actionData }: Route.Componen
               const vigente = indice === 0;
               return (
                 <Renglon
-                  key={cambio.fecha.toISOString()}
+                  key={cambio.id}
                   etiqueta={
                     <span className={vigente ? "historial-fecha historial-vigente" : "historial-fecha"}>
                       {fecha(cambio.fecha)}

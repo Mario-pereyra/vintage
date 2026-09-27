@@ -81,8 +81,6 @@ export async function leerFormularioDePieza(
     anchoCm: leerNumero(formulario.get("anchoCm")),
     profundidadCm: leerNumero(formulario.get("profundidadCm")),
     caidaCm: leerNumero(formulario.get("caidaCm")),
-    precioCentavos: leerPrecio(formulario.get("precio")),
-
     // --- Atributos opcionales y visibilidad por campo (#6) -------------------
     condicion: leerEnumOpcional<CondicionDePieza>(formulario.get("condicion")),
     visibleCondicion: leerVisible(formulario, "visibleCondicion"),
@@ -103,6 +101,12 @@ export async function leerFormularioDePieza(
     visibleQueCabe: leerVisible(formulario, "visibleQueCabe"),
     descripcion: leerTextoOpcional(formulario.get("descripcion")),
   };
+
+  // El formulario no trae el precio de una pieza ya publicada (se cambia
+  // desde /precio, con historial): si el campo no vino, no se toca.
+  if (formulario.has("precio")) {
+    datos.precioCentavos = leerPrecio(formulario.get("precio"));
+  }
 
   // Solo lo toca si el formulario lo trae: nueva.tsx no lo muestra (una pieza
   // recién creada todavía no tiene procedencia).
