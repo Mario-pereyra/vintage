@@ -60,6 +60,9 @@ model Pieza {
   creadaEn      DateTime    @default(now()) @map("creada_en")
   actualizadaEn DateTime    @default(now()) @updatedAt @map("actualizada_en")
 
+  reservas    Reserva[]
+  interesadas Interesada[]
+
   @@index([estado, publicadaEn])
   @@map("pieza")
 }
@@ -93,6 +96,79 @@ model Material {
   piezas Pieza[]
 
   @@map("material")
+}
+
+// --- Reservas (ticket #9, ADR 0003) ----------------------------------------
+
+/// Dónde nació una reserva: define su plazo por defecto (15 min en un live,
+/// 2 horas fuera de él).
+enum OrigenDeReserva {
+  LIVE
+  FUERA_DE_LIVE
+}
+
+/// Una reserva está activa hasta que vence o se cancela. El pago verificado y
+/// la venta (ticket #10) sumarán su propio estado final.
+enum EstadoReserva {
+  ACTIVA
+  VENCIDA
+  CANCELADA
+}
+
+/// La persona que compra por WhatsApp. Su número es único (solo dígitos, con
+/// código de país). El contador de reservas vencidas no se guarda: se cuenta
+/// a partir de sus reservas, y es interno (nunca se publica).
+model Compradora {
+  id       String    @id @db.Uuid
+  nombre   String
+  whatsapp String    @unique
+  creadaEn DateTime  @default(now()) @map("creada_en")
+  reservas Reserva[]
+
+  @@map("compradora")
+}
+
+/// El apartado temporal de una pieza para una compradora (ver "Reserva" en
+/// CONTEXT.md). Una pieza tiene como máximo una reserva ACTIVA: lo garantiza
+/// el paso de la pieza de Disponible a Reservada dentro de la misma
+/// transacción que crea la reserva.
+///
+/// El vencimiento es perezoso: una reserva ACTIVA con `venceEn` en el pasado
+/// ya está vencida, y el dominio la marca VENCIDA (y devuelve la pieza a
+/// Disponible) antes de leer u operar sobre piezas o reservas.
+model Reserva {
+  id            String          @id @db.Uuid
+  piezaId       String          @map("pieza_id") @db.Uuid
+  pieza         Pieza           @relation(fields: [piezaId], references: [id])
+  compradoraId  String          @map("compradora_id") @db.Uuid
+  compradora    Compradora      @relation(fields: [compradoraId], references: [id])
+  origen        OrigenDeReserva
+  estado        EstadoReserva   @default(ACTIVA)
+  /// La compradora ya tenía 2 reservas vencidas: se reservó con pago previo.
+  conPagoPrevio Boolean         @default(false) @map("con_pago_previo")
+  creadaEn      DateTime        @map("creada_en")
+  venceEn       DateTime        @map("vence_en")
+  canceladaEn   DateTime?       @map("cancelada_en")
+
+  @@index([estado, venceEn])
+  @@index([piezaId, estado])
+  @@index([compradoraId, estado])
+  @@map("reserva")
+}
+
+/// Alguien que mostró interés en una pieza sin reservarla, para contactarla a
+/// mano si la pieza vuelve a estar Disponible. No es una lista de espera.
+model Interesada {
+  id       String   @id @db.Uuid
+  piezaId  String   @map("pieza_id") @db.Uuid
+  pieza    Pieza    @relation(fields: [piezaId], references: [id])
+  nombre   String
+  whatsapp String
+  nota     String?
+  creadaEn DateTime @map("creada_en")
+
+  @@index([piezaId])
+  @@map("interesada")
 }
 
 // --- Sesiones de las operadoras (Better Auth) ------------------------------

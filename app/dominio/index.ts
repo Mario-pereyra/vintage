@@ -4,6 +4,7 @@ import type { PrismaClient } from "~/generated/prisma/client";
 import { listarCatalogo, type FiltrosDeCatalogo } from "./catalogo";
 import { ampliarLista, obtenerListas, type Lista } from "./listas";
 import { crearPiezas, type ConfiguracionDePiezas } from "./piezas";
+import { crearReservas } from "./reservas";
 
 export type OpcionesDelDominio = Partial<ConfiguracionDePiezas>;
 
@@ -20,11 +21,25 @@ export type OpcionesDelDominio = Partial<ConfiguracionDePiezas>;
  *   los de `configuracionTienda` y la hora real; las pruebas los fijan.
  */
 export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}) {
-  const piezas = crearPiezas(db, {
+  const config: ConfiguracionDePiezas = {
     prefijoDeCodigo: opciones.prefijoDeCodigo ?? configuracionTienda.prefijoDeCodigo,
     umbralesDeTamano: opciones.umbralesDeTamano ?? configuracionTienda.umbralesDeTamano,
     ahora: opciones.ahora ?? (() => new Date()),
-  });
+  };
+  const piezas = crearPiezas(db, config);
+  const reservas = crearReservas(db, config);
+
+  /**
+   * Vencimiento perezoso: antes de leer el estado de una pieza, vence las
+   * reservas cuyo plazo ya terminó. Así ninguna lectura depende de un barrido
+   * periódico.
+   */
+  function trasVencer<A extends unknown[], R>(operacion: (...args: A) => Promise<R>) {
+    return async (...args: A): Promise<R> => {
+      await reservas.vencerReservas();
+      return operacion(...args);
+    };
+  }
 
   const configuracionDeCatalogo = {
     prefijoDeCodigo: opciones.prefijoDeCodigo ?? configuracionTienda.prefijoDeCodigo,
@@ -34,13 +49,21 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
   return {
     /**
      * Piezas que ve la compradora en el listado principal, más recientes
-     * primero, con los filtros de `filtros` y hasta `limite` piezas.
+     * primero, con los filtros de `filtros` y hasta `limite` piezas. Antes de
+     * leer, vence las reservas cuyo plazo ya terminó.
      */
-    listarCatalogo: (filtros?: FiltrosDeCatalogo, limite?: number) =>
+    listarCatalogo: trasVencer((filtros?: FiltrosDeCatalogo, limite?: number) =>
       listarCatalogo(db, configuracionDeCatalogo, filtros, limite),
+    ),
 
     // --- Inventario ---
     ...piezas,
+    fichaPublica: trasVencer(piezas.fichaPublica),
+    piezaDelPanel: trasVencer(piezas.piezaDelPanel),
+    listarPiezasDelPanel: trasVencer(piezas.listarPiezasDelPanel),
+
+    // --- Reservas, compradoras e interesadas ---
+    ...reservas,
 
     // --- Listas ampliables (tipo de cartera, color, material) ---
     /** Los valores de cada lista, en orden de alta. */
@@ -68,6 +91,17 @@ export type {
   PiezaDelPanel,
   PiezaEnPanel,
 } from "./piezas";
+export {
+  PLAZO_POR_DEFECTO,
+  type Compradora,
+  type CompradoraDeReserva,
+  type DatosDeInteresada,
+  type DatosDeReserva,
+  type Interesada,
+  type OrigenDeLaReserva,
+  type ReglaDeCompradora,
+  type ReservaActiva,
+} from "./reservas";
 export type { Tamano, UmbralesDeTamano } from "./tamano";
 export {
   crearAccesoAlPanel,

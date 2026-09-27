@@ -281,6 +281,7 @@ describe("pieza", () => {
         ],
         precioCentavos: 18000,
         publicadaEn: PUBLICADA_EL,
+        reservadaHasta: null,
       });
     });
 

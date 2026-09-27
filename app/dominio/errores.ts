@@ -7,7 +7,15 @@ export type MotivoDeRechazo =
   /** La pieza no existe (o el código no se entiende). */
   | "pieza_no_encontrada"
   /** El estado actual de la pieza no admite esa operación. */
-  | "transicion_no_permitida";
+  | "transicion_no_permitida"
+  /** La pieza no tiene una reserva activa (o ya venció). */
+  | "reserva_no_encontrada"
+  /** No existe la compradora elegida. */
+  | "compradora_no_encontrada"
+  /** La compradora tiene 2 reservas vencidas: debe pagar antes de reservar. */
+  | "requiere_pago_previo"
+  /** La compradora tiene 3 o más reservas vencidas: ya no se le reserva. */
+  | "compradora_bloqueada";
 
 /**
  * Una regla del negocio rechazó la operación. Los loaders y actions la

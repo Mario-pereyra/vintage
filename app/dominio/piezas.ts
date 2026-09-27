@@ -155,6 +155,11 @@ export interface FichaPublica {
   tamanos: { nombre: Tamano; rango: string }[];
   precioCentavos: number;
   publicadaEn: Date;
+  /**
+   * Si está Reservada, hasta cuándo (el sello dice "hasta las 16:40"). De la
+   * reserva no se publica nada más: ni la compradora ni su contador.
+   */
+  reservadaHasta: Date | null;
 }
 
 type FilaDePieza = Prisma.PiezaGetPayload<object>;
@@ -415,7 +420,16 @@ export function crearPiezas(db: PrismaClient, config: ConfiguracionDePiezas) {
 
       const fila = await db.pieza.findUnique({
         where: { sufijo },
-        include: { tipo: true, color: true, material: true },
+        include: {
+          tipo: true,
+          color: true,
+          material: true,
+          reservas: {
+            where: { estado: "ACTIVA" },
+            select: { venceEn: true },
+            take: 1,
+          },
+        },
       });
       if (!fila || fila.estado === "EN_PREPARACION") return null;
 
@@ -448,6 +462,8 @@ export function crearPiezas(db: PrismaClient, config: ConfiguracionDePiezas) {
         })),
         precioCentavos: fila.precioCentavos,
         publicadaEn: fila.publicadaEn,
+        reservadaHasta:
+          fila.estado === "RESERVADA" ? (fila.reservas[0]?.venceEn ?? null) : null,
       };
     },
   };
