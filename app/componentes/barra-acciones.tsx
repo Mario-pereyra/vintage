@@ -12,6 +12,9 @@ type Boton = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className"> & {
  * decir por qué con `motivo` ("Faltan 2 tomas para publicar"): nunca se
  * deshabilita una acción sin explicarlo.
  *
+ * Sin `guardar` ni `vistaPrevia` queda una sola acción a lo ancho (registrar
+ * una venta, retirar una pieza).
+ *
  * El contenido del panel deja 140px abajo para despejarla (`.panel-cuerpo`).
  */
 export function BarraAccionesPanel({
@@ -21,11 +24,10 @@ export function BarraAccionesPanel({
   motivo,
 }: {
   vistaPrevia?: Omit<Boton, "texto">;
-  guardar: Boton;
+  guardar?: Boton;
   publicar: Boton;
   motivo?: string;
 }) {
-  const { texto: textoGuardar = "Guardar", ...botonGuardar } = guardar;
   const { texto: textoPublicar = "Publicar", ...botonPublicar } = publicar;
 
   return (
@@ -37,7 +39,11 @@ export function BarraAccionesPanel({
       ) : null}
       <div
         className={
-          vistaPrevia ? "acciones-fila" : "acciones-fila acciones-fila-sin-vista"
+          !guardar && !vistaPrevia
+            ? "acciones-fila acciones-fila-una"
+            : vistaPrevia
+              ? "acciones-fila"
+              : "acciones-fila acciones-fila-sin-vista"
         }
       >
         {vistaPrevia ? (
@@ -50,9 +56,9 @@ export function BarraAccionesPanel({
             <Icono nombre="ojo" />
           </button>
         ) : null}
-        <button type="submit" {...botonGuardar} className="btn">
-          {textoGuardar}
-        </button>
+        {guardar ? (
+          <BotonGuardar {...guardar} />
+        ) : null}
         <button
           type="submit"
           aria-describedby={motivo ? "motivo-publicar" : undefined}
@@ -63,6 +69,14 @@ export function BarraAccionesPanel({
         </button>
       </div>
     </div>
+  );
+}
+
+function BotonGuardar({ texto = "Guardar", ...boton }: Boton) {
+  return (
+    <button type="submit" {...boton} className="btn">
+      {texto}
+    </button>
   );
 }
 

@@ -2602,3 +2602,243 @@
     color: var(--tinta-2);
   }
 }
+
+/* ── Ventas, entregas y retiros (/admin/piezas/:codigo/venta y /retiro, /admin/entregas, «Ver vendidas») ── */
+@layer components {
+  /* Barra de acciones con una sola acción a lo ancho. */
+  .acciones-fila-una {
+    grid-template-columns: 1fr;
+  }
+
+  /* Modalidad de entrega: ícono y nombre largo. */
+  .venta-modalidad {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    margin: 0 0 var(--s-2);
+    font: 600 15px / 1.3 var(--f-texto);
+  }
+  .venta-modalidad-elegida {
+    margin: var(--s-3) 0 0;
+    font: 500 14px / 1.3 var(--f-texto);
+    color: var(--tinta-2);
+  }
+  .venta-modalidad-elegida .icono {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Costo de la entrega: "Bs" y la cifra sobre una línea de tinta, como las medidas. */
+  .venta-costo {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-2);
+    max-width: 11em;
+    border-bottom: 2px solid var(--tinta);
+    cursor: text;
+  }
+  .venta-costo > b {
+    font: 700 15px var(--f-cifra);
+  }
+  .venta-costo input {
+    all: unset;
+    width: 100%;
+    min-width: 0;
+    padding: 6px 0;
+    font: 700 24px var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+  }
+  .venta-costo input::placeholder {
+    color: var(--tinta-2);
+  }
+  .venta-costo:focus-within {
+    outline: 3px solid var(--sello);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  .venta .ayuda .cifra,
+  .venta-publico .cifra {
+    white-space: nowrap;
+  }
+
+  /* La fecha es una cifra. */
+  .venta input[type="date"].texto {
+    font: 400 15px var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+    max-width: 13em;
+  }
+
+  /* El pago es la puerta de la venta: bloque con trazo de tinta, justo sobre la barra. */
+  .venta-pago {
+    border: 1.5px solid var(--tinta);
+  }
+  .venta-pago-casilla {
+    margin: 0;
+    font-size: 16px;
+  }
+  .venta-pago > .panel-aviso {
+    margin-bottom: var(--s-3);
+  }
+
+  /* Venta registrada: guía, entrega y enlace a la ficha. */
+  .venta-guia {
+    margin-top: var(--s-5);
+  }
+  .venta-guia > .ayuda {
+    margin: 0 0 var(--s-2);
+  }
+  .venta-guia-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--s-2);
+    align-items: stretch;
+  }
+  .venta-guia-fila > .texto {
+    font-family: var(--f-cifra);
+    font-size: 14px;
+  }
+  .venta-guardado {
+    margin: var(--s-2) 0 0;
+    font: 600 13.5px var(--f-texto);
+    color: var(--sello);
+  }
+  .venta-entregar {
+    display: grid;
+    gap: var(--s-2);
+    margin-top: var(--s-5);
+  }
+  .venta-entregar .btn-ancho {
+    margin: 0;
+  }
+  .bloque .total {
+    margin-top: var(--s-2);
+  }
+  .venta-publico {
+    margin: var(--s-4) 0 0;
+  }
+  .venta-publico .enlace-ficha,
+  .retiro-final .enlace-ficha {
+    margin-top: 0;
+  }
+
+  /* Retiro */
+  .retiro-final {
+    margin: var(--s-4) 0 0;
+  }
+  .retiro-aviso p {
+    margin: 0;
+    font: 400 15px / 1.5 var(--f-texto);
+    text-wrap: pretty;
+  }
+  .retiro-aviso p + p {
+    margin-top: var(--s-2);
+  }
+  .retiro-aviso > .panel-aviso {
+    margin-bottom: var(--s-3);
+  }
+  .retiro-ir {
+    margin: var(--s-4) 0 0;
+  }
+
+  /* Entregas pendientes: una fila por venta, con la acción rápida a la derecha. */
+  .entregas {
+    margin: 0 calc(var(--s-4) * -1);
+    padding: 0;
+    list-style: none;
+  }
+  .entrega {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--s-3);
+    padding: var(--s-3) var(--s-4);
+    border-top: 1.5px dotted var(--linea);
+  }
+  .entrega:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+  .entrega-enlace {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    color: var(--tinta);
+    text-decoration: none;
+  }
+  .entrega-enlace:focus-visible {
+    border-radius: var(--r-1);
+  }
+  .entrega-cabeza {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-2);
+  }
+  .entrega-cabeza b {
+    font: 700 16px var(--f-cifra);
+    letter-spacing: -0.02em;
+  }
+  .entrega-cabeza > span {
+    font: 400 12px var(--f-cifra);
+    color: var(--tinta-2);
+  }
+  .entrega-compradora {
+    font: 700 15px / 1.3 var(--f-texto);
+  }
+  .entrega-enlace:hover .entrega-compradora {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .entrega-pieza,
+  .entrega-modalidad,
+  .entrega-guia {
+    font: 400 13.5px / 1.4 var(--f-texto);
+    color: var(--tinta-2);
+    overflow-wrap: anywhere;
+  }
+  .entrega-modalidad {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 6px;
+  }
+  .entrega-modalidad .cifra,
+  .entrega-guia .cifra {
+    font-size: 12.5px;
+  }
+  .entrega-costo {
+    margin-left: var(--s-1);
+    color: var(--tinta);
+    white-space: nowrap;
+  }
+  .entrega-falta {
+    font-weight: 700;
+    color: var(--tinta);
+  }
+  .entrega .btn {
+    padding: 0 14px;
+  }
+
+  /* «Ver vendidas»: prueba de lo que pasó por la tienda. */
+  .vendidas-intro {
+    margin: 0 0 var(--s-5);
+  }
+  .vendidas-intro p {
+    color: var(--rosa-tinta);
+    font-size: 15px;
+  }
+  .catalogo-lista-vendidas .mini-foto > img {
+    filter: grayscale(0.5) contrast(0.95);
+  }
+
+  /* Ficha de una vendida o una retirada. */
+  .ficha-final p:last-child {
+    margin-bottom: 0;
+  }
+  .ficha-final a {
+    font-weight: 700;
+    color: var(--tinta);
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+  }
+}

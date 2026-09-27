@@ -52,3 +52,15 @@ export function fechaDeBolivia(valor: Date): string {
     timeZone: "America/La_Paz",
   });
 }
+
+/** "26/09", en hora de Bolivia: la fecha corta del sello. */
+export function fechaCortaDeBolivia(valor: Date): string {
+  const partes = new Intl.DateTimeFormat("es-BO", {
+    day: "numeric",
+    month: "numeric",
+    timeZone: "America/La_Paz",
+  }).formatToParts(valor);
+  const parte = (tipo: "day" | "month") =>
+    (partes.find((p) => p.type === tipo)?.value ?? "").padStart(2, "0");
+  return `${parte("day")}/${parte("month")}`;
+}
