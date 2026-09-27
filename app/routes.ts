@@ -28,6 +28,8 @@ export default [
     // Precio publicado e historial de rebajas (#12).
     route("piezas/:codigo/precio", "routes/admin/piezas/precio.tsx"),
     route("reservas", "routes/admin/reservas.tsx"),
+    route("compradoras", "routes/admin/compradoras/lista.tsx"),
+    route("compradoras/:id", "routes/admin/compradoras/detalle.tsx"),
     // Subida y gestión de fotos de una pieza (R2 + dominio). Sin pantalla
     // propia: lo llama `TomasDelPanel` con `fetch`.
     route("piezas/:codigo/fotos", "routes/admin/piezas/fotos.ts"),

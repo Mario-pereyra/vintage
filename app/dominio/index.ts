@@ -3,17 +3,25 @@ import type { PrismaClient } from "~/generated/prisma/client";
 
 import { crearAbastecimiento } from "./abastecimiento";
 import { listarCatalogo, type FiltrosDeCatalogo } from "./catalogo";
+import { buscarInventario, type FiltrosDeInventario } from "./consultas";
 import { crearDrops } from "./drops";
 import { crearFotos } from "./fotos";
 import { crearHistorialDePrecio } from "./historial-de-precio";
 import { ampliarLista, obtenerListas, type Lista } from "./listas";
 import { crearPiezas, type ConfiguracionDePiezas } from "./piezas";
 import { crearRentabilidad } from "./rentabilidad";
-import { crearReservas } from "./reservas";
+import { crearReservas, type Compradora, type ReservaVencidaDeCompradora } from "./reservas";
 import { crearRetiros } from "./retiros";
-import { crearVentas } from "./ventas";
+import { crearVentas, type Venta } from "./ventas";
 
 export type OpcionesDelDominio = Partial<ConfiguracionDePiezas>;
+
+/** El historial de una compradora (#13): sus compras y sus reservas vencidas. */
+export interface HistorialDeCompradora {
+  compradora: Compradora;
+  compras: Venta[];
+  reservasVencidas: ReservaVencidaDeCompradora[];
+}
 
 /**
  * Módulo de dominio de Vintage: el único seam de prueba.
@@ -66,6 +74,22 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
     prefijoDeCodigo: configDePiezas.prefijoDeCodigo,
     umbralesDeTamano: configDePiezas.umbralesDeTamano,
   };
+  const configuracionDeConsultas = { prefijoDeCodigo: configDePiezas.prefijoDeCodigo };
+
+  /**
+   * El historial de una compradora (#13): sus compras y sus reservas
+   * vencidas, la más reciente primero. `null` si la compradora no existe.
+   */
+  async function historialDeCompradora(
+    compradoraId: string,
+  ): Promise<HistorialDeCompradora | null> {
+    const [compradora, compras, reservasVencidas] = await Promise.all([
+      reservas.compradora(compradoraId),
+      ventas.comprasDeCompradora(compradoraId),
+      reservas.reservasVencidasDeCompradora(compradoraId),
+    ]);
+    return compradora ? { compradora, compras, reservasVencidas } : null;
+  }
 
   return {
     /**
@@ -83,6 +107,12 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
     piezaDelPanel: trasVencer(piezas.piezaDelPanel),
     listarPiezasDelPanel: trasVencer(piezas.listarPiezasDelPanel),
 
+    // --- Consultas del inventario del panel (#13): búsqueda, filtros y días
+    // publicada de cada pieza vendida ---
+    buscarInventario: trasVencer((filtros?: FiltrosDeInventario) =>
+      buscarInventario(db, configuracionDeConsultas, filtros),
+    ),
+
     // --- Reservas, compradoras e interesadas ---
     ...reservas,
 
@@ -98,6 +128,7 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
     // --- Venta con pago verificado, entrega y retiro ---
     registrarVenta: trasVencer(ventas.registrarVenta),
     ventaDePieza: ventas.ventaDePieza,
+    comprasDeCompradora: ventas.comprasDeCompradora,
     marcarEntregada: ventas.marcarEntregada,
     registrarGuia: ventas.registrarGuia,
     listarEntregasPendientes: ventas.listarEntregasPendientes,
@@ -109,6 +140,9 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
 
     // --- Historial de precios del precio publicado (#12) ---
     ...historialDePrecio,
+
+    // --- Historial de compradora (#13): compras y reservas vencidas ---
+    historialDeCompradora: trasVencer(historialDeCompradora),
 
     // --- Listas ampliables (tipo de cartera, color, material, calidad declarada) ---
     /** Los valores de cada lista, en orden de alta. */
@@ -145,6 +179,7 @@ export {
   TEXTO_DE_AUTENTICIDAD,
   type AutenticidadDePieza,
 } from "./autenticidad";
+export { diasPublicada, type FiltrosDeInventario, type PiezaDelInventario } from "./consultas";
 export {
   CODIGOS_MAXIMOS_POR_ASIGNACION,
   numeroDeDrop,
@@ -187,6 +222,7 @@ export {
   type OrigenDeLaReserva,
   type ReglaDeCompradora,
   type ReservaActiva,
+  type ReservaVencidaDeCompradora,
 } from "./reservas";
 export type { DatosDeRetiro, MotivoDelRetiro, RetiroDePieza } from "./retiros";
 export {

@@ -17,8 +17,12 @@ import {
  */
 const ID_MAXIMO_DE_COLUMNA = 2_147_483_647;
 
-/** Un ID de filtro (`tipoId`, `colorId`) válido, o `undefined` si se ignora. */
-function idDeFiltro(id: number | undefined): number | undefined {
+/**
+ * Un ID de filtro (`tipoId`, `colorId`) válido, o `undefined` si se ignora.
+ * Se exporta para que otras consultas del panel (`consultas.ts`, inventario
+ * con `loteId` y `tipoId`) reutilicen la misma acotación en vez de duplicarla.
+ */
+export function idDeFiltro(id: number | undefined): number | undefined {
   if (id === undefined) return undefined;
   return Number.isSafeInteger(id) && id > 0 && id <= ID_MAXIMO_DE_COLUMNA ? id : undefined;
 }

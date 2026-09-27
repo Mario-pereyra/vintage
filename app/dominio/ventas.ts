@@ -444,6 +444,22 @@ export function crearVentas(db: PrismaClient, config: ConfiguracionDeVentas) {
       );
     },
 
+    /**
+     * Las compras de una compradora, la más reciente primero: su historial en
+     * el panel (#13). Un id que no existe (o que no es un UUID) trae una
+     * lista vacía.
+     */
+    async comprasDeCompradora(compradoraId: string): Promise<Venta[]> {
+      const filas = await db.venta
+        .findMany({
+          where: { compradoraId },
+          include: detalleDeVenta,
+          orderBy: [{ vendidaEn: "desc" }, { id: "desc" }],
+        })
+        .catch(() => []); // un id que no es UUID
+      return filas.map(aVenta);
+    },
+
     /** Las ventas con la entrega pendiente, la más antigua primero. */
     async listarEntregasPendientes(): Promise<Venta[]> {
       const filas = await db.venta.findMany({

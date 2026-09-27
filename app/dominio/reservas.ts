@@ -89,6 +89,16 @@ export interface ReservaActiva {
   minutosRestantes: number;
 }
 
+/** Una reserva vencida de una compradora, en su historial (#13). */
+export interface ReservaVencidaDeCompradora {
+  /** Código de la pieza reservada. */
+  codigo: string;
+  nombrePieza: string | null;
+  origen: OrigenDeLaReserva;
+  /** Cuándo venció el plazo. */
+  venceEn: Date;
+}
+
 export interface DatosDeInteresada {
   nombre: string;
   whatsapp: string;
@@ -483,6 +493,28 @@ export function crearReservas(db: PrismaClient, config: ConfiguracionDeReservas)
         orderBy: { venceEn: "asc" },
       });
       return filas.map(aReservaActiva);
+    },
+
+    /**
+     * Las reservas vencidas de una compradora, la más reciente primero: parte
+     * de su historial en el panel (#13). Un id que no existe (o que no es un
+     * UUID) trae una lista vacía, igual que `compradora`.
+     */
+    async reservasVencidasDeCompradora(compradoraId: string): Promise<ReservaVencidaDeCompradora[]> {
+      await vencerReservas();
+      const filas = await db.reserva
+        .findMany({
+          where: { compradoraId, estado: "VENCIDA" },
+          include: { pieza: { select: { codigo: true, nombre: true } } },
+          orderBy: { venceEn: "desc" },
+        })
+        .catch(() => []); // un id que no es UUID
+      return filas.map((fila) => ({
+        codigo: formatearCodigo(fila.pieza.codigo, config.prefijoDeCodigo),
+        nombrePieza: fila.pieza.nombre,
+        origen: fila.origen === "LIVE" ? "live" : "fuera_de_live",
+        venceEn: fila.venceEn,
+      }));
     },
 
     /** Registra a alguien interesado en una pieza, para contactarlo a mano. */
