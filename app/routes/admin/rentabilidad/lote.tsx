@@ -17,6 +17,7 @@ import {
   cuenta,
   Desglose,
   monto,
+  Partes,
   TEXTO_DEL_ESTADO_DEL_LOTE,
 } from "./cifras";
 
@@ -26,7 +27,11 @@ export const handle = {
 } satisfies BarraDelPanel;
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: `Rentabilidad del lote #${loaderData?.lote.id ?? ""} — Vintage Secret's` }];
+  return [
+    {
+      title: `Rentabilidad del lote #${loaderData?.lote.id ?? ""} — Vintage Secret's`,
+    },
+  ];
 }
 
 export async function loader({ params, context }: Route.LoaderArgs) {
@@ -45,19 +50,29 @@ export default function RentabilidadDelLote({ loaderData }: Route.ComponentProps
         titulo={`#${lote.id}`}
         cifra
         detalle={
-          <>
-            <Link className="enlace-renglon" to={`/admin/rentabilidad/proveedores/${lote.proveedorId}`}>
-              {lote.proveedorNombre}
-            </Link>{" "}
-            · {TEXTO_DE_CANAL[lote.canal]} · comprado{" "}
-            <span className="cifra">{fechaDeBolivia(lote.fechaCompra)}</span>
-          </>
+          <Partes
+            partes={[
+              <Link
+                key="proveedor"
+                className="enlace-renglon"
+                to={`/admin/rentabilidad/proveedores/${lote.proveedorId}`}
+              >
+                {lote.proveedorNombre}
+              </Link>,
+              TEXTO_DE_CANAL[lote.canal],
+              <>
+                comprado <span className="cifra">{fechaDeBolivia(lote.fechaCompra)}</span>
+              </>,
+            ]}
+          />
         }
         sello={
           <Sello
             texto={TEXTO_DEL_ESTADO_DEL_LOTE[lote.estado]}
             detalle={
-              lote.estado === "en_curso" ? `quedan ${cuenta(lote.sinVender, "pieza", "piezas")}` : undefined
+              lote.estado === "en_curso"
+                ? `quedan ${cuenta(lote.sinVender, "pieza", "piezas")}`
+                : undefined
             }
           />
         }
@@ -88,7 +103,10 @@ export default function RentabilidadDelLote({ loaderData }: Route.ComponentProps
         }
       />
 
-      <BloqueDeCalidad calidadDeclarada={lote.calidadDeclaradaNombre} calidad={lote.calidadDetectada} />
+      <BloqueDeCalidad
+        calidadDeclarada={lote.calidadDeclaradaNombre}
+        calidad={lote.calidadDetectada}
+      />
 
       <Desglose porTipo={lote.porTipo} porCondicion={lote.porCondicion} />
     </>

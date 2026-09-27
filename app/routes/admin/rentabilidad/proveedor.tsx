@@ -15,6 +15,7 @@ import {
   Desglose,
   FilaDeRentabilidad,
   FiltroDeFechas,
+  Partes,
   TEXTO_DEL_ESTADO_DEL_LOTE,
   valorDeLote,
 } from "./cifras";
@@ -53,12 +54,11 @@ export default function RentabilidadDelProveedor({ loaderData }: Route.Component
       ? cuenta(proveedor.comprasAParticular, "compra a particular", "compras a particular")
       : null,
   ]
-    .filter(Boolean)
-    .join(" · ");
+    .filter((parte): parte is string => parte !== null);
 
   return (
     <>
-      <CabeceraDeRentabilidad titulo={proveedor.nombre} detalle={origen} />
+      <CabeceraDeRentabilidad titulo={proveedor.nombre} detalle={<Partes partes={origen} />} />
 
       <FiltroDeFechas
         accion={`/admin/rentabilidad/proveedores/${proveedor.id}`}
@@ -92,9 +92,10 @@ export default function RentabilidadDelProveedor({ loaderData }: Route.Component
                 <FilaDeRentabilidad
                   key={lote.id}
                   to={`/admin/rentabilidad/lotes/${lote.id}`}
-                  nombre={`Lote #${lote.id}`}
+                  antes="Lote"
+                  nombre={`#${lote.id}`}
                   nombreCifra
-                  detalle={`${lote.calidadDeclaradaNombre} · ${TEXTO_DEL_ESTADO_DEL_LOTE[lote.estado]}`}
+                  detalle={[lote.calidadDeclaradaNombre, TEXTO_DEL_ESTADO_DEL_LOTE[lote.estado]]}
                   valor={valor}
                   que={que}
                 />

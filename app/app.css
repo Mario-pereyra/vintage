@@ -3406,4 +3406,39 @@
   .bloque:has(.filtro-rentabilidad) .bloque-detalle {
     white-space: nowrap;
   }
+
+  /* Debajo del cierre, la frase va en Archivo; solo el monto o el % es cifra. */
+  .total-rentabilidad small {
+    font: 500 13px / 1.35 var(--f-texto);
+  }
+  .total-rentabilidad small > .cifra {
+    font: 400 12.5px / 1.35 var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  /* "Lote" en palabras y "#3" en cifra. */
+  .fila-rentabilidad-nombre > .cifra {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  /* Cada parte del detalle corta entera; el "·" abre la parte siguiente. */
+  .separado {
+    white-space: nowrap;
+  }
+  .separado::before {
+    content: "· ";
+  }
+  /* El enlace al lote: área táctil de 52px (Pulgar Rule). */
+  .total-rentabilidad ~ .enlace-ficha {
+    display: flex;
+    width: fit-content;
+    min-height: 52px;
+    margin: var(--s-3) 0 calc(var(--s-4) * -1);
+  }
+  /* El último renglón de la calidad detectada no lleva punteado debajo. */
+  .calidad-detectada > .renglones:last-child > .renglon:last-child,
+  .calidad-detectada > div:last-child > .renglones:last-child > .renglon:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
 }

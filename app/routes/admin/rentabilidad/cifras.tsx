@@ -39,6 +39,23 @@ export function cuenta(n: number, singular: string, plural: string): string {
   return `${n} ${n === 1 ? singular : plural}`;
 }
 
+/**
+ * Partes de una línea de detalle separadas por "·". Cada parte corta entera
+ * y el "·" abre la siguiente, así nunca queda colgando al final del renglón.
+ */
+export function Partes({ partes }: { partes: readonly ReactNode[] }) {
+  return partes.map((parte, i) =>
+    i === 0 ? (
+      <span key={i}>{parte}</span>
+    ) : (
+      <span key={i}>
+        {" "}
+        <span className="separado">{parte}</span>
+      </span>
+    ),
+  );
+}
+
 /** "2026-09-01" → "01/09/26" (el día tal como viene en la URL). */
 function diaCorto(texto: string): string {
   const [anio, mes, dia] = texto.split("-");
@@ -102,15 +119,12 @@ export function FiltroDeFechas({
   hasta: string;
   errores: Record<string, string>;
 }) {
-  const rango = rangoTexto(desde, hasta);
+  const conError = Object.keys(errores).length > 0;
+  const rango = conError ? undefined : rangoTexto(desde, hasta);
   const activo = Boolean(desde || hasta);
 
   return (
-    <BloquePanel
-      titulo="Fecha de compra"
-      detalle={rango}
-      completo={Boolean(rango) && Object.keys(errores).length === 0}
-    >
+    <BloquePanel titulo="Fecha de compra" detalle={rango} completo={Boolean(rango)}>
       <Form method="get" action={accion} className="filtro-rentabilidad">
         <div className="filtro-rentabilidad-fechas">
           <Campo etiqueta="Desde" para="desde">
@@ -245,9 +259,11 @@ export function CifrasDeRentabilidadBloque({
           etiqueta="RENTABILIDAD"
           valor={monto(cifras.margenCentavos)}
           debajo={
-            <>
-              <span>{porcentajeTexto(porcentajeRecuperado)}</span> recuperado
-            </>
+            porcentajeRecuperado === null ? undefined : (
+              <>
+                <span className="cifra">{porcentajeTexto(porcentajeRecuperado)}</span> recuperado
+              </>
+            )
           }
         />
       ) : (
@@ -256,7 +272,7 @@ export function CifrasDeRentabilidadBloque({
           valor={porcentajeTexto(porcentajeRecuperado)}
           debajo={
             <>
-              margen hasta hoy <span>{monto(cifras.margenCentavos)}</span>
+              margen hasta hoy <span className="cifra">{monto(cifras.margenCentavos)}</span>
             </>
           }
         />
@@ -268,7 +284,8 @@ export function CifrasDeRentabilidadBloque({
 
 /** La distribución de condiciones de ingreso y el descarte. */
 function RenglonesDeCalidad({ calidad }: { calidad: CalidadDetectada }) {
-  const total = CONDICIONES.reduce((suma, c) => suma + calidad.condiciones[c], 0) + calidad.sinCondicion;
+  const total =
+    CONDICIONES.reduce((suma, c) => suma + calidad.condiciones[c], 0) + calidad.sinCondicion;
   const parte = (n: number) =>
     total > 0 && n > 0 ? `${Math.round((n / total) * 100)} %` : undefined;
 
@@ -322,36 +339,38 @@ export function BloqueDeCalidad({
 
   return (
     <BloquePanel titulo="Calidad detectada">
-      {calidadDeclarada ? (
-        <Renglones>
-          <Renglon etiqueta="Declarada">{calidadDeclarada}</Renglon>
-        </Renglones>
-      ) : null}
-      {grupos.length === 1 ? (
-        <>
+      <div className="calidad-detectada">
+        {calidadDeclarada ? (
           <Renglones>
-            <Renglon etiqueta="Declarada" aclaracion={cuenta(grupos[0].lotes, "lote", "lotes")}>
-              {grupos[0].nombre}
-            </Renglon>
+            <Renglon etiqueta="Declarada">{calidadDeclarada}</Renglon>
           </Renglones>
+        ) : null}
+        {grupos.length === 1 ? (
+          <>
+            <Renglones>
+              <Renglon etiqueta="Declarada" aclaracion={cuenta(grupos[0].lotes, "lote", "lotes")}>
+                {grupos[0].nombre}
+              </Renglon>
+            </Renglones>
+            <RenglonesDeCalidad calidad={calidad} />
+          </>
+        ) : grupos.length > 1 ? (
+          <>
+            <Grupo>Todos sus lotes</Grupo>
+            <RenglonesDeCalidad calidad={calidad} />
+            {grupos.map((grupo) => (
+              <div key={grupo.nombre}>
+                <Grupo>
+                  Declarada {grupo.nombre} · {cuenta(grupo.lotes, "lote", "lotes")}
+                </Grupo>
+                <RenglonesDeCalidad calidad={grupo.calidad} />
+              </div>
+            ))}
+          </>
+        ) : (
           <RenglonesDeCalidad calidad={calidad} />
-        </>
-      ) : grupos.length > 1 ? (
-        <>
-          <Grupo>Todos sus lotes</Grupo>
-          <RenglonesDeCalidad calidad={calidad} />
-          {grupos.map((grupo) => (
-            <div key={grupo.nombre}>
-              <Grupo>
-                Declarada {grupo.nombre} · {cuenta(grupo.lotes, "lote", "lotes")}
-              </Grupo>
-              <RenglonesDeCalidad calidad={grupo.calidad} />
-            </div>
-          ))}
-        </>
-      ) : (
-        <RenglonesDeCalidad calidad={calidad} />
-      )}
+        )}
+      </div>
     </BloquePanel>
   );
 }
@@ -450,6 +469,7 @@ export function FilaDeRentabilidad({
   to,
   nombre,
   nombreCifra = false,
+  antes,
   detalle,
   valor,
   que,
@@ -457,7 +477,10 @@ export function FilaDeRentabilidad({
   to: string;
   nombre: ReactNode;
   nombreCifra?: boolean;
-  detalle: ReactNode;
+  /** Palabra antes del nombre en cifra ("Lote"). */
+  antes?: string;
+  /** Las partes del detalle, que se separan con "·". */
+  detalle: readonly ReactNode[];
   valor: ReactNode;
   /** Qué es el valor: "recuperado", "rentabilidad", "margen". */
   que: string;
@@ -466,10 +489,13 @@ export function FilaDeRentabilidad({
     <li>
       <Link className="fila-pieza fila-rentabilidad" to={to}>
         <span>
-          <span className={nombreCifra ? "fila-pieza-ref" : "fila-rentabilidad-nombre"}>
-            {nombre}
+          <span className="fila-rentabilidad-nombre">
+            {antes ? <>{antes} </> : null}
+            {nombreCifra ? <span className="cifra">{nombre}</span> : nombre}
           </span>
-          <span className="fila-pieza-nombre">{detalle}</span>
+          <span className="fila-pieza-nombre">
+            <Partes partes={detalle} />
+          </span>
         </span>
         <span className="fila-pieza-derecha">
           <span className="fila-rentabilidad-valor">
@@ -489,6 +515,10 @@ export function valorDeLote(lote: {
   margenCentavos: number;
   porcentajeRecuperado: number | null;
 }): { valor: string; que: string } {
-  if (lote.estado === "terminado") return { valor: monto(lote.margenCentavos), que: "rentabilidad" };
-  return { valor: porcentajeTexto(lote.porcentajeRecuperado), que: "recuperado" };
+  if (lote.estado === "terminado")
+    return { valor: monto(lote.margenCentavos), que: "rentabilidad" };
+  return {
+    valor: porcentajeTexto(lote.porcentajeRecuperado),
+    que: "recuperado",
+  };
 }

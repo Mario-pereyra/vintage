@@ -49,15 +49,15 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   }
 }
 
-/** "1 lote · 1 compra a particular", sin las partes en cero. */
-function origenDelProveedor(lotes: number, comprasAParticular: number): string {
+/** ["1 lote", "1 compra a particular"], sin las partes en cero. */
+function origenDelProveedor(lotes: number, comprasAParticular: number): string[] {
   const partes = [
     lotes > 0 || comprasAParticular === 0 ? cuenta(lotes, "lote", "lotes") : null,
     comprasAParticular > 0
       ? cuenta(comprasAParticular, "compra a particular", "compras a particular")
       : null,
   ];
-  return partes.filter(Boolean).join(" · ");
+  return partes.filter((parte): parte is string => parte !== null);
 }
 
 export default function Rentabilidad({ loaderData }: Route.ComponentProps) {
@@ -95,7 +95,10 @@ export default function Rentabilidad({ loaderData }: Route.ComponentProps) {
                   key={proveedor.id}
                   to={`/admin/rentabilidad/proveedores/${proveedor.id}${consulta}`}
                   nombre={proveedor.nombre}
-                  detalle={`${origenDelProveedor(proveedor.lotes, proveedor.comprasAParticular)} · ${proveedor.vendidas} de ${proveedor.piezas} vendidas`}
+                  detalle={[
+                    ...origenDelProveedor(proveedor.lotes, proveedor.comprasAParticular),
+                    `${proveedor.vendidas} de ${proveedor.piezas} vendidas`,
+                  ]}
                   valor={monto(proveedor.margenCentavos)}
                   que="margen"
                 />
@@ -112,9 +115,10 @@ export default function Rentabilidad({ loaderData }: Route.ComponentProps) {
                     <FilaDeRentabilidad
                       key={lote.id}
                       to={`/admin/rentabilidad/lotes/${lote.id}`}
-                      nombre={`Lote #${lote.id}`}
+                      antes="Lote"
+                      nombre={`#${lote.id}`}
                       nombreCifra
-                      detalle={`${lote.proveedorNombre} · ${TEXTO_DEL_ESTADO_DEL_LOTE[lote.estado]}`}
+                      detalle={[lote.proveedorNombre, TEXTO_DEL_ESTADO_DEL_LOTE[lote.estado]]}
                       valor={valor}
                       que={que}
                     />
