@@ -6,7 +6,8 @@ import { PrismaPGlite } from "pglite-prisma-adapter";
 
 import { PrismaClient, type EstadoPieza } from "~/generated/prisma/client";
 
-import { crearDominio, type Dominio } from "../index";
+import { crearDominio, type Dominio, type OpcionesDelDominio } from "../index";
+import { numeroDeCodigo, sufijoAleatorio } from "../identificadores";
 
 const carpetaDeMigraciones = join(process.cwd(), "prisma", "migrations");
 
@@ -45,27 +46,38 @@ export interface BaseDePrueba {
   /**
    * Inserta una pieza directamente, sin pasar por el dominio.
    *
-   * Provisorio: existe solo porque el dominio todavía no tiene operaciones
-   * para crear y publicar piezas. Cuando el ticket #4 las agregue, las pruebas
-   * deben preparar sus datos con ellas y este atajo se elimina.
+   * Provisorio: existe solo para los estados que todavía no tienen operación
+   * (Reservada, Vendida y Retirada, tickets #9 y #10). Para En preparación y
+   * Disponible, usa `crearPieza` y `publicarPieza`.
    */
   sembrarPieza(pieza: { estado: EstadoPieza; publicadaEn?: Date }): Promise<void>;
+  /**
+   * Borra una pieza por fuera del dominio (el dominio nunca borra piezas), para
+   * comprobar que su código no vuelve a asignarse.
+   */
+  borrarPiezaSinDominio(codigo: string): Promise<void>;
   cerrar(): Promise<void>;
 }
 
 /**
  * Crea una base Postgres limpia (PGlite) con el esquema y las migraciones
  * reales, y el módulo de dominio conectado a ella. Úsala en `beforeEach`.
+ * Las opciones fijan el reloj, el prefijo del código o los umbrales.
  */
-export async function crearBaseDePrueba(): Promise<BaseDePrueba> {
+export async function crearBaseDePrueba(
+  opciones: OpcionesDelDominio = {},
+): Promise<BaseDePrueba> {
   const { prisma, cerrar } = await crearPrismaDePrueba();
 
   return {
-    dominio: crearDominio(prisma),
+    dominio: crearDominio(prisma, opciones),
     async sembrarPieza({ estado, publicadaEn }) {
       await prisma.pieza.create({
-        data: { id: crypto.randomUUID(), estado, publicadaEn },
+        data: { id: crypto.randomUUID(), sufijo: sufijoAleatorio(), estado, publicadaEn },
       });
+    },
+    async borrarPiezaSinDominio(codigo) {
+      await prisma.pieza.delete({ where: { codigo: numeroDeCodigo(codigo) ?? 0 } });
     },
     cerrar,
   };
