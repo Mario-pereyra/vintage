@@ -3442,3 +3442,68 @@
     padding-bottom: 0;
   }
 }
+
+/* ── Consultas en el panel (#13): inventario por Ref. y filtros, historial de compradora ── */
+@layer components {
+  /* La búsqueda por Ref. se escribe en cifra, como la búsqueda pública. */
+  .buscar-ref .texto,
+  .buscar-ref .texto::placeholder {
+    font-family: var(--f-cifra);
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+  }
+  .buscar-ref .ayuda {
+    margin: var(--s-2) 0 0;
+  }
+
+  /* Los filtros del catálogo, sobre papel: filetes punteados como los renglones. */
+  .filtros-panel {
+    margin-top: var(--s-4);
+    border-top: 1.5px dotted var(--linea);
+    border-bottom: 1.5px dotted var(--linea);
+  }
+  .filtros-panel .filtros-elegidos,
+  .filtros-panel .filtro-ayuda {
+    color: var(--tinta-2);
+  }
+  .filtros-panel .filtros-cuerpo {
+    gap: var(--s-5);
+  }
+  /* El carril sangra hasta el borde del bloque (16px de padding). */
+  .filtros-panel .chips-carril {
+    margin: 0 calc(var(--s-4) * -1);
+    padding: 2px var(--s-4) 6px;
+    scroll-padding-inline: var(--s-4);
+  }
+  .inventario-buscar .filtros-quitar {
+    margin-top: var(--s-2);
+  }
+  .inventario-vacio {
+    margin: var(--s-4) 0 0;
+  }
+
+  /* La línea bajo el nombre: días publicada, fecha de la compra o del vencimiento. */
+  .fila-pieza-dias {
+    display: block;
+    margin-top: 2px;
+    font: 500 13px / 1.4 var(--f-texto);
+    color: var(--tinta-2);
+  }
+  .fila-pieza-dias .cifra {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--tinta);
+  }
+
+  /* El número de la marca va en tinta, también dentro de una fila de compradora. */
+  .marca-vencidas .cifra {
+    color: inherit;
+  }
+
+  .compradora-escribir {
+    margin-bottom: 0;
+  }
+  .historial-vacio {
+    margin: 0;
+  }
+}
