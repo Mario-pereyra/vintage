@@ -71,7 +71,7 @@ Si una sesión no ve las definiciones, lanza `general-purpose` con el modelo del
 - El único punto de prueba automática en el CI es el módulo de dominio (Vitest con PGlite).
 - Playwright se usa para verificar y revisar cada PR, no como suite end-to-end.
 
-## Estado (2026-09-26)
+## Estado (2026-09-27)
 
 **Ola 0: terminada.**
 - Las definiciones de agentes se reemplazaron por los siete roles de la tabla (decisión 2).
@@ -120,9 +120,20 @@ Si una sesión no ve las definiciones, lanza `general-purpose` con el modelo del
   - Neon `dev` está lleno de datos de prueba.
 - ⏸️ acumulados en #18 y menores de diseño en #19.
 
+**Olas 4b y 5 (#10, #6, #12, #11 y #13): terminadas.**
+- #10 → PR #27, 85713e7.
+- #6 → PR #29, 5bf925d. Hubo una falla material de diseño: con "Mostrar" apagado, el valor quedaba al 55 % de opacidad y no cumplía WCAG AA. En la misma vuelta se sumaron dos cambios: "Sin marca" ya no se publica y los saltos de línea se conservan.
+- #12 → PR #28, 5aa18b3. Hubo dos graves: el precio publicado se podía cambiar desde la edición sin dejar historial, y también se podía cambiar en piezas Vendidas o Retiradas, lo que reescribía la venta. Ahora el cambio solo se permite en Disponible o Reservada, con un `updateMany` atómico condicionado por estado. La migración se renombró a `20260927130000_...`.
+- #11 → PR #30, 9fd3265. El build falló en CI porque `rentabilidad.ts` importaba `Prisma` como valor y eso metía el cliente y su wasm en el bundle del navegador. Ahora usa un `$queryRaw` fijo con parámetros NULL. La prueba de guarda `app/dominio/sin-cliente-de-prisma.test.ts` evita que vuelva a pasar. Hubo además una falla material: frases en Martian Mono.
+- #13 → PR #31, e184041. El filtro por drop se agregó después del merge del #12. La búsqueda por Ref. compara solo dígitos.
+- **Lecciones operativas:**
+  - Las pruebas con PGlite dan timeouts cuando hay muchos agentes en paralelo. `hookTimeout` subió a 60 s; si siguen fallando, correr con `npm test -- --no-file-parallelism`. El CI es la fuente de verdad.
+  - Con cada rebase, `app/app.css` se enreda porque las reglas son repetitivas. Lo más seguro es reconstruirlo como main + el bloque del ticket y comprobar que las llaves queden balanceadas.
+  - El `.env` raíz no trae `DEV_LOGIN`. Los agentes que necesitan el login de desarrollo lo agregan a su copia.
+  - Después de una corrección no hace falta repetir las tres revisiones: basta con el revisor que la encontró y una confirmación rápida del resto.
+
 **Próximos pasos**
-- Ola 4b: #6 y #12 con `dominio`. #10 ya está en revisión y se rebasa sobre `main`.
-- Ola 5: #11 (espera a #8 y #10) y #13 (espera a #10).
+- Ola 6: #17 (despliegue a producción) con `dominio-nucleo`. Después, preparar el #18 (verificación humana) y el #19 (ronda de ajustes visuales, con capturas de todas las pantallas a 390 y 1280 px).
 
 ## Cómo retomar
 
