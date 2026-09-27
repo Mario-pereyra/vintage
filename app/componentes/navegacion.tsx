@@ -60,17 +60,26 @@ export function MigaDePan({
 }
 
 /**
- * Barra del panel: pegajosa, de rosa (el único rosa del panel), con el botón
- * volver (40px), el título en blanco (Archivo 800, 20px) y la Ref. asignada en
- * una etiqueta de papel.
+ * Barra del panel: pegajosa, de rosa (el único rosa del panel), con el título
+ * en blanco (Archivo 800, 20px) y la Ref. asignada en una etiqueta de papel.
+ *
+ * En la portada del panel (sin `volverA`) abre con el wordmark, que lleva al
+ * inicio del panel. En las pantallas internas, ese lugar lo ocupa el botón
+ * volver (40px) para no apretar el título a 390px; la marca sigue en el
+ * `<title>` de la pestaña.
  */
 export function BarraPanel({
+  marca,
+  inicio = "/admin",
   titulo,
   volverA,
   textoVolver = "Volver",
   codigo,
   acciones,
 }: {
+  marca: string;
+  /** Ruta de la portada del panel, adonde lleva el wordmark. */
+  inicio?: string;
   titulo: string;
   volverA?: string;
   textoVolver?: string;
@@ -84,7 +93,14 @@ export function BarraPanel({
         <Link className="barra-panel-volver" to={volverA} aria-label={textoVolver}>
           <Icono nombre="volver" />
         </Link>
-      ) : null}
+      ) : (
+        <>
+          <Link className="marca" to={inicio}>
+            {marca}
+          </Link>
+          <span className="barra-panel-filete" aria-hidden="true" />
+        </>
+      )}
       <h1>{titulo}</h1>
       {codigo || acciones ? (
         <div className="barra-panel-derecha">
