@@ -72,6 +72,9 @@ El momento en que se abre un lote, se cuentan sus unidades y se clasifican en pi
 **Rentabilidad del lote**:
 La suma de los precios finales de sus piezas vendidas menos el costo del lote, el reacondicionamiento y las entregas. Mientras queden piezas sin vender, el lote está en curso y se expresa como porcentaje recuperado de lo invertido.
 
+**Costo imputado**:
+Todo lo que se invirtió en un lote (o en un proveedor, o en un grupo de piezas): costo y transporte del lote, reacondicionamiento de sus piezas y costo de entrega de sus ventas. Una pieza retirada conserva su parte del costo del lote sin aportar ingreso.
+
 **Costo de pieza**:
 La parte del costo de su lote que le corresponde a una pieza (reparto entre las piezas del lote) más su reacondicionamiento. En una compra a particular es lo que se pagó por ella.
 

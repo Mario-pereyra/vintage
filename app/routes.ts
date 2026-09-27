@@ -39,5 +39,9 @@ export default [
     // Drops: agrupan piezas En preparación y las publican juntas o de a poco (#12).
     route("drops", "routes/admin/drops/lista.tsx"),
     route("drops/:id", "routes/admin/drops/detalle.tsx"),
+    // Rentabilidad por lote y proveedor, y calidad detectada (interno).
+    route("rentabilidad", "routes/admin/rentabilidad/lista.tsx"),
+    route("rentabilidad/lotes/:id", "routes/admin/rentabilidad/lote.tsx"),
+    route("rentabilidad/proveedores/:id", "routes/admin/rentabilidad/proveedor.tsx"),
   ]),
 ] satisfies RouteConfig;
