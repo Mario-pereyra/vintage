@@ -8,6 +8,7 @@ import { crearFotos } from "./fotos";
 import { crearHistorialDePrecio } from "./historial-de-precio";
 import { ampliarLista, obtenerListas, type Lista } from "./listas";
 import { crearPiezas, type ConfiguracionDePiezas } from "./piezas";
+import { crearRentabilidad } from "./rentabilidad";
 import { crearReservas } from "./reservas";
 import { crearRetiros } from "./retiros";
 import { crearVentas } from "./ventas";
@@ -47,6 +48,7 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
     prefijoDeCodigo: configDePiezas.prefijoDeCodigo,
     ahora: configDePiezas.ahora,
   });
+  const rentabilidad = crearRentabilidad(db);
 
   /**
    * Vencimiento perezoso: antes de leer el estado de una pieza, vence las
@@ -89,6 +91,9 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
 
     // --- Abastecimiento: proveedores, lotes, apertura y compra a particular ---
     ...abastecimiento,
+
+    // --- Rentabilidad por lote y proveedor, y calidad detectada (interno) ---
+    ...rentabilidad,
 
     // --- Venta con pago verificado, entrega y retiro ---
     registrarVenta: trasVencer(ventas.registrarVenta),
@@ -194,6 +199,19 @@ export {
   type ModalidadDeLaEntrega,
   type Venta,
 } from "./ventas";
+export type {
+  CalidadDetectada,
+  CalidadPorDeclarada,
+  CifrasDeRentabilidad,
+  DetalleDeLote,
+  DetalleDeProveedor,
+  EstadoDelLote,
+  FilaPorCondicion,
+  FilaPorTipo,
+  FiltrosDeRentabilidad,
+  RentabilidadDeLote,
+  RentabilidadDeProveedor,
+} from "./rentabilidad";
 export type { Tamano, UmbralesDeTamano } from "./tamano";
 export {
   crearAccesoAlPanel,
