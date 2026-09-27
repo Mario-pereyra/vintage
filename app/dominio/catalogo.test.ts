@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { Dominio } from "./index";
+import { PRECIO_MAXIMO_CENTAVOS } from "./piezas";
 import { crearBaseDePrueba, type BaseDePrueba } from "./pruebas/base-de-prueba";
 
 describe("catálogo público", () => {
@@ -159,6 +160,71 @@ describe("catálogo público", () => {
         hayMas: false,
       });
     });
+  });
+
+  // Los filtros vienen de parámetros de la URL: cualquier valor "sintácticamente
+  // válido" puede llegar hasta acá (un typo con más ceros, un enlace armado a
+  // mano). `tipoId`, `colorId` y `precioCentavos` son columnas INTEGER (32
+  // bits) en Postgres: un valor fuera de su rango no se ignora en el `where`,
+  // hace que la consulta entera falle. El dominio nunca deja pasar eso.
+  describe("filtros fuera de rango", () => {
+    it("ignora un tipoId o un colorId que no entra en una columna INTEGER", async () => {
+      await base.sembrarPieza({ estado: "DISPONIBLE", nombre: "Pieza" });
+
+      const porTipo = await dominio.listarCatalogo({ tipoId: 99_999_999_999 });
+      const porColor = await dominio.listarCatalogo({ colorId: -5 });
+
+      expect(porTipo.piezas.map((p) => p.nombre)).toEqual(["Pieza"]);
+      expect(porColor.piezas.map((p) => p.nombre)).toEqual(["Pieza"]);
+    });
+
+    it("ignora un precio mínimo o máximo que no sea un entero positivo", async () => {
+      await base.sembrarPieza({ estado: "DISPONIBLE", nombre: "Pieza", precioCentavos: 5000 });
+
+      const { piezas } = await dominio.listarCatalogo({ precioMinCentavos: -10 });
+
+      expect(piezas.map((p) => p.nombre)).toEqual(["Pieza"]);
+    });
+
+    it("acota un precio fuera de rango al mismo tope que una pieza (PRECIO_MAXIMO_CENTAVOS)", async () => {
+      await base.sembrarPieza({
+        estado: "DISPONIBLE",
+        nombre: "La más cara posible",
+        precioCentavos: PRECIO_MAXIMO_CENTAVOS,
+      });
+
+      const { piezas } = await dominio.listarCatalogo({ precioMaxCentavos: 99_999_999_999 });
+
+      expect(piezas.map((p) => p.nombre)).toEqual(["La más cara posible"]);
+    });
+
+    it("intercambia el rango de precio si el mínimo llega mayor que el máximo", async () => {
+      await base.sembrarPieza({ estado: "DISPONIBLE", nombre: "Media", precioCentavos: 15000 });
+
+      const { piezas } = await dominio.listarCatalogo({
+        precioMinCentavos: 20000,
+        precioMaxCentavos: 10000,
+      });
+
+      expect(piezas.map((p) => p.nombre)).toEqual(["Media"]);
+    });
+  });
+
+  it("una pieza publicada con datos obligatorios nulos se omite, sin romper el listado", async () => {
+    await base.sembrarPieza({
+      estado: "DISPONIBLE",
+      nombre: "Completa",
+      publicadaEn: new Date("2026-09-20T10:00:00Z"),
+    });
+    await base.sembrarPieza({
+      estado: "DISPONIBLE",
+      nombre: null,
+      publicadaEn: new Date("2026-09-21T10:00:00Z"),
+    });
+
+    const { piezas } = await dominio.listarCatalogo();
+
+    expect(piezas.map((p) => p.nombre)).toEqual(["Completa"]);
   });
 
   describe("paginación", () => {

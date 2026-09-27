@@ -47,8 +47,8 @@ const TOMAR_MAXIMO = PIEZAS_POR_PAGINA * 5;
 
 /**
  * Catálogo público: piezas Disponibles y Reservadas, más recientes primero,
- * con filtros por tipo, color, tamaño y precio en la URL (ADR 0006: se puede
- * compartir el listado filtrado) y carga incremental con "Cargar más".
+ * con filtros por tipo, color, tamaño y precio en la URL, así el listado
+ * filtrado se puede compartir, y carga incremental con "Cargar más".
  */
 export async function loader({ request, context }: Route.LoaderArgs) {
   const parametros = new URL(request.url).searchParams;
@@ -135,9 +135,18 @@ const BANDAS_DE_PRECIO = [
   { clave: "desde-300", texto: "Bs 300 o más", precioMin: "300", precioMax: "" },
 ] as const;
 
-/** "Bs 100 a 300", "Desde Bs 50", "Hasta Bs 200", o `null` sin filtro de precio. */
+/**
+ * "Bs 100 a 300", "Desde Bs 50", "Hasta Bs 200", o `null` sin filtro de
+ * precio. Si el mínimo llega mayor que el máximo (una URL armada a mano, por
+ * ejemplo), se muestran en el orden correcto: el dominio ya los intercambia
+ * para la consulta, y el resumen no debe contradecirla.
+ */
 function describirPrecio({ precioMin, precioMax }: FiltrosCrudos) {
-  if (precioMin && precioMax) return `Bs ${precioMin} a ${precioMax}`;
+  if (precioMin && precioMax) {
+    const [desde, hasta] =
+      Number(precioMin) > Number(precioMax) ? [precioMax, precioMin] : [precioMin, precioMax];
+    return `Bs ${desde} a ${hasta}`;
+  }
   if (precioMin) return `Desde Bs ${precioMin}`;
   if (precioMax) return `Hasta Bs ${precioMax}`;
   return null;

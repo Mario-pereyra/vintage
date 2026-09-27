@@ -53,18 +53,20 @@ export interface BaseDePrueba {
    * Los datos obligatorios (nombre, tipo, color, material, medidas y precio)
    * traen un valor por defecto válido, como los tendría cualquier pieza que
    * llegó a publicarse; pásalos para probar un filtro o un dato del listado.
+   * Pasar `null` explícito (a diferencia de no pasar el campo) deja la columna
+   * vacía, para simular una pieza publicada con datos incompletos.
    */
   sembrarPieza(pieza: {
     estado: EstadoPieza;
     publicadaEn?: Date;
-    nombre?: string;
-    tipoId?: number;
-    colorId?: number;
-    materialId?: number;
-    altoCm?: number;
-    anchoCm?: number;
-    profundidadCm?: number;
-    precioCentavos?: number;
+    nombre?: string | null;
+    tipoId?: number | null;
+    colorId?: number | null;
+    materialId?: number | null;
+    altoCm?: number | null;
+    anchoCm?: number | null;
+    profundidadCm?: number | null;
+    precioCentavos?: number | null;
   }): Promise<void>;
   /**
    * Borra una pieza por fuera del dominio (el dominio nunca borra piezas), para
@@ -108,14 +110,14 @@ export async function crearBaseDePrueba(
           sufijo: sufijoAleatorio(),
           estado,
           publicadaEn,
-          nombre: nombre ?? "Pieza de prueba",
-          tipoId: tipoId ?? (await primerId(prisma.tipoDeCartera)),
-          colorId: colorId ?? (await primerId(prisma.color)),
-          materialId: materialId ?? (await primerId(prisma.material)),
-          altoCm: altoCm ?? 20,
-          anchoCm: anchoCm ?? 20,
-          profundidadCm: profundidadCm ?? 10,
-          precioCentavos: precioCentavos ?? 10000,
+          nombre: nombre === undefined ? "Pieza de prueba" : nombre,
+          tipoId: tipoId === undefined ? await primerId(prisma.tipoDeCartera) : tipoId,
+          colorId: colorId === undefined ? await primerId(prisma.color) : colorId,
+          materialId: materialId === undefined ? await primerId(prisma.material) : materialId,
+          altoCm: altoCm === undefined ? 20 : altoCm,
+          anchoCm: anchoCm === undefined ? 20 : anchoCm,
+          profundidadCm: profundidadCm === undefined ? 10 : profundidadCm,
+          precioCentavos: precioCentavos === undefined ? 10000 : precioCentavos,
         },
       });
     },

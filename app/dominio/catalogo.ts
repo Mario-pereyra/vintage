@@ -1,12 +1,64 @@
 import type { EstadoPieza, Prisma, PrismaClient } from "~/generated/prisma/client";
 
 import { formatearCodigo, rutaPublica } from "./identificadores";
+import { PRECIO_MAXIMO_CENTAVOS } from "./piezas";
 import {
   anchoDeTamano,
   tamanoPorAncho,
   type Tamano,
   type UmbralesDeTamano,
 } from "./tamano";
+
+/**
+ * Tope de una columna INTEGER (32 bits) en Postgres. `tipoId` y `colorId` lo
+ * son: un filtro fuera de este rango no se ignora en el `where`, hace fallar
+ * la consulta entera. Los filtros llegan de parámetros de la URL, así que
+ * cualquier entero "sintácticamente válido" puede pedirse.
+ */
+const ID_MAXIMO_DE_COLUMNA = 2_147_483_647;
+
+/** Un ID de filtro (`tipoId`, `colorId`) válido, o `undefined` si se ignora. */
+function idDeFiltro(id: number | undefined): number | undefined {
+  if (id === undefined) return undefined;
+  return Number.isSafeInteger(id) && id > 0 && id <= ID_MAXIMO_DE_COLUMNA ? id : undefined;
+}
+
+/**
+ * Un precio de filtro válido, acotado al mismo tope que un precio de pieza
+ * (`PRECIO_MAXIMO_CENTAVOS`, también una columna INTEGER). Un valor que no es
+ * un entero positivo se ignora en vez de acotarse a 0 o menos.
+ */
+function precioDeFiltro(centavos: number | undefined): number | undefined {
+  if (centavos === undefined) return undefined;
+  if (!Number.isSafeInteger(centavos) || centavos <= 0) return undefined;
+  return Math.min(centavos, PRECIO_MAXIMO_CENTAVOS);
+}
+
+/**
+ * Los filtros ya validados para pasar a la consulta: IDs fuera del rango de su
+ * columna se ignoran, el precio se acota al tope de una pieza y, si el mínimo
+ * queda mayor que el máximo, se intercambian (un enlace armado a mano puede
+ * llegar así, y el resultado sigue teniendo sentido).
+ */
+function normalizarFiltros(filtros: FiltrosDeCatalogo): FiltrosDeCatalogo {
+  let precioMinCentavos = precioDeFiltro(filtros.precioMinCentavos);
+  let precioMaxCentavos = precioDeFiltro(filtros.precioMaxCentavos);
+  if (
+    precioMinCentavos !== undefined &&
+    precioMaxCentavos !== undefined &&
+    precioMinCentavos > precioMaxCentavos
+  ) {
+    [precioMinCentavos, precioMaxCentavos] = [precioMaxCentavos, precioMinCentavos];
+  }
+
+  return {
+    tipoId: idDeFiltro(filtros.tipoId),
+    colorId: idDeFiltro(filtros.colorId),
+    tamano: filtros.tamano,
+    precioMinCentavos,
+    precioMaxCentavos,
+  };
+}
 
 /** Lo que el dominio necesita saber de la tienda para armar el listado. */
 export interface ConfiguracionDeCatalogo {
@@ -54,8 +106,10 @@ export interface PiezaEnCatalogo {
   precioCentavos: number;
   tamano: Tamano;
   /**
-   * Hueco para la foto principal en su variante "catálogo" (ADR 0005): llega
-   * con el #5. Hasta entonces, el listado se ve sin fotos, igual que la ficha.
+   * Hueco para la foto principal en su variante "catálogo" (las fotos se
+   * redimensionan en el navegador al subirlas, en miniatura, catálogo y
+   * detalle): llega con el #5. Hasta entonces, el listado se ve sin fotos,
+   * igual que la ficha.
    */
   foto: null;
 }
@@ -69,16 +123,18 @@ export interface PaginaDeCatalogo {
 
 type FilaDePieza = Prisma.PiezaGetPayload<object>;
 
+/**
+ * Una fila lista para el listado, o `null` si le faltan datos obligatorios.
+ * Eso no debería pasar (Disponible y Reservada solo se llega publicando, que
+ * los exige), pero una sola fila así no puede tumbar el listado entero para
+ * todas las compradoras: se omite en vez de reventar la consulta.
+ */
 function aPiezaEnCatalogo(
   fila: FilaDePieza,
   config: ConfiguracionDeCatalogo,
-): PiezaEnCatalogo {
+): PiezaEnCatalogo | null {
   const { nombre, anchoCm, precioCentavos } = fila;
-  if (!nombre || !anchoCm || !precioCentavos) {
-    throw new Error(
-      `La pieza ${formatearCodigo(fila.codigo, config.prefijoDeCodigo)} está publicada sin sus datos obligatorios.`,
-    );
-  }
+  if (!nombre || !anchoCm || !precioCentavos) return null;
   return {
     codigo: formatearCodigo(fila.codigo, config.prefijoDeCodigo),
     nombre,
@@ -99,9 +155,10 @@ function aPiezaEnCatalogo(
 export async function listarCatalogo(
   db: PrismaClient,
   config: ConfiguracionDeCatalogo,
-  filtros: FiltrosDeCatalogo = {},
+  filtrosCrudos: FiltrosDeCatalogo = {},
   limite: number = PIEZAS_POR_PAGINA,
 ): Promise<PaginaDeCatalogo> {
+  const filtros = normalizarFiltros(filtrosCrudos);
   const where: Prisma.PiezaWhereInput = {
     estado: { in: Object.keys(estadosDelListado) as EstadoDelListado[] },
   };
@@ -128,7 +185,10 @@ export async function listarCatalogo(
   });
 
   return {
-    piezas: filas.slice(0, limite).map((fila) => aPiezaEnCatalogo(fila, config)),
+    piezas: filas
+      .slice(0, limite)
+      .map((fila) => aPiezaEnCatalogo(fila, config))
+      .filter((pieza): pieza is PiezaEnCatalogo => pieza !== null),
     hayMas: filas.length > limite,
   };
 }
