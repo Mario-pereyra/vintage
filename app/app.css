@@ -2918,3 +2918,250 @@
     color: var(--sello);
   }
 }
+
+/* ── Drops y precio publicado en el panel (#12): /admin/drops, /admin/drops/:id y /admin/piezas/:codigo/precio ── */
+@layer components {
+  /* Lista de drops: el número y la cantidad de piezas en cifra grande, como en el cartel. */
+  .filas-drop {
+    margin: 0 calc(var(--s-4) * -1);
+    padding: 0;
+    list-style: none;
+  }
+  .fila-drop {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "numero cuantas icono"
+      "avance fecha icono";
+    align-items: baseline;
+    gap: 6px var(--s-3);
+    padding: var(--s-4);
+    border-top: 1.5px dotted var(--linea);
+    color: var(--tinta);
+    text-decoration: none;
+  }
+  li:first-child > .fila-drop {
+    border-top: 0;
+  }
+  .fila-drop:focus-visible {
+    outline-offset: -3px;
+  }
+  .fila-drop-numero {
+    grid-area: numero;
+    font: 700 24px / 1 var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.04em;
+    white-space: nowrap;
+  }
+  .fila-drop-cuantas {
+    grid-area: cuantas;
+    justify-self: end;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    font: 600 13px var(--f-texto);
+    color: var(--tinta-2);
+  }
+  .fila-drop-cuantas strong {
+    font: 700 24px / 1 var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.04em;
+    color: var(--tinta);
+  }
+  .fila-drop > .icono {
+    grid-area: icono;
+    align-self: center;
+    color: var(--tinta-2);
+  }
+  .fila-drop-avance {
+    grid-area: avance;
+    font: 600 14px / 1.35 var(--f-texto);
+    color: var(--tinta-2);
+  }
+  .fila-drop-avance-listo {
+    color: var(--sello);
+  }
+  .fila-drop:hover .fila-drop-avance {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .fila-drop-fecha {
+    grid-area: fecha;
+    justify-self: end;
+    font: 400 12px var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+    color: var(--tinta-2);
+    white-space: nowrap;
+  }
+
+  /* Cartel del drop: un comprobante con el número como Ref. y la cantidad al mismo tamaño. */
+  .cartel-drop {
+    margin: var(--s-2) 0 var(--s-3);
+  }
+  .cartel-drop-numero {
+    margin: 0;
+    font: 700 clamp(34px, 10.5vw, 52px) / 1 var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.04em;
+    white-space: nowrap;
+  }
+  .cartel-drop-fila {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--s-4);
+    margin: var(--s-3) 0 var(--s-5);
+  }
+  .cartel-drop-fila > .sello {
+    flex: none;
+    margin: 0 4px 4px 0;
+  }
+  .cartel-drop-cuantas {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-2);
+    margin: 0;
+    font: 800 22px / 1 var(--f-texto);
+    letter-spacing: -0.01em;
+  }
+  .cartel-drop-cuantas strong {
+    font: 700 clamp(34px, 10.5vw, 52px) / 1 var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.04em;
+  }
+  /* Fuera de un bloque, el aviso va sobre papel para no perderse en el campo. */
+  .cartel-drop + .panel-aviso {
+    margin-bottom: var(--s-3);
+    background: var(--papel);
+    border: 1.5px solid var(--linea);
+  }
+  .cartel-drop + .panel-aviso-fuerte {
+    border-color: var(--tinta);
+  }
+  .elegir-piezas .btn:disabled {
+    border-color: var(--linea);
+    color: var(--tinta-2);
+    cursor: not-allowed;
+  }
+  .vacio-detalle .cifra,
+  .elegir-piezas .btn .cifra {
+    font-size: 14px;
+    letter-spacing: -0.02em;
+  }
+  .panel-aviso > small {
+    display: block;
+    margin-top: 4px;
+    font: 400 13.5px / 1.4 var(--f-texto);
+  }
+  .btn-publicar-drop {
+    margin-top: 0;
+  }
+
+  /* Piezas del drop que no están listas: lo que les falta, en tinta. */
+  .fila-falta {
+    display: block;
+    margin-top: 4px;
+    font: 600 13px / 1.4 var(--f-texto);
+    color: var(--tinta);
+    text-wrap: pretty;
+  }
+  .fila-estado {
+    font: 600 13px var(--f-texto);
+    color: var(--tinta-2);
+  }
+
+  /* Elegir piezas (asignar o publicar): renglones con casilla de tinta, de 56px. */
+  .elegir-todas {
+    display: block;
+    min-height: 40px;
+    margin: calc(var(--s-2) * -1) 0 0 auto;
+    padding: 0 2px;
+    border: 0;
+    background: none;
+    font: 700 14px var(--f-texto);
+    color: var(--tinta);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+  .filas-elegir {
+    margin: 0 calc(var(--s-4) * -1);
+    padding: 0;
+    list-style: none;
+  }
+  .fila-elegir {
+    display: grid;
+    grid-template-columns: 22px auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--s-3);
+    min-height: 56px;
+    padding: var(--s-2) var(--s-4);
+    border-top: 1.5px dotted var(--linea);
+    cursor: pointer;
+    transition: background-color 0.15s ease-out;
+  }
+  li:first-child > .fila-elegir {
+    border-top: 0;
+  }
+  .fila-elegir > input {
+    width: 22px;
+    height: 22px;
+    margin: 0;
+    accent-color: var(--tinta);
+  }
+  .fila-elegir:has(input:checked) {
+    background: var(--papel-2);
+  }
+  .fila-elegir > .fila-pieza-nombre {
+    margin-top: 0;
+  }
+  .elegir-motivo,
+  .precio-motivo {
+    margin: var(--s-4) 0 6px;
+  }
+  .elegir-piezas > .btn-ancho,
+  .precio-guardar {
+    margin-bottom: 0;
+  }
+  .elegir-motivo + .btn-ancho,
+  .precio-motivo + .precio-guardar {
+    margin-top: 0;
+  }
+  .filas-elegir + .btn-ancho {
+    margin-top: var(--s-4);
+  }
+  .bloque > .enlace-ficha {
+    margin-top: var(--s-4);
+  }
+
+  /* Precio publicado: el TOTAL vigente arriba y el campo con su regla doble debajo. */
+  .precio-vigente > .total {
+    margin-top: 0;
+  }
+  .precio-nuevo {
+    margin-top: var(--s-6);
+  }
+  .precio-nuevo .derivado:empty {
+    display: none;
+  }
+  .historial-fecha {
+    font: 400 13.5px var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+  }
+  .historial-vigente {
+    font-weight: 700;
+    color: var(--tinta);
+  }
+  .historial-precio {
+    color: var(--tinta-2);
+  }
+  .historial-precio-vigente {
+    font-weight: 700;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fila-elegir {
+      transition: none;
+    }
+  }
+}
