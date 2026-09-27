@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { Dominio } from "./index";
+import { TOMAS_REQUERIDAS, type Dominio } from "./index";
 import { PRECIO_MAXIMO_CENTAVOS } from "./piezas";
 import { crearBaseDePrueba, type BaseDePrueba } from "./pruebas/base-de-prueba";
 
@@ -79,6 +79,37 @@ describe("catálogo público", () => {
       },
     ]);
     expect(JSON.stringify(piezas)).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-/);
+  });
+
+  it("trae la portada en su variante catálogo, o null si no tiene fotos", async () => {
+    const { tipos, colores, materiales } = await dominio.listas();
+    const { codigo } = await dominio.crearPieza({
+      nombre: "Bandolera de cuero negra",
+      tipoId: tipos.find((t) => t.nombre === "Bandolera")!.id,
+      colorId: colores.find((c) => c.nombre === "Negro")!.id,
+      materialId: materiales.find((m) => m.nombre === "Cuero")!.id,
+      altoCm: 22,
+      anchoCm: 30,
+      profundidadCm: 9,
+      precioCentavos: 18000,
+    });
+    for (const tipo of TOMAS_REQUERIDAS) {
+      await dominio.agregarFoto(codigo, tipo, {
+        claveMiniatura: `${tipo}-mini.jpg`,
+        claveCatalogo: `${tipo}-cat.jpg`,
+        claveDetalle: `${tipo}-det.jpg`,
+      });
+    }
+    await dominio.publicarPieza(codigo);
+
+    const { piezas } = await dominio.listarCatalogo();
+
+    // La primera foto cargada (frente) queda como portada.
+    expect(piezas).toEqual([
+      expect.objectContaining({
+        foto: { claveCatalogo: "frente-cat.jpg", alt: "Bandolera de cuero negra" },
+      }),
+    ]);
   });
 
   describe("filtros", () => {

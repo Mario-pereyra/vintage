@@ -89,6 +89,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     filtrosCrudos,
     umbrales: configuracionTienda.umbralesDeTamano,
     whatsapp: env.WHATSAPP_NUMBER || configuracionTienda.whatsapp,
+    r2PublicUrl: env.R2_PUBLIC_URL,
   };
 }
 
@@ -374,8 +375,14 @@ function Filtros({
   );
 }
 
-/** Una pieza del listado: foto (hueco hasta el #5), nombre, Ref., precio y tamaño. */
-function TarjetaDePieza({ pieza }: { pieza: PiezaEnCatalogo }) {
+/** Una pieza del listado: su portada, nombre, Ref., precio y tamaño. */
+function TarjetaDePieza({
+  pieza,
+  r2PublicUrl,
+}: {
+  pieza: PiezaEnCatalogo;
+  r2PublicUrl: string;
+}) {
   return (
     <li>
       <ComprobanteMini
@@ -384,7 +391,11 @@ function TarjetaDePieza({ pieza }: { pieza: PiezaEnCatalogo }) {
         nombre={pieza.nombre}
         precio={pieza.precioCentavos / 100}
         tamano={pieza.tamano}
-        foto={pieza.foto}
+        foto={
+          pieza.foto
+            ? { src: `${r2PublicUrl}/${pieza.foto.claveCatalogo}`, alt: pieza.foto.alt }
+            : null
+        }
         sello={pieza.estado === "reservada" ? "Reservada" : undefined}
       />
     </li>
@@ -392,7 +403,7 @@ function TarjetaDePieza({ pieza }: { pieza: PiezaEnCatalogo }) {
 }
 
 export default function Catalogo({ loaderData }: Route.ComponentProps) {
-  const { catalogo, filtrosCrudos, tomar, whatsapp } = loaderData;
+  const { catalogo, filtrosCrudos, tomar, whatsapp, r2PublicUrl } = loaderData;
   const { piezas, hayMas } = catalogo;
   const hayFiltros = Object.values(filtrosCrudos).some(Boolean);
 
@@ -454,7 +465,7 @@ export default function Catalogo({ loaderData }: Route.ComponentProps) {
             <>
               <ul className="catalogo-lista">
                 {piezas.map((pieza) => (
-                  <TarjetaDePieza key={pieza.codigo} pieza={pieza} />
+                  <TarjetaDePieza key={pieza.codigo} pieza={pieza} r2PublicUrl={r2PublicUrl} />
                 ))}
               </ul>
               {hayMas ? (
