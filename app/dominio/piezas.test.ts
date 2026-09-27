@@ -321,6 +321,15 @@ describe("pieza", () => {
           claveCatalogo: `${tipo}-cat.jpg`,
           claveDetalle: `${tipo}-det.jpg`,
         })),
+        condicion: null,
+        notaCondicion: null,
+        marca: { nombre: null, autenticidad: null, original: false },
+        cierre: null,
+        interior: null,
+        colorHerrajes: null,
+        incluye: null,
+        queCabe: null,
+        descripcion: null,
       });
     });
 
@@ -378,6 +387,291 @@ describe("pieza", () => {
       } finally {
         await otra.cerrar();
       }
+    });
+  });
+
+  describe("atributos opcionales y visibilidad (#6)", () => {
+    /** Una marca cualquiera de la lista inicial. */
+    async function unaMarca() {
+      const { marcas } = await dominio.listas();
+      return marcas[0];
+    }
+
+    /** Una pieza publicada con todos los atributos opcionales cargados y visibles. */
+    async function piezaConAtributos(extra: DatosDePieza = {}) {
+      const marca = await unaMarca();
+      const { codigo } = await dominio.crearPieza({
+        ...(await bandolera()),
+        condicion: "muy_buena",
+        notaCondicion: "Leve marca de uso en una esquina de la base.",
+        marcaId: marca.id,
+        autenticidad: "comprobada",
+        cierre: "Solapa con imán",
+        interior: "Forrado, un bolsillo con cierre",
+        colorHerrajes: "Dorados",
+        incluye: "Correa larga",
+        queCabe: "Celular grande, billetera, lentes",
+        descripcion: "Bandolera de cuero liso con solapa y correa regulable.",
+        ...extra,
+      });
+      await agregarTomasYPublicar(codigo);
+      return { codigo, marca };
+    }
+
+    it("guarda los atributos opcionales y los devuelve en el panel", async () => {
+      const { codigo, marca } = await piezaConAtributos();
+
+      const pieza = await dominio.piezaDelPanel(codigo);
+
+      expect(pieza).toMatchObject({
+        condicion: "muy_buena",
+        notaCondicion: "Leve marca de uso en una esquina de la base.",
+        marcaId: marca.id,
+        autenticidad: "comprobada",
+        cierre: "Solapa con imán",
+        interior: "Forrado, un bolsillo con cierre",
+        colorHerrajes: "Dorados",
+        incluye: "Correa larga",
+        queCabe: "Celular grande, billetera, lentes",
+        descripcion: "Bandolera de cuero liso con solapa y correa regulable.",
+        visibleCondicion: true,
+        visibleNotaCondicion: true,
+        visibleMarca: true,
+        visibleCierre: true,
+        visibleInterior: true,
+        visibleHerrajes: true,
+        visibleIncluye: true,
+        visibleQueCabe: true,
+      });
+    });
+
+    it("por defecto, todos los atributos opcionales se publican", async () => {
+      const { codigo, marca } = await piezaConAtributos();
+      const pieza = await dominio.piezaDelPanel(codigo);
+
+      const ficha = await dominio.fichaPublica(pieza!.rutaPublica.replace("/carteras/", ""));
+
+      expect(ficha).toMatchObject({
+        condicion: "muy_buena",
+        notaCondicion: "Leve marca de uso en una esquina de la base.",
+        marca: { nombre: marca.nombre, autenticidad: "comprobada", original: true },
+        cierre: "Solapa con imán",
+        interior: "Forrado, un bolsillo con cierre",
+        colorHerrajes: "Dorados",
+        incluye: "Correa larga",
+        queCabe: "Celular grande, billetera, lentes",
+        descripcion: "Bandolera de cuero liso con solapa y correa regulable.",
+      });
+    });
+
+    it.each([
+      ["visibleCondicion", "condicion"],
+      ["visibleNotaCondicion", "notaCondicion"],
+      ["visibleCierre", "cierre"],
+      ["visibleInterior", "interior"],
+      ["visibleHerrajes", "colorHerrajes"],
+      ["visibleIncluye", "incluye"],
+      ["visibleQueCabe", "queCabe"],
+    ] as const)(
+      "apagar %s oculta %s en la ficha, sin tocar los demás atributos",
+      async (interruptor, campo) => {
+        const { codigo } = await piezaConAtributos();
+
+        await dominio.editarPieza(codigo, { [interruptor]: false });
+        const ficha = await dominio.fichaPublica(
+          (await dominio.piezaDelPanel(codigo))!.rutaPublica.replace("/carteras/", ""),
+        );
+
+        expect(ficha?.[campo as keyof typeof ficha]).toBeNull();
+        expect(ficha?.marca).not.toBeNull();
+        expect(ficha?.descripcion).not.toBeNull();
+      },
+    );
+
+    it("marca y autenticidad se publican juntas o ninguna: un solo interruptor", async () => {
+      const { codigo, marca } = await piezaConAtributos();
+
+      await dominio.editarPieza(codigo, { visibleMarca: false });
+      const oculta = await dominio.fichaPublica(
+        (await dominio.piezaDelPanel(codigo))!.rutaPublica.replace("/carteras/", ""),
+      );
+      expect(oculta?.marca).toBeNull();
+
+      await dominio.editarPieza(codigo, { visibleMarca: true });
+      const visible = await dominio.fichaPublica(
+        (await dominio.piezaDelPanel(codigo))!.rutaPublica.replace("/carteras/", ""),
+      );
+      expect(visible?.marca).toEqual({ nombre: marca.nombre, autenticidad: "comprobada", original: true });
+    });
+
+    it("'Original' aparece solo con marca comprobada", async () => {
+      const marca = await unaMarca();
+      const { codigo } = await dominio.crearPieza({
+        ...(await bandolera()),
+        marcaId: marca.id,
+        autenticidad: "atribuida",
+      });
+      const { rutaPublica } = await agregarTomasYPublicar(codigo);
+
+      const ficha = await dominio.fichaPublica(rutaPublica.replace("/carteras/", ""));
+
+      expect(ficha?.marca).toEqual({ nombre: marca.nombre, autenticidad: "atribuida", original: false });
+    });
+
+    it("sin marca, la ficha la publica como 'Sin marca' (nombre null) si el interruptor está prendido", async () => {
+      const { codigo } = await dominio.crearPieza(await bandolera());
+      const { rutaPublica } = await agregarTomasYPublicar(codigo);
+
+      const ficha = await dominio.fichaPublica(rutaPublica.replace("/carteras/", ""));
+
+      expect(ficha?.marca).toEqual({ nombre: null, autenticidad: null, original: false });
+    });
+
+    it("quitar la marca limpia sola la autenticidad", async () => {
+      const marca = await unaMarca();
+      const { codigo } = await dominio.crearPieza({
+        ...(await bandolera()),
+        marcaId: marca.id,
+        autenticidad: "comprobada",
+      });
+
+      const editada = await dominio.editarPieza(codigo, { marcaId: null });
+
+      expect(editada).toMatchObject({ marcaId: null, autenticidad: null });
+    });
+
+    it("pedir autenticidad sin elegir marca no hace nada: la pieza sigue sin marca", async () => {
+      const { codigo } = await dominio.crearPieza(await bandolera());
+
+      const editada = await dominio.editarPieza(codigo, { autenticidad: "comprobada" });
+
+      expect(editada).toMatchObject({ marcaId: null, autenticidad: null });
+    });
+
+    it("una marca exige elegir comprobada o atribuida", async () => {
+      const marca = await unaMarca();
+
+      await expect(
+        dominio.crearPieza({ ...(await bandolera()), marcaId: marca.id }),
+      ).rejects.toMatchObject({
+        motivo: "datos_invalidos",
+        errores: { autenticidad: expect.any(String) },
+      });
+    });
+
+    it("rechaza una marca que no existe", async () => {
+      await expect(
+        dominio.crearPieza({ ...(await bandolera()), marcaId: 9999, autenticidad: "comprobada" }),
+      ).rejects.toMatchObject({
+        errores: { marcaId: expect.any(String) },
+      });
+    });
+
+    it("rechaza una autenticidad que no es de la lista", async () => {
+      const marca = await unaMarca();
+      await expect(
+        dominio.crearPieza({
+          ...(await bandolera()),
+          marcaId: marca.id,
+          // @ts-expect-error -- justo lo que la prueba quiere forzar
+          autenticidad: "falsa",
+        }),
+      ).rejects.toMatchObject({
+        errores: { autenticidad: expect.any(String) },
+      });
+    });
+
+    it("descripción no tiene interruptor: se publica siempre que exista", async () => {
+      const { codigo } = await dominio.crearPieza({
+        ...(await bandolera()),
+        descripcion: "Una descripción cualquiera.",
+      });
+      const { rutaPublica } = await agregarTomasYPublicar(codigo);
+
+      const ficha = await dominio.fichaPublica(rutaPublica.replace("/carteras/", ""));
+
+      expect(ficha?.descripcion).toBe("Una descripción cualquiera.");
+    });
+
+    it("acota el largo de los textos opcionales, campo por campo", async () => {
+      const intento = dominio.crearPieza({
+        notaCondicion: "x".repeat(201),
+        cierre: "x".repeat(161),
+        interior: "x".repeat(161),
+        colorHerrajes: "x".repeat(161),
+        incluye: "x".repeat(161),
+        queCabe: "x".repeat(161),
+        descripcion: "x".repeat(601),
+      });
+
+      await expect(intento).rejects.toMatchObject({
+        motivo: "datos_invalidos",
+        errores: {
+          notaCondicion: expect.any(String),
+          cierre: expect.any(String),
+          interior: expect.any(String),
+          colorHerrajes: expect.any(String),
+          incluye: expect.any(String),
+          queCabe: expect.any(String),
+          descripcion: expect.any(String),
+        },
+      });
+    });
+
+    it("rechaza una condición que no es de la lista", async () => {
+      await expect(
+        // @ts-expect-error -- justo lo que la prueba quiere forzar
+        dominio.crearPieza({ condicion: "impecable" }),
+      ).rejects.toMatchObject({
+        errores: { condicion: expect.any(String) },
+      });
+    });
+
+    it("rechaza un interruptor que no es booleano", async () => {
+      await expect(
+        // @ts-expect-error -- justo lo que la prueba quiere forzar
+        dominio.crearPieza({ visibleCondicion: "sí" }),
+      ).rejects.toMatchObject({
+        errores: { visibleCondicion: expect.any(String) },
+      });
+    });
+
+    it("lote, proveedor, costo y condición de ingreso nunca aparecen en la ficha pública", async () => {
+      const { proveedorId } = await (async () => {
+        const proveedor = await dominio.registrarProveedor({
+          nombre: "Doña Ana",
+          contacto: "+59170000000",
+        });
+        return { proveedorId: proveedor.id };
+      })();
+      const { codigo } = await dominio.registrarCompraAParticular({
+        proveedorId,
+        costoDirectoCentavos: 5000,
+        condicionIngreso: "buena",
+      });
+      await dominio.editarPieza(codigo, await bandolera());
+      const { rutaPublica } = await agregarTomasYPublicar(codigo);
+
+      const ficha = await dominio.fichaPublica(rutaPublica.replace("/carteras/", ""));
+      const texto = JSON.stringify(ficha);
+
+      for (const interno of ["loteId", "proveedorId", "costoDirectoCentavos", "costoReacondicionamientoCentavos", "condicionIngreso"]) {
+        expect(ficha).not.toHaveProperty(interno);
+      }
+      expect(texto).not.toContain("Doña Ana");
+      expect(texto).not.toContain("5000");
+      // "buena" es la condición de ingreso, no la de publicación (que no se cargó).
+      expect(ficha?.condicion).toBeNull();
+    });
+
+    it("la lista de marcas trae las iniciales y se puede ampliar", async () => {
+      const { marcas } = await dominio.listas();
+      expect(marcas.length).toBeGreaterThan(0);
+
+      const nueva = await dominio.ampliarLista("marcas", "  Louis Vuitton ");
+
+      expect(nueva.nombre).toBe("Louis Vuitton");
+      expect((await dominio.listas()).marcas.at(-1)).toEqual(nueva);
     });
   });
 

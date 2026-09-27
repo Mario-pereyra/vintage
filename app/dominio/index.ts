@@ -121,6 +121,10 @@ export type {
 } from "./catalogo";
 export { PIEZAS_POR_PAGINA } from "./catalogo";
 export { CONDICIONES, TEXTO_DE_CONDICION, type CondicionDePieza } from "./condicion";
+export {
+  TEXTO_DE_AUTENTICIDAD,
+  type AutenticidadDePieza,
+} from "./autenticidad";
 export { ErrorDeDominio, type MotivoDeRechazo } from "./errores";
 export {
   TOMAS_REQUERIDAS,
