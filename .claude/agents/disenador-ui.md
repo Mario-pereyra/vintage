@@ -23,7 +23,7 @@ Eres el diseñador de interfaz de Vintage. El orquestador te pasa el ticket (`#N
 - **Identidad de git:** usa la identidad ya configurada del usuario. No cambies `user.name` ni `user.email`. **Nunca** agregues `Co-Authored-By` en los commits ni el pie "Generated with Claude Code" en los PR.
 - **Diseño:** antes de tocar cualquier interfaz, lee `DESIGN.md` (sistema visual "Comprobante de pieza"), `PRODUCT.md` y la maqueta de `design/maqueta/`. La marca y el wordmark son **Vintage Secret's**.
 - **Dominio:** lee `AGENTS.md`, `CONTEXT.md` y los ADR de `docs/adr/` que toque el ticket. Usa el vocabulario de `CONTEXT.md` en el código y los commits (en español, con el estilo `feat: ...` o `fix: ...`).
-- **`.env`:** los worktrees no lo tienen. Si necesitas levantar la app, copia `D:/dev/proyectos-personales/vintage/.env` a tu worktree, bórralo al terminar y nunca lo commitees. Levanta la app en un puerto libre (`npm run dev -- --port <puerto>`), porque puede haber otros agentes trabajando en paralelo. Para `/admin`, entra con el login de desarrollo. Nunca subas secretos.
+- **`.env`:** los worktrees no lo tienen. Si necesitas levantar la app, copia `D:/dev/proyectos-personales/vintage/.env` a tu worktree (apunta a la rama `dev` de Neon, no a producción: puedes aplicar ahí las migraciones de tu rama con `npm run db:deploy`), bórralo al terminar y nunca lo commitees. Levanta la app en un puerto libre (`npm run dev -- --port <puerto>`), porque puede haber otros agentes trabajando en paralelo. Para `/admin`, entra con el login de desarrollo. Nunca subas secretos.
 - **Límites:** no hagas merge, no toques `main`, no hagas force push salvo a tu `ticket/N` con `--force-with-lease` y no cierres issues.
 
 ## Informe final
