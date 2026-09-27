@@ -107,8 +107,12 @@ const MEDIDA_MAXIMA_CM = 300;
  * cualquier cartera y muy por debajo del máximo de la columna (INTEGER).
  */
 export const PRECIO_MAXIMO_CENTAVOS = 10_000_000;
-/** Tope del costo directo (compra a particular): igual que el precio máximo. */
-const COSTO_DIRECTO_MAXIMO_CENTAVOS = 10_000_000;
+/**
+ * Tope del costo directo (compra a particular): igual que el precio máximo.
+ * Se exporta para que `registrarCompraAParticular` (abastecimiento.ts) lo
+ * valide también en su propia capa, antes de llegar a `crearPieza`.
+ */
+export const COSTO_DIRECTO_MAXIMO_CENTAVOS = 10_000_000;
 /** Tope del reacondicionamiento: Bs 5.000, en centavos. */
 const REACONDICIONAMIENTO_MAXIMO_CENTAVOS = 500_000;
 
@@ -368,6 +372,19 @@ function aDatosPrisma(
  * dentro de una transacción, para que el lote y sus piezas se guarden como
  * una sola unidad atómica.
  */
+/**
+ * El reparto del costo de un lote entre sus piezas (ADR 0001): el costo total
+ * del lote (costo + transporte) dividido entre sus piezas, redondeado al
+ * centavo. No incluye el reacondicionamiento de cada pieza, que se suma
+ * aparte. Es una función pura de módulo (sin `db`) para que el panel muestre
+ * el mismo cálculo (p. ej. el detalle de un lote) sin reimplementar la
+ * fórmula; `costoDePiezaCentavos`, más abajo, es quien la usa para el costo
+ * real de cada pieza.
+ */
+export function repartoDeLote(costoTotalCentavos: number, piezasDelLote: number): number {
+  return piezasDelLote > 0 ? Math.round(costoTotalCentavos / piezasDelLote) : 0;
+}
+
 export function crearPiezas(db: Prisma.TransactionClient, config: ConfiguracionDePiezas) {
   const codigoDe = (numero: number) =>
     formatearCodigo(numero, config.prefijoDeCodigo);
@@ -387,9 +404,8 @@ export function crearPiezas(db: Prisma.TransactionClient, config: ConfiguracionD
       });
       if (!lote) return null;
       const piezasDelLote = await db.pieza.count({ where: { loteId: fila.loteId } });
-      if (piezasDelLote === 0) return reacondicionamiento;
       return (
-        Math.round((lote.costoCentavos + lote.transporteCentavos) / piezasDelLote) +
+        repartoDeLote(lote.costoCentavos + lote.transporteCentavos, piezasDelLote) +
         reacondicionamiento
       );
     }

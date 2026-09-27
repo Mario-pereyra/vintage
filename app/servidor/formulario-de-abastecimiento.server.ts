@@ -1,5 +1,6 @@
 import {
   ErrorDeDominio,
+  UNIDADES_MAXIMAS,
   type CanalDeAbastecimiento,
   type CondicionDePieza,
   type DatosDeApertura,
@@ -80,9 +81,21 @@ export async function leerFormularioDeLote(
 export function leerFormularioDeApertura(formulario: FormData): DatosDeApertura {
   const unidadesRecibidas = Number(leerTexto(formulario.get("unidadesRecibidas")));
   const descartes = Number(leerTexto(formulario.get("descartes")));
-  const esperadas = Number.isFinite(unidadesRecibidas) && Number.isFinite(descartes)
-    ? Math.max(unidadesRecibidas - descartes, 0)
+
+  // El dominio es quien valida y rechaza unidadesRecibidas/descartes fuera de
+  // rango (con su propio mensaje), así que esos valores crudos se devuelven
+  // sin tocar. Pero el bucle que arma `condicionesDeIngreso` corre ANTES de
+  // esa validación: si no se acota aquí, un número absurdo (o negativo) en el
+  // formulario armaría un array gigante solo para leer el formulario. Se
+  // acota con el mismo tope del dominio (`UNIDADES_MAXIMAS`) únicamente para
+  // decidir cuántas veces iterar.
+  const unidadesParaIterar = Number.isFinite(unidadesRecibidas)
+    ? Math.min(Math.max(Math.trunc(unidadesRecibidas), 0), UNIDADES_MAXIMAS)
     : 0;
+  const descartesParaIterar = Number.isFinite(descartes)
+    ? Math.min(Math.max(Math.trunc(descartes), 0), unidadesParaIterar)
+    : 0;
+  const esperadas = Math.max(unidadesParaIterar - descartesParaIterar, 0);
 
   const condicionesDeIngreso: CondicionDePieza[] = [];
   for (let i = 0; i < esperadas; i++) {

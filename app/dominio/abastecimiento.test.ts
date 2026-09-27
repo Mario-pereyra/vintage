@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { ErrorDeDominio, type Dominio, type Proveedor } from "./index";
+import {
+  COSTO_DIRECTO_MAXIMO_CENTAVOS,
+  ErrorDeDominio,
+  type Dominio,
+  type Proveedor,
+} from "./index";
 import { crearBaseDePrueba, type BaseDePrueba } from "./pruebas/base-de-prueba";
 
 describe("abastecimiento", () => {
@@ -343,6 +348,23 @@ describe("abastecimiento", () => {
 
       await expect(
         dominio.registrarCompraAParticular({ proveedorId: particular.id, costoDirectoCentavos: 0 }),
+      ).rejects.toMatchObject({ errores: { costoDirectoCentavos: expect.any(String) } });
+    });
+
+    it("acota el costo directo al mismo tope que el precio publicado", async () => {
+      const particular = await unProveedor();
+
+      const pieza = await dominio.registrarCompraAParticular({
+        proveedorId: particular.id,
+        costoDirectoCentavos: COSTO_DIRECTO_MAXIMO_CENTAVOS,
+      });
+      expect(pieza.costoDirectoCentavos).toBe(COSTO_DIRECTO_MAXIMO_CENTAVOS);
+
+      await expect(
+        dominio.registrarCompraAParticular({
+          proveedorId: particular.id,
+          costoDirectoCentavos: COSTO_DIRECTO_MAXIMO_CENTAVOS + 1,
+        }),
       ).rejects.toMatchObject({ errores: { costoDirectoCentavos: expect.any(String) } });
     });
   });

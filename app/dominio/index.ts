@@ -96,7 +96,11 @@ export type {
   LoteDelPanel,
   Proveedor,
 } from "./abastecimiento";
-export { CANALES_DE_ABASTECIMIENTO, TEXTO_DE_CANAL } from "./abastecimiento";
+export {
+  CANALES_DE_ABASTECIMIENTO,
+  TEXTO_DE_CANAL,
+  UNIDADES_MAXIMAS,
+} from "./abastecimiento";
 export type {
   FiltrosDeCatalogo,
   PaginaDeCatalogo,
@@ -121,6 +125,7 @@ export type {
   PiezaDelPanel,
   PiezaEnPanel,
 } from "./piezas";
+export { COSTO_DIRECTO_MAXIMO_CENTAVOS, repartoDeLote } from "./piezas";
 export {
   PLAZO_POR_DEFECTO,
   type Compradora,

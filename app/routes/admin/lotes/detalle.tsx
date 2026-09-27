@@ -9,7 +9,13 @@ import { Icono } from "~/componentes/icono";
 import { Renglon, Renglones } from "~/componentes/renglon";
 import { Sello } from "~/componentes/sello";
 import { formatearPrecio } from "~/componentes/total";
-import { CONDICIONES, TEXTO_DE_CANAL, TEXTO_DE_CONDICION, type CondicionDePieza } from "~/dominio";
+import {
+  CONDICIONES,
+  repartoDeLote,
+  TEXTO_DE_CANAL,
+  TEXTO_DE_CONDICION,
+  type CondicionDePieza,
+} from "~/dominio";
 import { obtenerDominio } from "~/servidor/contexto.server";
 import { leerFormularioDeApertura } from "~/servidor/formulario-de-abastecimiento.server";
 import { respuestaDeRechazo } from "~/servidor/formulario-de-pieza.server";
@@ -310,7 +316,7 @@ export default function DetalleDeLote({ loaderData, actionData }: Route.Componen
                   calculado
                   aclaracion={`${formatearPrecio(totalCentavos / 100)} ÷ ${piezas.length}, sin reacondicionar`}
                 >
-                  {formatearPrecio(Math.round(totalCentavos / piezas.length) / 100)}
+                  {formatearPrecio(repartoDeLote(totalCentavos, piezas.length) / 100)}
                 </Renglon>
               ) : null}
             </Renglones>

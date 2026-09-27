@@ -6,7 +6,12 @@ import type {
 
 import { esCondicionValida, type CondicionDePieza } from "./condicion";
 import { ErrorDeDominio } from "./errores";
-import { crearPiezas, type ConfiguracionDePiezas, type PiezaDelPanel } from "./piezas";
+import {
+  COSTO_DIRECTO_MAXIMO_CENTAVOS,
+  crearPiezas,
+  type ConfiguracionDePiezas,
+  type PiezaDelPanel,
+} from "./piezas";
 
 /**
  * Abastecimiento (ticket #8, ADR 0001): proveedores, lotes, su apertura y la
@@ -129,8 +134,13 @@ export interface LoteDelPanel {
 const LOTE_COSTO_MAXIMO_CENTAVOS = 100_000_000;
 /** Tope del transporte de un lote: Bs 50.000, en centavos. */
 const TRANSPORTE_MAXIMO_CENTAVOS = 5_000_000;
-/** Un lote no puede tener más piezas que esto en una sola apertura. */
-const UNIDADES_MAXIMAS = 10_000;
+/**
+ * Un lote no puede tener más piezas que esto en una sola apertura. Se exporta
+ * para que la lectura del formulario (`formulario-de-abastecimiento.server`)
+ * acote el mismo número antes de iterar las condiciones de ingreso: un valor
+ * absurdo nunca debe armar un array gigante en el servidor.
+ */
+export const UNIDADES_MAXIMAS = 10_000;
 /** Largo máximo de la nota de apertura. */
 const NOTA_MAXIMA = 200;
 
@@ -417,10 +427,13 @@ export function crearAbastecimiento(
       if (
         !(
           Number.isSafeInteger(datos.costoDirectoCentavos) &&
-          datos.costoDirectoCentavos > 0
+          datos.costoDirectoCentavos > 0 &&
+          datos.costoDirectoCentavos <= COSTO_DIRECTO_MAXIMO_CENTAVOS
         )
       ) {
-        errores.costoDirectoCentavos = "Escribe cuánto le pagaste por la pieza.";
+        errores.costoDirectoCentavos = `Escribe cuánto le pagaste por la pieza: más de 0 y de hasta Bs ${(
+          COSTO_DIRECTO_MAXIMO_CENTAVOS / 100
+        ).toLocaleString("es-BO")}.`;
       }
 
       if (datos.condicionIngreso != null && !esCondicionValida(datos.condicionIngreso)) {
