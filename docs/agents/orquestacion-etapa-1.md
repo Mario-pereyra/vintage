@@ -68,15 +68,13 @@ Tope: **4 tickets a la vez**. Una ola empieza solo con `main` en verde y los tic
 - Google OAuth está en modo prueba, con Mario e Ingrid como usuarios de prueba. Los orígenes y redirects registrados son `http://localhost:5173` y la `APP_URL`, con el path `/api/auth/callback/google`. Las vistas previas no pueden usar Google, así que entran con el login de desarrollo.
 - La marca es **Vintage Secret's** (ver el commit aa9f911).
 
-**Ola 1 (#2): PR #15 abierto, CI en verde y rebasado sobre `main`.**
-- Verificado: 7 ✅ y 0 ❌. La re-verificación contra Neon `dev` en workerd local confirmó la conexión de Prisma a Neon y la home con SSR mostrando "Pronto nuevas carteras". Quedan 2 ⏸️: el despliegue real y la vista previa por PR, que se confirman con el primer despliegue desde `main`. Listo para merge.
-- Después del merge, que hace el usuario, hay que confirmar que el primer despliegue desde `main` funcione. Recién entonces se activan las vistas previas.
-- Riesgo abierto: las vistas previas usan `secrets.DATABASE_URL`, que es la base de producción. Las opciones son usar la rama `dev` (secrets `DEV_DATABASE_URL` y `DEV_DIRECT_URL`) o una rama por PR con `neonctl` (`NEON_API_KEY`). Decide el usuario.
+**Ola 1 (#2): terminada.**
+- El PR #15 se mergeó con squash (edacf2c) y el #2 quedó cerrado. La verificación dio 7 ✅ y 0 ❌.
+- El primer despliegue desde `main` funcionó: https://vintage.marioelprogamer710.workers.dev responde 200 con "Pronto nuevas carteras", renderizado en el servidor contra Neon `main`.
+- Las vistas previas por PR usan la rama `dev` de Neon (secrets `DEV_DATABASE_URL` y `DEV_DIRECT_URL`) y aplican ahí las migraciones del PR. Producción usa `DATABASE_URL` y `DIRECT_URL`. Las previews recién se ven con el próximo PR, porque el Worker ya existe.
 
 **Próximos pasos**
-1. Cuando se mergee el #2, avisar al usuario para que la sesión de diseño pase los tokens y componentes a la app.
-2. Lanzar la ola 2 (#3) con `implementador-nucleo`. La interfaz es sobria y provisional, o usa los componentes base si ya se pasaron. La marca es "Vintage Secret's".
-3. La puerta de diseño sigue cerrada hasta que el usuario apruebe `DESIGN.md` y los componentes base.
+- El usuario retoma con un prompt que trae decisiones nuevas sobre roles, merge y diseño. Ese prompt manda sobre lo que diga este plan.
 
 ## Cómo retomar
 
