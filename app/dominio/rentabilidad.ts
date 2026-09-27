@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient } from "~/generated/prisma/client";
+import type { Prisma, PrismaClient } from "~/generated/prisma/client";
 
 import { CANAL_DE_PRISMA, type CanalDeAbastecimiento } from "./abastecimiento";
 import { CONDICIONES, condicionDePrisma, type CondicionDePieza } from "./condicion";
@@ -188,20 +188,14 @@ interface FiltroDeConsulta {
 }
 
 async function gruposDePiezas(db: PrismaClient, filtro: FiltroDeConsulta): Promise<GrupoDePiezas[]> {
-  const condiciones: Prisma.Sql[] = [
-    // Solo piezas con procedencia: de un lote o de una compra a particular.
-    Prisma.sql`(p.lote_id IS NOT NULL OR (p.proveedor_id IS NOT NULL AND p.costo_directo_centavos IS NOT NULL))`,
-  ];
-  if (filtro.desde) {
-    condiciones.push(Prisma.sql`COALESCE(l.fecha_compra, p.creada_en) >= ${filtro.desde}`);
-  }
-  if (filtro.antesDe) {
-    condiciones.push(Prisma.sql`COALESCE(l.fecha_compra, p.creada_en) < ${filtro.antesDe}`);
-  }
-  if (filtro.loteId !== undefined) condiciones.push(Prisma.sql`p.lote_id = ${filtro.loteId}`);
-  if (filtro.proveedorId !== undefined) {
-    condiciones.push(Prisma.sql`COALESCE(l.proveedor_id, p.proveedor_id) = ${filtro.proveedorId}`);
-  }
+  // Cada filtro ausente viaja como NULL y su condición se anula: una sola
+  // consulta fija, con todos los valores como parámetros. No se usa
+  // `Prisma.sql`: importar `Prisma` como valor mete el cliente generado (y su
+  // wasm) en el bundle del navegador, porque las rutas importan de `~/dominio`.
+  const desde = filtro.desde ?? null;
+  const antesDe = filtro.antesDe ?? null;
+  const loteId = filtro.loteId ?? null;
+  const proveedorId = filtro.proveedorId ?? null;
 
   const filas = await db.$queryRaw<
     {
@@ -234,7 +228,12 @@ async function gruposDePiezas(db: PrismaClient, filtro: FiltroDeConsulta): Promi
     LEFT JOIN lote l ON l.id = p.lote_id
     LEFT JOIN venta v ON v.pieza_id = p.id
     LEFT JOIN retiro r ON r.pieza_id = p.id
-    WHERE ${Prisma.join(condiciones, " AND ")}
+    -- Solo piezas con procedencia: de un lote o de una compra a particular.
+    WHERE (p.lote_id IS NOT NULL OR (p.proveedor_id IS NOT NULL AND p.costo_directo_centavos IS NOT NULL))
+      AND (${desde}::timestamp IS NULL OR COALESCE(l.fecha_compra, p.creada_en) >= ${desde}::timestamp)
+      AND (${antesDe}::timestamp IS NULL OR COALESCE(l.fecha_compra, p.creada_en) < ${antesDe}::timestamp)
+      AND (${loteId}::int IS NULL OR p.lote_id = ${loteId}::int)
+      AND (${proveedorId}::int IS NULL OR COALESCE(l.proveedor_id, p.proveedor_id) = ${proveedorId}::int)
     GROUP BY 1, 2, 3, 4, 5
   `;
 

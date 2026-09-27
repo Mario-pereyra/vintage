@@ -31,5 +31,8 @@ export default defineConfig({
   test: {
     include: ["app/**/*.test.ts"],
     environment: "node",
+    // El primer `beforeEach` de cada archivo migra la plantilla de PGlite; con
+    // todos los archivos en paralelo puede pasar de los 10 s por defecto.
+    hookTimeout: 60_000,
   },
 });
