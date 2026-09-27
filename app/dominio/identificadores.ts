@@ -18,7 +18,7 @@ export function uuidV7(ahora: number = Date.now()): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-/** Base32 de Crockford en minúsculas: sin i, l, o ni u, que se confunden. */
+/** Base32 de Crockford (el regex de `sufijoDeDireccion` usa el mismo alfabeto) en minúsculas: sin i, l, o ni u, que se confunden. */
 const ALFABETO_DEL_SUFIJO = "0123456789abcdefghjkmnpqrstvwxyz";
 const LARGO_DEL_SUFIJO = 6;
 
@@ -59,7 +59,7 @@ export function rutaPublica(nombre: string | null, sufijo: string): string {
  * slug no importa: puede ser el de un nombre anterior.
  */
 export function sufijoDeDireccion(direccion: string): string | null {
-  const coincidencia = /(?:^|-)([0-9a-z]{6})$/.exec(direccion.trim().toLowerCase());
+  const coincidencia = /(?:^|-)([0-9a-hjkmnp-tv-z]{6})$/.exec(direccion.trim().toLowerCase());
   return coincidencia ? coincidencia[1] : null;
 }
 

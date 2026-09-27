@@ -105,6 +105,32 @@ describe("pieza", () => {
       });
     });
 
+    it("rechaza un precio o una medida fuera de rango como error del campo", async () => {
+      const intento = dominio.crearPieza({
+        precioCentavos: 99_999_999_999,
+        anchoCm: 1e12,
+        caidaCm: 301,
+      });
+
+      await expect(intento).rejects.toMatchObject({
+        motivo: "datos_invalidos",
+        errores: {
+          precioCentavos: expect.any(String),
+          anchoCm: expect.any(String),
+          caidaCm: expect.any(String),
+        },
+      });
+    });
+
+    it("acepta el precio máximo de una cartera", async () => {
+      const pieza = await dominio.crearPieza({ precioCentavos: 10_000_000 });
+
+      expect(pieza.precioCentavos).toBe(10_000_000);
+      await expect(dominio.crearPieza({ precioCentavos: 10_000_001 })).rejects.toMatchObject({
+        errores: { precioCentavos: expect.any(String) },
+      });
+    });
+
     it("no se puede editar una pieza que no existe", async () => {
       await expect(dominio.editarPieza("VT-0042", { nombre: "x" })).rejects.toMatchObject({
         motivo: "pieza_no_encontrada",

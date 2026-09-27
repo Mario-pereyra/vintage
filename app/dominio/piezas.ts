@@ -78,6 +78,14 @@ const CAMPOS_OBLIGATORIOS = [
 
 const MEDIDAS = ["altoCm", "anchoCm", "profundidadCm", "caidaCm"] as const;
 
+/** Tope de una medida (y de la caída), en cm: ninguna cartera pasa de 3 m. */
+const MEDIDA_MAXIMA_CM = 300;
+/**
+ * Tope del precio publicado: Bs 100.000, en centavos. Muy por encima de
+ * cualquier cartera y muy por debajo del máximo de la columna (INTEGER).
+ */
+const PRECIO_MAXIMO_CENTAVOS = 10_000_000;
+
 const NOMBRE_DEL_CAMPO: Record<CampoDePieza, string> = {
   nombre: "el nombre",
   tipoId: "el tipo",
@@ -173,16 +181,25 @@ async function validar(
   for (const medida of MEDIDAS) {
     const valor = datos[medida];
     if (valor === undefined) continue;
-    if (valor !== null && !(Number.isFinite(valor) && valor > 0 && valor <= 300)) {
-      errores[medida] = "Escribe una medida en cm mayor que 0.";
+    if (valor !== null && !(Number.isFinite(valor) && valor > 0 && valor <= MEDIDA_MAXIMA_CM)) {
+      errores[medida] = `Escribe una medida en cm entre 0 y ${MEDIDA_MAXIMA_CM}.`;
     }
     limpios[medida] = valor;
   }
 
   if (datos.precioCentavos !== undefined) {
     const precio = datos.precioCentavos;
-    if (precio !== null && !(Number.isSafeInteger(precio) && precio > 0)) {
-      errores.precioCentavos = "Escribe un precio mayor que 0.";
+    if (
+      precio !== null &&
+      !(
+        Number.isSafeInteger(precio) &&
+        precio > 0 &&
+        precio <= PRECIO_MAXIMO_CENTAVOS
+      )
+    ) {
+      errores.precioCentavos = `Escribe un precio mayor que 0 y de hasta Bs ${(
+        PRECIO_MAXIMO_CENTAVOS / 100
+      ).toLocaleString("es-BO")}.`;
     }
     limpios.precioCentavos = precio;
   }
