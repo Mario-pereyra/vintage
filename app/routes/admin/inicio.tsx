@@ -103,6 +103,15 @@ export default function InicioDelPanel({ loaderData }: Route.ComponentProps) {
               <Icono nombre="adelante" />
             </Link>
           </li>
+          <li>
+            <Link className="seccion" to="/admin/rentabilidad">
+              <span>
+                <b>Rentabilidad</b>
+                <span>Lo que dejó cada lote y proveedor</span>
+              </span>
+              <Icono nombre="adelante" />
+            </Link>
+          </li>
         </ul>
       </BloquePanel>
 

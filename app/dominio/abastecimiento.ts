@@ -85,7 +85,7 @@ const CANAL_A_PRISMA = {
   lote_seleccionado: "LOTE_SELECCIONADO",
 } as const satisfies Record<CanalDeAbastecimiento, CanalDePrisma>;
 
-const CANAL_DE_PRISMA = {
+export const CANAL_DE_PRISMA = {
   FARDO_CERRADO: "fardo_cerrado",
   LOTE_CLASIFICADO: "lote_clasificado",
   LOTE_SELECCIONADO: "lote_seleccionado",
