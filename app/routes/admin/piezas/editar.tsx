@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers";
 import { data, Link, useSearchParams } from "react-router";
 
 import { Icono } from "~/componentes/icono";
@@ -24,7 +25,8 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     dominio.listas(),
   ]);
   if (!pieza) throw data(null, { status: 404 });
-  return { pieza, listas };
+  const fotos = await dominio.fotosDePieza(params.codigo);
+  return { pieza, listas, fotos, r2PublicUrl: env.R2_PUBLIC_URL };
 }
 
 /** Guarda los cambios y, si la operadora lo pidió, publica la pieza. */
@@ -65,7 +67,7 @@ export default function EditarPieza({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { pieza, listas } = loaderData;
+  const { pieza, listas, fotos, r2PublicUrl } = loaderData;
   const [busqueda] = useSearchParams();
   const publicada = pieza.estado !== "en_preparacion";
   const alLlegar = AL_LLEGAR[busqueda.get("nueva") ?? ""];
@@ -113,6 +115,8 @@ export default function EditarPieza({
         key={`${pieza.codigo}-${pieza.estado}`}
         pieza={pieza}
         listas={listas}
+        fotos={fotos}
+        r2PublicUrl={r2PublicUrl}
         resultado={actionData ?? (alLlegar ? { mensaje: alLlegar } : undefined)}
       />
     </>

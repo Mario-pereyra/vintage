@@ -6,6 +6,13 @@ import type {
 
 import { ErrorDeDominio } from "./errores";
 import {
+  fotosPublicasDesde,
+  mensajeDeTomasFaltantes,
+  tomasFaltantes as tomasFaltantesDe,
+  type FotoPublica,
+  type TipoDeToma,
+} from "./fotos";
+import {
   formatearCodigo,
   numeroDeCodigo,
   rutaPublica,
@@ -119,6 +126,8 @@ export interface PiezaDelPanel {
   rutaPublica: string;
   /** Datos obligatorios que todavía faltan para publicar. */
   faltanParaPublicar: CampoDePieza[];
+  /** De las 8 tomas mínimas, las que todavía no se cargaron. */
+  tomasFaltantes: TipoDeToma[];
 }
 
 /** Una fila del listado de piezas del panel. */
@@ -160,9 +169,11 @@ export interface FichaPublica {
    * reserva no se publica nada más: ni la compradora ni su contador.
    */
   reservadaHasta: Date | null;
+  /** Las 8 fotos, en el orden fijo de las tomas. Siempre una es `portada`. */
+  fotos: FotoPublica[];
 }
 
-type FilaDePieza = Prisma.PiezaGetPayload<object>;
+type FilaDePieza = Prisma.PiezaGetPayload<{ include: { fotos: true } }>;
 
 // --- Validación ------------------------------------------------------------
 
@@ -275,13 +286,14 @@ export function crearPiezas(db: PrismaClient, config: ConfiguracionDePiezas) {
       publicadaEn: fila.publicadaEn,
       rutaPublica: rutaPublica(fila.nombre, fila.sufijo),
       faltanParaPublicar: faltantes(fila),
+      tomasFaltantes: tomasFaltantesDe(fila.fotos.map((foto) => foto.tipo)),
     };
   }
 
   async function buscarFila(codigo: string): Promise<FilaDePieza | null> {
     const numero = numeroDeCodigo(codigo);
     if (numero === null) return null;
-    return db.pieza.findUnique({ where: { codigo: numero } });
+    return db.pieza.findUnique({ where: { codigo: numero }, include: { fotos: true } });
   }
 
   async function exigirFila(codigo: string): Promise<FilaDePieza> {
@@ -311,6 +323,7 @@ export function crearPiezas(db: PrismaClient, config: ConfiguracionDePiezas) {
               id: uuidV7(config.ahora().getTime()),
               sufijo: sufijoAleatorio(),
             },
+            include: { fotos: true },
           });
           return aPiezaDelPanel(fila);
         } catch (error) {
@@ -348,13 +361,15 @@ export function crearPiezas(db: PrismaClient, config: ConfiguracionDePiezas) {
       const editada = await db.pieza.update({
         where: { id: fila.id },
         data: limpios,
+        include: { fotos: true },
       });
       return aPiezaDelPanel(editada);
     },
 
     /**
      * Publica una pieza: pasa de En preparación a Disponible y registra la
-     * fecha de publicación. Exige los datos obligatorios.
+     * fecha de publicación. Exige los datos obligatorios y las 8 tomas
+     * mínimas.
      */
     async publicarPieza(codigo: string): Promise<PiezaDelPanel> {
       const fila = await exigirFila(codigo);
@@ -365,11 +380,17 @@ export function crearPiezas(db: PrismaClient, config: ConfiguracionDePiezas) {
         );
       }
       const faltan = faltantes(fila);
-      if (faltan.length > 0) {
+      const faltanTomas = tomasFaltantesDe(fila.fotos.map((foto) => foto.tipo));
+      if (faltan.length > 0 || faltanTomas.length > 0) {
         throw new ErrorDeDominio(
           "pieza_incompleta",
           "Faltan datos para publicar.",
-          erroresDeFaltantes(faltan, " para publicar"),
+          {
+            ...erroresDeFaltantes(faltan, " para publicar"),
+            ...(faltanTomas.length > 0
+              ? { fotos: mensajeDeTomasFaltantes(faltanTomas) }
+              : {}),
+          },
         );
       }
 
@@ -424,6 +445,7 @@ export function crearPiezas(db: PrismaClient, config: ConfiguracionDePiezas) {
           tipo: true,
           color: true,
           material: true,
+          fotos: true,
           reservas: {
             where: { estado: "ACTIVA" },
             select: { venceEn: true },
@@ -464,6 +486,7 @@ export function crearPiezas(db: PrismaClient, config: ConfiguracionDePiezas) {
         publicadaEn: fila.publicadaEn,
         reservadaHasta:
           fila.estado === "RESERVADA" ? (fila.reservas[0]?.venceEn ?? null) : null,
+        fotos: fotosPublicasDesde(fila.fotos),
       };
     },
   };

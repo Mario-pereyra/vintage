@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { ErrorDeDominio, type DatosDePieza, type Dominio } from "./index";
+import {
+  ErrorDeDominio,
+  TOMAS_REQUERIDAS,
+  type DatosDePieza,
+  type Dominio,
+} from "./index";
 import { crearBaseDePrueba, type BaseDePrueba } from "./pruebas/base-de-prueba";
 
 const PUBLICADA_EL = new Date("2026-09-20T15:30:00Z");
@@ -32,6 +37,18 @@ describe("pieza", () => {
       caidaCm: 55,
       precioCentavos: 18000,
     };
+  }
+
+  /** Agrega las 8 tomas mínimas (ver fotos.test.ts) y publica la pieza. */
+  async function agregarTomasYPublicar(codigo: string) {
+    for (const tipo of TOMAS_REQUERIDAS) {
+      await dominio.agregarFoto(codigo, tipo, {
+        claveMiniatura: `${tipo}-mini.jpg`,
+        claveCatalogo: `${tipo}-cat.jpg`,
+        claveDetalle: `${tipo}-det.jpg`,
+      });
+    }
+    return dominio.publicarPieza(codigo);
   }
 
   describe("carga", () => {
@@ -208,7 +225,7 @@ describe("pieza", () => {
     it("lleva la pieza de En preparación a Disponible y registra la fecha", async () => {
       const { codigo } = await dominio.crearPieza(await bandolera());
 
-      const publicada = await dominio.publicarPieza(codigo);
+      const publicada = await agregarTomasYPublicar(codigo);
 
       expect(publicada.estado).toBe("disponible");
       expect(publicada.publicadaEn).toEqual(PUBLICADA_EL);
@@ -228,9 +245,24 @@ describe("pieza", () => {
       expect((await dominio.piezaDelPanel(codigo))?.estado).toBe("en_preparacion");
     });
 
+    it("no publica sin las 8 tomas mínimas y dice cuáles faltan", async () => {
+      const { codigo } = await dominio.crearPieza(await bandolera());
+      await dominio.agregarFoto(codigo, "frente", {
+        claveMiniatura: "frente-mini.jpg",
+        claveCatalogo: "frente-cat.jpg",
+        claveDetalle: "frente-det.jpg",
+      });
+
+      await expect(dominio.publicarPieza(codigo)).rejects.toMatchObject({
+        motivo: "pieza_incompleta",
+        errores: { fotos: expect.stringContaining("dorso") },
+      });
+      expect((await dominio.piezaDelPanel(codigo))?.estado).toBe("en_preparacion");
+    });
+
     it("no se publica dos veces", async () => {
       const { codigo } = await dominio.crearPieza(await bandolera());
-      await dominio.publicarPieza(codigo);
+      await agregarTomasYPublicar(codigo);
 
       await expect(dominio.publicarPieza(codigo)).rejects.toMatchObject({
         motivo: "transicion_no_permitida",
@@ -239,7 +271,7 @@ describe("pieza", () => {
 
     it("una pieza publicada se puede seguir editando", async () => {
       const { codigo } = await dominio.crearPieza(await bandolera());
-      await dominio.publicarPieza(codigo);
+      await agregarTomasYPublicar(codigo);
 
       const editada = await dominio.editarPieza(codigo, { precioCentavos: 16000 });
 
@@ -248,7 +280,7 @@ describe("pieza", () => {
 
     it("una pieza publicada no puede quedar sin sus datos obligatorios", async () => {
       const { codigo } = await dominio.crearPieza(await bandolera());
-      await dominio.publicarPieza(codigo);
+      await agregarTomasYPublicar(codigo);
 
       await expect(dominio.editarPieza(codigo, { nombre: "  " })).rejects.toMatchObject({
         errores: { nombre: expect.any(String) },
@@ -259,7 +291,7 @@ describe("pieza", () => {
   describe("ficha pública", () => {
     it("muestra solo los datos para la compradora, con Ref., tamaño y umbrales", async () => {
       const { codigo } = await dominio.crearPieza(await bandolera());
-      const { rutaPublica } = await dominio.publicarPieza(codigo);
+      const { rutaPublica } = await agregarTomasYPublicar(codigo);
 
       const ficha = await dominio.fichaPublica(rutaPublica.replace("/carteras/", ""));
 
@@ -282,17 +314,26 @@ describe("pieza", () => {
         precioCentavos: 18000,
         publicadaEn: PUBLICADA_EL,
         reservadaHasta: null,
+        fotos: TOMAS_REQUERIDAS.map((tipo, indice) => ({
+          tipo,
+          etiqueta: expect.any(String),
+          portada: indice === 0,
+          claveCatalogo: `${tipo}-cat.jpg`,
+          claveDetalle: `${tipo}-det.jpg`,
+        })),
       });
     });
 
     it("nunca expone el ID interno ni otros campos del panel", async () => {
       const { codigo } = await dominio.crearPieza(await bandolera());
-      const { rutaPublica } = await dominio.publicarPieza(codigo);
+      const { rutaPublica } = await agregarTomasYPublicar(codigo);
 
       const ficha = await dominio.fichaPublica(rutaPublica.slice("/carteras/".length));
       const texto = JSON.stringify(ficha);
 
       expect(texto).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-/);
+      // La miniatura es solo del panel: la ficha pública nunca la expone.
+      expect(texto).not.toContain("mini.jpg");
       for (const interno of ["id", "tipoId", "colorId", "materialId", "creadaEn", "actualizadaEn", "faltanParaPublicar"]) {
         expect(ficha).not.toHaveProperty(interno);
       }
@@ -322,6 +363,13 @@ describe("pieza", () => {
           colorId: colores[0].id,
           materialId: materiales[0].id,
         });
+        for (const tipo of TOMAS_REQUERIDAS) {
+          await otra.dominio.agregarFoto(codigo, tipo, {
+            claveMiniatura: `${tipo}-mini.jpg`,
+            claveCatalogo: `${tipo}-cat.jpg`,
+            claveDetalle: `${tipo}-det.jpg`,
+          });
+        }
         const { rutaPublica } = await otra.dominio.publicarPieza(codigo);
 
         const ficha = await otra.dominio.fichaPublica(rutaPublica.slice("/carteras/".length));
@@ -348,7 +396,7 @@ describe("pieza", () => {
 
     it("se mantiene aunque cambie el nombre: la dirección vieja sigue llevando a la pieza", async () => {
       const { codigo } = await dominio.crearPieza(await bandolera());
-      const { rutaPublica: rutaVieja } = await dominio.publicarPieza(codigo);
+      const { rutaPublica: rutaVieja } = await agregarTomasYPublicar(codigo);
 
       const { rutaPublica: rutaNueva } = await dominio.editarPieza(codigo, {
         nombre: "Bandolera negra clásica",

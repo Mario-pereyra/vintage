@@ -2,6 +2,7 @@ import { configuracionTienda } from "~/configuracion/tienda";
 import type { PrismaClient } from "~/generated/prisma/client";
 
 import { listarCatalogo, type FiltrosDeCatalogo } from "./catalogo";
+import { crearFotos } from "./fotos";
 import { ampliarLista, obtenerListas, type Lista } from "./listas";
 import { crearPiezas, type ConfiguracionDePiezas } from "./piezas";
 import { crearReservas } from "./reservas";
@@ -28,6 +29,7 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
   };
   const piezas = crearPiezas(db, config);
   const reservas = crearReservas(db, config);
+  const fotos = crearFotos(db, { prefijoDeCodigo: config.prefijoDeCodigo });
 
   /**
    * Vencimiento perezoso: antes de leer el estado de una pieza, vence las
@@ -42,8 +44,8 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
   }
 
   const configuracionDeCatalogo = {
-    prefijoDeCodigo: opciones.prefijoDeCodigo ?? configuracionTienda.prefijoDeCodigo,
-    umbralesDeTamano: opciones.umbralesDeTamano ?? configuracionTienda.umbralesDeTamano,
+    prefijoDeCodigo: config.prefijoDeCodigo,
+    umbralesDeTamano: config.umbralesDeTamano,
   };
 
   return {
@@ -65,6 +67,9 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
     // --- Reservas, compradoras e interesadas ---
     ...reservas,
 
+    // --- Fotos de pieza: las 8 tomas mínimas, su orden fijo y su portada ---
+    ...fotos,
+
     // --- Listas ampliables (tipo de cartera, color, material) ---
     /** Los valores de cada lista, en orden de alta. */
     listas: () => obtenerListas(db),
@@ -82,6 +87,13 @@ export type {
 } from "./catalogo";
 export { PIEZAS_POR_PAGINA } from "./catalogo";
 export { ErrorDeDominio, type MotivoDeRechazo } from "./errores";
+export {
+  TOMAS_REQUERIDAS,
+  type DatosDeFoto,
+  type FotoDelPanel,
+  type FotoPublica,
+  type TipoDeToma,
+} from "./fotos";
 export type { Lista, Listas, OpcionDeColor, OpcionDeLista } from "./listas";
 export type {
   CampoDePieza,

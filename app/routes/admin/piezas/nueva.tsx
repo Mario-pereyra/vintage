@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers";
 import { redirect } from "react-router";
 
 import { Sello } from "~/componentes/sello";
@@ -17,7 +18,10 @@ export const handle = {
 } satisfies BarraDelPanel;
 
 export async function loader({ context }: Route.LoaderArgs) {
-  return { listas: await obtenerDominio(context).listas() };
+  return {
+    listas: await obtenerDominio(context).listas(),
+    r2PublicUrl: env.R2_PUBLIC_URL,
+  };
 }
 
 /**
@@ -58,6 +62,8 @@ export default function NuevaPieza({
       <FormularioDePieza
         pieza={null}
         listas={loaderData.listas}
+        fotos={[]}
+        r2PublicUrl={loaderData.r2PublicUrl}
         resultado={actionData}
       />
     </>
