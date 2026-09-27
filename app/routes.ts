@@ -23,5 +23,8 @@ export default [
     route("piezas/:codigo", "routes/admin/piezas/editar.tsx"),
     route("piezas/:codigo/reserva", "routes/admin/piezas/reserva.tsx"),
     route("reservas", "routes/admin/reservas.tsx"),
+    // Subida y gestión de fotos de una pieza (R2 + dominio). Sin pantalla
+    // propia: lo llama `TomasDelPanel` con `fetch`.
+    route("piezas/:codigo/fotos", "routes/admin/piezas/fotos.ts"),
   ]),
 ] satisfies RouteConfig;

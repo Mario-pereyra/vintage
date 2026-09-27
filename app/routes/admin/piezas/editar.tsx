@@ -1,7 +1,10 @@
+import { env } from "cloudflare:workers";
+import { useState } from "react";
 import { data, Link, useSearchParams } from "react-router";
 
 import { Icono } from "~/componentes/icono";
 import { Sello } from "~/componentes/sello";
+import { TOMAS_REQUERIDAS } from "~/dominio";
 import { obtenerDominio } from "~/servidor/contexto.server";
 import {
   leerFormularioDePieza,
@@ -24,7 +27,8 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     dominio.listas(),
   ]);
   if (!pieza) throw data(null, { status: 404 });
-  return { pieza, listas };
+  const fotos = await dominio.fotosDePieza(params.codigo);
+  return { pieza, listas, fotos, r2PublicUrl: env.R2_PUBLIC_URL };
 }
 
 /** Guarda los cambios y, si la operadora lo pidió, publica la pieza. */
@@ -65,10 +69,15 @@ export default function EditarPieza({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { pieza, listas } = loaderData;
+  const { pieza, listas, fotos, r2PublicUrl } = loaderData;
   const [busqueda] = useSearchParams();
   const publicada = pieza.estado !== "en_preparacion";
   const alLlegar = AL_LLEGAR[busqueda.get("nueva") ?? ""];
+  // Solo presentación (DESIGN.md, Sello): en preparación con las 8 tomas, el
+  // sello del panel dice "Lista". El estado de la pieza no cambia.
+  const [tomas, setTomas] = useState({ desde: fotos, cuantas: fotos.length });
+  if (tomas.desde !== fotos) setTomas({ desde: fotos, cuantas: fotos.length });
+  const lista = pieza.estado === "en_preparacion" && tomas.cuantas === TOMAS_REQUERIDAS.length;
 
   return (
     <>
@@ -105,7 +114,7 @@ export default function EditarPieza({
             </Link>
           ) : null}
         </div>
-        <Sello texto={TEXTO_DEL_ESTADO[pieza.estado]} />
+        <Sello texto={lista ? "Lista" : TEXTO_DEL_ESTADO[pieza.estado]} />
       </div>
 
       {/* La key reinicia el formulario cuando cambia la pieza guardada. */}
@@ -113,6 +122,9 @@ export default function EditarPieza({
         key={`${pieza.codigo}-${pieza.estado}`}
         pieza={pieza}
         listas={listas}
+        fotos={fotos}
+        r2PublicUrl={r2PublicUrl}
+        onTomasCambian={(cuantas) => setTomas({ desde: fotos, cuantas })}
         resultado={actionData ?? (alLlegar ? { mensaje: alLlegar } : undefined)}
       />
     </>

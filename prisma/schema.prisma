@@ -62,9 +62,48 @@ model Pieza {
 
   reservas    Reserva[]
   interesadas Interesada[]
+  fotos       Foto[]
 
   @@index([estado, publicadaEn])
   @@map("pieza")
+}
+
+/// Las 8 tomas estandarizadas de una pieza (PRODUCT.md), en el orden en que se
+/// muestran siempre en el panel y en la ficha pública.
+enum TipoDeToma {
+  FRENTE
+  DORSO
+  LATERAL
+  BASE_Y_ESQUINAS
+  INTERIOR
+  HERRAJES_Y_CIERRE
+  ASAS
+  PUESTA
+}
+
+/// Una foto de una pieza, con sus tres variantes generadas en el navegador
+/// (ADR 0005): miniatura (panel), catálogo (listado y Open Graph) y detalle
+/// (ficha pública). Las claves son objetos del bucket R2 `vintage-fotos`; la
+/// URL pública se arma con `R2_PUBLIC_URL` fuera del dominio.
+///
+/// Cada pieza tiene a lo sumo una foto por tipo de toma: volver a fotografiar
+/// una toma reemplaza la anterior. Exactamente una foto es la portada, la que
+/// usa el catálogo y el Open Graph.
+model Foto {
+  id      String     @id @db.Uuid
+  piezaId String     @map("pieza_id") @db.Uuid
+  pieza   Pieza      @relation(fields: [piezaId], references: [id], onDelete: Cascade)
+  tipo    TipoDeToma
+  portada Boolean    @default(false)
+
+  claveMiniatura String @map("clave_miniatura")
+  claveCatalogo  String @map("clave_catalogo")
+  claveDetalle   String @map("clave_detalle")
+
+  creadaEn DateTime @default(now()) @map("creada_en")
+
+  @@unique([piezaId, tipo])
+  @@map("foto")
 }
 
 // --- Listas cerradas que la operadora puede ampliar -------------------------

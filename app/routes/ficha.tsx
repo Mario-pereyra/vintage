@@ -39,6 +39,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     ficha,
     url: new URL(ficha.ruta, pedida.origin).href,
     whatsapp: env.WHATSAPP_NUMBER || configuracionTienda.whatsapp,
+    r2PublicUrl: env.R2_PUBLIC_URL,
   };
 }
 
@@ -46,16 +47,37 @@ function precio(ficha: FichaPublica) {
   return ficha.precioCentavos / 100;
 }
 
+/**
+ * Meta tags Open Graph (portada, nombre y precio): lo que muestra la vista
+ * previa al compartir la ficha por WhatsApp o Facebook. `og:image` necesita
+ * una URL absoluta, por eso usa `url.origin` en vez de `r2PublicUrl` solo.
+ */
 export function meta({ loaderData }: Route.MetaArgs) {
   if (!loaderData) return [{ title: tituloDePagina("No encontramos esta cartera") }];
-  const { ficha, url } = loaderData;
+  const { ficha, url, r2PublicUrl } = loaderData;
+  const descripcion = `${ficha.tipo} ${ficha.color.toLowerCase()} de ${ficha.material.toLowerCase()}, tamaño ${ficha.tamano.nombre.toLowerCase()}. Bs ${precio(ficha)}. Ref. ${ficha.codigo}.`;
+  const titulo = `${ficha.nombre} — Ref. ${ficha.codigo}`;
+  const portada = ficha.fotos.find((foto) => foto.portada);
+  const imagen = portada ? `${r2PublicUrl}/${portada.claveCatalogo}` : undefined;
+
   return [
     { title: tituloDePagina(`${ficha.nombre} · Ref. ${ficha.codigo}`) },
-    {
-      name: "description",
-      content: `${ficha.tipo} ${ficha.color.toLowerCase()} de ${ficha.material.toLowerCase()}, tamaño ${ficha.tamano.nombre.toLowerCase()}. Bs ${precio(ficha)}. Ref. ${ficha.codigo}.`,
-    },
+    { name: "description", content: descripcion },
     { tagName: "link", rel: "canonical", href: url },
+
+    { property: "og:type", content: "product" },
+    { property: "og:title", content: titulo },
+    { property: "og:description", content: descripcion },
+    { property: "og:url", content: url },
+    ...(imagen
+      ? ([
+          { property: "og:image", content: imagen },
+          { name: "twitter:card", content: "summary_large_image" },
+          { name: "twitter:image", content: imagen },
+        ] as const)
+      : []),
+    { property: "product:price:amount", content: String(precio(ficha)) },
+    { property: "product:price:currency", content: "BOB" },
   ];
 }
 
@@ -83,9 +105,17 @@ function fechaCorta(valor: Date) {
 }
 
 export default function Ficha({ loaderData }: Route.ComponentProps) {
-  const { ficha, url, whatsapp } = loaderData;
+  const { ficha, url, whatsapp, r2PublicUrl } = loaderData;
   const { medidas } = ficha;
   const disponible = ficha.estado === "disponible";
+  // Catálogo (960 px) alcanza en la mayoría de los celulares; detalle (1800 px)
+  // queda para pantallas densas y escritorio.
+  const fotos = ficha.fotos.map((foto) => ({
+    src: `${r2PublicUrl}/${foto.claveDetalle}`,
+    srcSet: `${r2PublicUrl}/${foto.claveCatalogo} 960w, ${r2PublicUrl}/${foto.claveDetalle} 1800w`,
+    alt: `${ficha.nombre} — ${foto.etiqueta}`,
+    toma: foto.etiqueta,
+  }));
 
   return (
     <Pagina
@@ -99,6 +129,7 @@ export default function Ficha({ loaderData }: Route.ComponentProps) {
         }
       >
         <GaleriaDeTomas
+          fotos={fotos}
           sinFotos={
             <>
               <p className="toma-sin-foto-titulo">Las fotos de esta pieza todavía no están cargadas</p>

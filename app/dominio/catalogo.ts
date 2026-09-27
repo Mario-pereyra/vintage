@@ -106,12 +106,11 @@ export interface PiezaEnCatalogo {
   precioCentavos: number;
   tamano: Tamano;
   /**
-   * Hueco para la foto principal en su variante "catálogo" (las fotos se
-   * redimensionan en el navegador al subirlas, en miniatura, catálogo y
-   * detalle): llega con el #5. Hasta entonces, el listado se ve sin fotos,
-   * igual que la ficha.
+   * La portada en su variante "catálogo" (las fotos se redimensionan en el
+   * navegador al subirlas, en miniatura, catálogo y detalle). `null` si la
+   * pieza todavía no tiene fotos cargadas.
    */
-  foto: null;
+  foto: { claveCatalogo: string; alt: string } | null;
 }
 
 /** Una página del listado principal. */
@@ -121,7 +120,9 @@ export interface PaginaDeCatalogo {
   hayMas: boolean;
 }
 
-type FilaDePieza = Prisma.PiezaGetPayload<object>;
+type FilaDePieza = Prisma.PiezaGetPayload<{
+  include: { fotos: { where: { portada: true } } };
+}>;
 
 /**
  * Una fila lista para el listado, o `null` si le faltan datos obligatorios.
@@ -135,6 +136,7 @@ function aPiezaEnCatalogo(
 ): PiezaEnCatalogo | null {
   const { nombre, anchoCm, precioCentavos } = fila;
   if (!nombre || !anchoCm || !precioCentavos) return null;
+  const portada = fila.fotos[0];
   return {
     codigo: formatearCodigo(fila.codigo, config.prefijoDeCodigo),
     nombre,
@@ -142,7 +144,7 @@ function aPiezaEnCatalogo(
     estado: estadosDelListado[fila.estado as EstadoDelListado],
     precioCentavos,
     tamano: tamanoPorAncho(anchoCm, config.umbralesDeTamano),
-    foto: null,
+    foto: portada ? { claveCatalogo: portada.claveCatalogo, alt: nombre } : null,
   };
 }
 
@@ -182,6 +184,7 @@ export async function listarCatalogo(
     where,
     orderBy: [{ publicadaEn: "desc" }, { codigo: "desc" }],
     take: limite + 1,
+    include: { fotos: { where: { portada: true } } },
   });
 
   return {

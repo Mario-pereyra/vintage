@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { ErrorDeDominio, type Dominio } from "./index";
+import { ErrorDeDominio, TOMAS_REQUERIDAS, type Dominio } from "./index";
 import { crearBaseDePrueba, type BaseDePrueba } from "./pruebas/base-de-prueba";
 
 const INICIO = new Date("2026-09-26T14:00:00Z");
@@ -39,6 +39,13 @@ describe("reservas", () => {
       profundidadCm: 9,
       precioCentavos: 18000,
     });
+    for (const tipo of TOMAS_REQUERIDAS) {
+      await dominio.agregarFoto(codigo, tipo, {
+        claveMiniatura: `${tipo}-mini.jpg`,
+        claveCatalogo: `${tipo}-cat.jpg`,
+        claveDetalle: `${tipo}-det.jpg`,
+      });
+    }
     const publicada = await dominio.publicarPieza(codigo);
     const direccion = publicada.rutaPublica.split("/").pop()!;
     return { codigo, direccion };

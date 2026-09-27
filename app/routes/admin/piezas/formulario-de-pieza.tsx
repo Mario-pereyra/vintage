@@ -12,13 +12,16 @@ import {
   TamanoDerivado,
 } from "~/componentes/campos";
 import { Chips } from "~/componentes/chips";
+import { TOMAS } from "~/componentes/galeria-tomas";
 import { TomasDelPanel } from "~/componentes/tomas-panel";
 import { configuracionTienda } from "~/configuracion/tienda";
-import type {
-  CampoDePieza,
-  EstadoDePieza,
-  Listas,
-  PiezaDelPanel,
+import {
+  TOMAS_REQUERIDAS,
+  type CampoDePieza,
+  type EstadoDePieza,
+  type FotoDelPanel,
+  type Listas,
+  type PiezaDelPanel,
 } from "~/dominio";
 
 /**
@@ -79,9 +82,24 @@ function faltanEnElFormulario(formulario: HTMLFormElement): Obligatorio[] {
   }).map(([campo]) => campo);
 }
 
-/** "Para publicar falta el tipo, las medidas y el precio." */
-function lineaDeFaltantes(faltan: readonly CampoDePieza[]): string | undefined {
+/** Cómo se nombran las tomas que faltan: "2 tomas (asas y puesta)". */
+function textoDeTomasFaltantes(tomas: readonly FotoDelPanel[]): string | undefined {
+  const faltan = TOMAS_REQUERIDAS.flatMap((tipo, indice) =>
+    tomas.some((foto) => foto.tipo === tipo) ? [] : [TOMAS[indice].toLowerCase()],
+  );
   if (faltan.length === 0) return undefined;
+  if (faltan.length === TOMAS_REQUERIDAS.length) return "las 8 tomas";
+  const cuantas = faltan.length === 1 ? "1 toma" : `${faltan.length} tomas`;
+  // Con muchas, los nombres no entran en la línea de motivo: se ven en la grilla.
+  if (faltan.length > 4) return cuantas;
+  return `${cuantas} (${new Intl.ListFormat("es", { type: "conjunction" }).format(faltan)})`;
+}
+
+/** "Para publicar falta el tipo, las medidas, el precio y 2 tomas (asas y puesta)." */
+function lineaDeFaltantes(
+  faltan: readonly CampoDePieza[],
+  tomasQueFaltan: string | undefined,
+): string | undefined {
   const todasLasMedidas = MEDIDAS.every((medida) => faltan.includes(medida));
   const partes: string[] = [];
   for (const [campo, texto] of OBLIGATORIOS) {
@@ -92,8 +110,11 @@ function lineaDeFaltantes(faltan: readonly CampoDePieza[]): string | undefined {
     }
     partes.push(texto);
   }
+  if (tomasQueFaltan) partes.push(tomasQueFaltan);
+  if (partes.length === 0) return undefined;
   const lista = new Intl.ListFormat("es", { type: "conjunction" }).format(partes);
-  return `Para publicar falta ${lista}.`;
+  const varias = partes.length > 1 || /^(las |\d+ tomas)/.test(partes[0]);
+  return `Para publicar ${varias ? "faltan" : "falta"} ${lista}.`;
 }
 
 // --- Interfaz --------------------------------------------------------------
@@ -169,12 +190,20 @@ function ListaAmpliable({
 export function FormularioDePieza({
   pieza,
   listas,
+  fotos,
+  r2PublicUrl,
   resultado,
+  onTomasCambian,
 }: {
   /** `null` al cargar una pieza nueva. */
   pieza: PiezaDelPanel | null;
   listas: Listas;
+  /** Las fotos ya cargadas. Vacío en una pieza nueva: todavía no tiene código. */
+  fotos: readonly FotoDelPanel[];
+  r2PublicUrl: string;
   resultado?: ResultadoDelFormulario;
+  /** Cuántas tomas tiene ahora la pieza, para el sello de la cabecera. */
+  onTomasCambian?: (cuantas: number) => void;
 }) {
   const formulario = useRef<HTMLFormElement>(null);
   const navegacion = useNavigation();
@@ -182,6 +211,8 @@ export function FormularioDePieza({
   const [faltan, setFaltan] = useState<readonly CampoDePieza[]>(
     pieza ? pieza.faltanParaPublicar : OBLIGATORIOS.map(([campo]) => campo),
   );
+  const [tomas, setTomas] = useState<readonly FotoDelPanel[]>(fotos);
+  const tomasQueFaltan = textoDeTomasFaltantes(tomas);
   /** Mientras no se toque nada, la barra muestra el resultado del último envío. */
   const [tocado, setTocado] = useState(false);
   const [ultimoResultado, setUltimoResultado] = useState(resultado);
@@ -219,7 +250,7 @@ export function FormularioDePieza({
   // Publicar deshabilitado siempre dice por qué, aunque haya un mensaje del envío.
   const porQue = publicada
     ? "Ya está publicada: al guardar, la ficha se actualiza."
-    : lineaDeFaltantes(faltan);
+    : lineaDeFaltantes(faltan, tomasQueFaltan);
   const motivo = enviando
     ? intencion === "publicar"
       ? "Publicando…"
@@ -230,12 +261,29 @@ export function FormularioDePieza({
 
   return (
     <Form method="post" ref={formulario} onChange={recalcular}>
-      <BloquePanel titulo="Fotos" detalle="0 de 8 tomas">
-        <p className="ayuda">
-          Todavía no se pueden subir fotos desde el panel. Las tomas van siempre en
-          este orden.
-        </p>
-        <TomasDelPanel />
+      <BloquePanel titulo="Fotos" detalle={`${tomas.length} de 8 tomas`} completo={tomas.length === 8}>
+        {pieza ? (
+          <p className="ayuda">
+            Van siempre en este orden. Tocá una toma para sacarla, cambiarla o
+            usarla de portada.
+          </p>
+        ) : (
+          <p className="ayuda">
+            Guardá la pieza para poder cargar sus fotos. Las tomas van siempre en
+            este orden.
+          </p>
+        )}
+        <TomasDelPanel
+          codigo={pieza?.codigo ?? null}
+          fotos={tomas}
+          r2PublicUrl={r2PublicUrl}
+          onCambio={(nuevas) => {
+            setTomas(nuevas);
+            setTocado(true);
+            onTomasCambian?.(nuevas.length);
+          }}
+        />
+        <MensajeDeError texto={errores.fotos} />
       </BloquePanel>
 
       <BloquePanel titulo="La pieza">
@@ -343,7 +391,7 @@ export function FormularioDePieza({
             : {
                 name: "intencion",
                 value: "publicar",
-                disabled: enviando || faltan.length > 0,
+                disabled: enviando || faltan.length > 0 || tomasQueFaltan !== undefined,
               }
         }
         motivo={motivo}
