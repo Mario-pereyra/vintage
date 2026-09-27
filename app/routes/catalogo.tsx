@@ -1,15 +1,21 @@
 import { env } from "cloudflare:workers";
 import { Link } from "react-router";
 
-import { Campo, CampoTexto, Seleccion } from "~/componentes/campos";
-import { ComprobanteMini } from "~/componentes/comprobante";
 import { BotonWhatsApp, enlaceWhatsApp } from "~/componentes/boton-whatsapp";
+import { ComprobanteMini } from "~/componentes/comprobante";
 import { EstadoVacio } from "~/componentes/estado-vacio";
+import {
+  ChipsDeFiltro,
+  GrupoDeFiltro,
+  SegmentoDeFiltro,
+  type OpcionDeFiltro,
+} from "~/componentes/filtros";
+import { Icono } from "~/componentes/icono";
 import { Pagina } from "~/componentes/pagina";
 import { Renglon, Renglones } from "~/componentes/renglon";
 import { configuracionTienda, tituloDePagina } from "~/configuracion/tienda";
 import { PIEZAS_POR_PAGINA, type FiltrosDeCatalogo, type PiezaEnCatalogo } from "~/dominio";
-import { TAMANOS, type Tamano } from "~/dominio/tamano";
+import { TAMANOS, type Tamano, type UmbralesDeTamano } from "~/dominio/tamano";
 import { obtenerDominio } from "~/servidor/contexto.server";
 
 import type { Route } from "./+types/catalogo";
@@ -81,14 +87,26 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     listas,
     tomar,
     filtrosCrudos,
+    umbrales: configuracionTienda.umbralesDeTamano,
     whatsapp: env.WHATSAPP_NUMBER || configuracionTienda.whatsapp,
   };
 }
 
-/** La query string de los filtros vigentes, más `tomar` si no es el valor por defecto. */
-function armarQuery(filtrosCrudos: Route.ComponentProps["loaderData"]["filtrosCrudos"], tomar?: number) {
+type DatosDelCatalogo = Route.ComponentProps["loaderData"];
+type FiltrosCrudos = DatosDelCatalogo["filtrosCrudos"];
+
+/**
+ * La URL del catálogo con los filtros vigentes cambiados por `cambios` (un
+ * valor vacío quita ese filtro). Cambiar un filtro vuelve a la primera página;
+ * `tomar` solo viaja si no es el valor por defecto.
+ */
+function urlDeCatalogo(
+  filtrosCrudos: FiltrosCrudos,
+  cambios: Partial<FiltrosCrudos> = {},
+  tomar?: number,
+) {
   const parametros = new URLSearchParams();
-  for (const [nombre, valor] of Object.entries(filtrosCrudos)) {
+  for (const [nombre, valor] of Object.entries({ ...filtrosCrudos, ...cambios })) {
     if (valor) parametros.set(nombre, valor);
   }
   if (tomar && tomar !== PIEZAS_POR_PAGINA) parametros.set("tomar", String(tomar));
@@ -96,81 +114,225 @@ function armarQuery(filtrosCrudos: Route.ComponentProps["loaderData"]["filtrosCr
   return query ? `/?${query}` : "/";
 }
 
-function FormularioDeFiltros({
-  listas,
-  filtrosCrudos,
-  hayFiltros,
-}: {
-  listas: Route.ComponentProps["loaderData"]["listas"];
-  filtrosCrudos: Route.ComponentProps["loaderData"]["filtrosCrudos"];
-  hayFiltros: boolean;
-}) {
-  return (
-    <form method="get" className="filtros-catalogo" aria-label="Filtrar catálogo">
-      <Campo etiqueta="Tipo" para="f-tipo">
-        <Seleccion id="f-tipo" name="tipo" defaultValue={filtrosCrudos.tipo}>
-          <option value="">Todos</option>
-          {listas.tipos.map((tipo) => (
-            <option key={tipo.id} value={tipo.id}>
-              {tipo.nombre}
-            </option>
-          ))}
-        </Seleccion>
-      </Campo>
-      <Campo etiqueta="Color" para="f-color">
-        <Seleccion id="f-color" name="color" defaultValue={filtrosCrudos.color}>
-          <option value="">Todos</option>
-          {listas.colores.map((color) => (
-            <option key={color.id} value={color.id}>
-              {color.nombre}
-            </option>
-          ))}
-        </Seleccion>
-      </Campo>
-      <Campo etiqueta="Tamaño" para="f-tamano">
-        <Seleccion id="f-tamano" name="tamano" defaultValue={filtrosCrudos.tamano}>
-          <option value="">Todos</option>
-          {TAMANOS.map((tamano) => (
-            <option key={tamano} value={tamano}>
-              {tamano}
-            </option>
-          ))}
-        </Seleccion>
-      </Campo>
-      <Campo etiqueta="Precio en Bs, desde" para="f-precio-min">
-        <CampoTexto
-          id="f-precio-min"
-          name="precioMin"
-          inputMode="numeric"
-          placeholder="0"
-          defaultValue={filtrosCrudos.precioMin}
-        />
-      </Campo>
-      <Campo etiqueta="Precio en Bs, hasta" para="f-precio-max">
-        <CampoTexto
-          id="f-precio-max"
-          name="precioMax"
-          inputMode="numeric"
-          placeholder="Sin tope"
-          defaultValue={filtrosCrudos.precioMax}
-        />
-      </Campo>
-      <div className="filtros-catalogo-acciones">
-        <button type="submit" className="btn btn-primario">
-          Filtrar
-        </button>
-        {hayFiltros ? (
-          <Link to="/" className="btn">
-            Quitar filtros
-          </Link>
-        ) : null}
-      </div>
-    </form>
+/** El rango de ancho de cada tamaño, corto para el segmento: "<18", "18–24", "33+". */
+function rangoCorto(tamano: Tamano, umbrales: UmbralesDeTamano) {
+  switch (tamano) {
+    case "Mini":
+      return `<${umbrales.pequenaDesde}`;
+    case "Pequeña":
+      return `${umbrales.pequenaDesde}–${umbrales.medianaDesde - 1}`;
+    case "Mediana":
+      return `${umbrales.medianaDesde}–${umbrales.grandeDesde - 1}`;
+    case "Grande":
+      return `${umbrales.grandeDesde}+`;
+  }
+}
+
+/** Atajos de precio para un toque; los precios van de unos Bs 30 a Bs 500. */
+const BANDAS_DE_PRECIO = [
+  { clave: "hasta-100", texto: "Hasta Bs 100", precioMin: "", precioMax: "100" },
+  { clave: "100-300", texto: "Bs 100 a 300", precioMin: "100", precioMax: "300" },
+  { clave: "desde-300", texto: "Bs 300 o más", precioMin: "300", precioMax: "" },
+] as const;
+
+/** "Bs 100 a 300", "Desde Bs 50", "Hasta Bs 200", o `null` sin filtro de precio. */
+function describirPrecio({ precioMin, precioMax }: FiltrosCrudos) {
+  if (precioMin && precioMax) return `Bs ${precioMin} a ${precioMax}`;
+  if (precioMin) return `Desde Bs ${precioMin}`;
+  if (precioMax) return `Hasta Bs ${precioMax}`;
+  return null;
+}
+
+/** Los filtros vigentes en palabras, para el estado "sin coincidencias". */
+function filtrosEnPalabras({ filtrosCrudos, listas }: DatosDelCatalogo) {
+  const tipo = listas.tipos.find((t) => String(t.id) === filtrosCrudos.tipo);
+  const color = listas.colores.find((c) => String(c.id) === filtrosCrudos.color);
+  const filas = [
+    { etiqueta: "Tipo", valor: tipo?.nombre, cifra: false },
+    { etiqueta: "Color", valor: color?.nombre, cifra: false },
+    { etiqueta: "Tamaño", valor: filtrosCrudos.tamano || undefined, cifra: false },
+    { etiqueta: "Precio", valor: describirPrecio(filtrosCrudos) ?? undefined, cifra: true },
+  ];
+  return filas.filter(
+    (fila): fila is { etiqueta: string; valor: string; cifra: boolean } => Boolean(fila.valor),
   );
 }
 
-/** Una pieza del listado: foto (hueco hasta el #5), nombre, tamaño y precio. */
-function FilaDeCatalogo({ pieza }: { pieza: PiezaEnCatalogo }) {
+/**
+ * Los filtros del catálogo sobre el rosa. El tipo va siempre a la vista, en un
+ * carril de chips; color, tamaño y precio se abren con "Color, tamaño y
+ * precio" para que las piezas entren en el primer viewport del celular. Todo
+ * es un enlace o un formulario GET: la URL es el estado.
+ */
+function Filtros({ datos }: { datos: DatosDelCatalogo }) {
+  const { listas, filtrosCrudos, umbrales } = datos;
+  const cambiar = (cambios: Partial<FiltrosCrudos>) => urlDeCatalogo(filtrosCrudos, cambios);
+
+  const tipos: OpcionDeFiltro[] = [
+    { clave: "todas", texto: "Todas", href: cambiar({ tipo: "" }), activo: !filtrosCrudos.tipo },
+    ...listas.tipos.map((tipo) => {
+      const activo = filtrosCrudos.tipo === String(tipo.id);
+      return {
+        clave: String(tipo.id),
+        texto: tipo.nombre,
+        href: cambiar({ tipo: activo ? "" : String(tipo.id) }),
+        activo,
+      };
+    }),
+  ];
+
+  const colores: OpcionDeFiltro[] = listas.colores.map((color) => {
+    const activo = filtrosCrudos.color === String(color.id);
+    return {
+      clave: String(color.id),
+      texto: color.nombre,
+      muestra: color.muestra,
+      href: cambiar({ color: activo ? "" : String(color.id) }),
+      activo,
+    };
+  });
+
+  const tamanos: OpcionDeFiltro[] = TAMANOS.map((tamano) => {
+    const activo = filtrosCrudos.tamano === tamano;
+    const rango = rangoCorto(tamano, umbrales);
+    return {
+      clave: tamano,
+      texto: (
+        <>
+          <b>{tamano}</b>
+          <small className="cifra">{rango}</small>
+        </>
+      ),
+      etiqueta: `${tamano}, ${rango.replace("<", "menos de ").replace("+", " o más")} cm de ancho`,
+      href: cambiar({ tamano: activo ? "" : tamano }),
+      activo,
+    };
+  });
+
+  const bandas: OpcionDeFiltro[] = BANDAS_DE_PRECIO.map((banda) => {
+    const activo =
+      filtrosCrudos.precioMin === banda.precioMin && filtrosCrudos.precioMax === banda.precioMax;
+    return {
+      clave: banda.clave,
+      texto: banda.texto,
+      href: cambiar(
+        activo
+          ? { precioMin: "", precioMax: "" }
+          : { precioMin: banda.precioMin, precioMax: banda.precioMax },
+      ),
+      activo,
+    };
+  });
+
+  const elegidos = [
+    listas.colores.find((color) => String(color.id) === filtrosCrudos.color)?.nombre,
+    filtrosCrudos.tamano,
+    describirPrecio(filtrosCrudos),
+  ].filter((valor): valor is string => Boolean(valor));
+  const hayFiltros = Object.values(filtrosCrudos).some(Boolean);
+
+  return (
+    <section className="filtros" aria-label="Filtrar el catálogo">
+      <GrupoDeFiltro id="f-tipo" titulo="Tipo">
+        <ChipsDeFiltro opciones={tipos} carril />
+      </GrupoDeFiltro>
+
+      {/* Cerrado al llegar: el listado va primero. Lo elegido se lee en el resumen. */}
+      <details className="filtros-mas">
+        <summary>
+          <span className="filtros-mas-texto">
+            <span>Color, tamaño y precio</span>
+            {elegidos.length > 0 ? (
+              <span className="filtros-elegidos">{elegidos.join(" · ")}</span>
+            ) : null}
+          </span>
+          {elegidos.length > 0 ? (
+            <span className="filtros-cuenta cifra">
+              {elegidos.length}
+              <span className="sr-only"> elegidos</span>
+            </span>
+          ) : null}
+          <Icono nombre="adelante" tamano={18} />
+        </summary>
+
+        <div className="filtros-cuerpo">
+          {colores.length > 0 ? (
+            <GrupoDeFiltro id="f-color" titulo="Color">
+              <ChipsDeFiltro opciones={colores} />
+            </GrupoDeFiltro>
+          ) : null}
+
+          <GrupoDeFiltro
+            id="f-tamano"
+            titulo="Tamaño"
+            ayuda={
+              filtrosCrudos.tamano
+                ? "Ancho en cm. Tocá el tamaño elegido para ver todos."
+                : "Ancho en cm, medido con la cartera cerrada."
+            }
+          >
+            <SegmentoDeFiltro opciones={tamanos} />
+          </GrupoDeFiltro>
+
+          <GrupoDeFiltro id="f-precio" titulo="Precio">
+            <ChipsDeFiltro opciones={bandas} />
+            <form method="get" action="/" className="rango-precio">
+              {filtrosCrudos.tipo ? (
+                <input type="hidden" name="tipo" value={filtrosCrudos.tipo} />
+              ) : null}
+              {filtrosCrudos.color ? (
+                <input type="hidden" name="color" value={filtrosCrudos.color} />
+              ) : null}
+              {filtrosCrudos.tamano ? (
+                <input type="hidden" name="tamano" value={filtrosCrudos.tamano} />
+              ) : null}
+              <label className="rango-extremo">
+                <span>Desde</span>
+                <span className="rango-cifra">
+                  <b aria-hidden="true">Bs</b>
+                  <input
+                    name="precioMin"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="–"
+                    autoComplete="off"
+                    defaultValue={filtrosCrudos.precioMin}
+                  />
+                </span>
+              </label>
+              <label className="rango-extremo">
+                <span>Hasta</span>
+                <span className="rango-cifra">
+                  <b aria-hidden="true">Bs</b>
+                  <input
+                    name="precioMax"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="–"
+                    autoComplete="off"
+                    defaultValue={filtrosCrudos.precioMax}
+                  />
+                </span>
+              </label>
+              <button type="submit" className="btn btn-primario">
+                Ver
+              </button>
+            </form>
+          </GrupoDeFiltro>
+        </div>
+      </details>
+
+      {hayFiltros ? (
+        <Link to="/" className="filtros-quitar" preventScrollReset replace>
+          Quitar filtros
+        </Link>
+      ) : null}
+    </section>
+  );
+}
+
+/** Una pieza del listado: foto (hueco hasta el #5), nombre, Ref., precio y tamaño. */
+function TarjetaDePieza({ pieza }: { pieza: PiezaEnCatalogo }) {
   return (
     <li>
       <ComprobanteMini
@@ -179,6 +341,7 @@ function FilaDeCatalogo({ pieza }: { pieza: PiezaEnCatalogo }) {
         nombre={pieza.nombre}
         precio={pieza.precioCentavos / 100}
         tamano={pieza.tamano}
+        foto={pieza.foto}
         sello={pieza.estado === "reservada" ? "Reservada" : undefined}
       />
     </li>
@@ -186,69 +349,92 @@ function FilaDeCatalogo({ pieza }: { pieza: PiezaEnCatalogo }) {
 }
 
 export default function Catalogo({ loaderData }: Route.ComponentProps) {
-  const { catalogo, listas, tomar, filtrosCrudos, whatsapp } = loaderData;
+  const { catalogo, filtrosCrudos, tomar, whatsapp } = loaderData;
   const { piezas, hayMas } = catalogo;
   const hayFiltros = Object.values(filtrosCrudos).some(Boolean);
 
+  // Sin piezas publicadas: el catálogo entero está vacío, no hay nada que filtrar.
+  if (piezas.length === 0 && !hayFiltros) {
+    return (
+      <Pagina titulo="Catálogo">
+        <EstadoVacio
+          titulo="Pronto nuevas carteras"
+          sello={{ texto: "En preparación" }}
+          detalle="Estamos preparando el próximo drop: cada pieza se limpia, se revisa y se mide antes de publicarse."
+          accion={
+            <BotonWhatsApp
+              variante="secundario"
+              conChat
+              texto="Avisame del próximo drop"
+              href={enlaceWhatsApp(whatsapp, "Hola, quiero enterarme del próximo drop")}
+            />
+          }
+        >
+          <Renglones>
+            <Renglon etiqueta="Disponibles" cifra>
+              0
+            </Renglon>
+            <Renglon etiqueta="Reservadas" cifra>
+              0
+            </Renglon>
+          </Renglones>
+        </EstadoVacio>
+      </Pagina>
+    );
+  }
+
   return (
     <Pagina titulo="Catálogo">
-      <FormularioDeFiltros listas={listas} filtrosCrudos={filtrosCrudos} hayFiltros={hayFiltros} />
+      <div className="catalogo">
+        <Filtros datos={loaderData} />
 
-      {piezas.length === 0 ? (
-        hayFiltros ? (
-          <EstadoVacio
-            titulo="Ninguna pieza coincide"
-            detalle="Probá con menos filtros o quitalos para ver todo el catálogo."
-            accion={
-              <Link to="/" className="btn">
-                Quitar filtros
-              </Link>
-            }
-          />
-        ) : (
-          <EstadoVacio
-            titulo="Pronto nuevas carteras"
-            sello={{ texto: "En preparación" }}
-            detalle="Estamos preparando el próximo drop: cada pieza se limpia, se revisa y se mide antes de publicarse."
-            accion={
-              <BotonWhatsApp
-                variante="secundario"
-                conChat
-                texto="Avisame del próximo drop"
-                href={enlaceWhatsApp(
-                  whatsapp,
-                  "Hola, quiero enterarme del próximo drop",
-                )}
-              />
-            }
-          >
-            <Renglones>
-              <Renglon etiqueta="Disponibles" cifra>
-                0
-              </Renglon>
-              <Renglon etiqueta="Reservadas" cifra>
-                0
-              </Renglon>
-            </Renglones>
-          </EstadoVacio>
-        )
-      ) : (
-        <>
-          <ul className="catalogo-lista">
-            {piezas.map((pieza) => (
-              <FilaDeCatalogo key={pieza.codigo} pieza={pieza} />
-            ))}
-          </ul>
-          {hayMas ? (
-            <Link
-              className="btn btn-ancho"
-              to={armarQuery(filtrosCrudos, tomar + PIEZAS_POR_PAGINA)}
+        <div className="catalogo-resultados">
+          {piezas.length === 0 ? (
+            <EstadoVacio
+              titulo="Ninguna pieza coincide"
+              detalle="Cada cartera es única y el catálogo cambia con cada drop. Probá con menos filtros."
+              accion={
+                <Link to="/" className="btn btn-ancho" replace>
+                  Ver todo el catálogo
+                </Link>
+              }
             >
-              Cargar más
-            </Link>
-          ) : null}
-        </>
-      )}
+              <Renglones>
+                {filtrosEnPalabras(loaderData).map((fila) => (
+                  <Renglon key={fila.etiqueta} etiqueta={fila.etiqueta} cifra={fila.cifra}>
+                    {fila.valor}
+                  </Renglon>
+                ))}
+              </Renglones>
+            </EstadoVacio>
+          ) : (
+            <>
+              <ul className="catalogo-lista">
+                {piezas.map((pieza) => (
+                  <TarjetaDePieza key={pieza.codigo} pieza={pieza} />
+                ))}
+              </ul>
+              {hayMas ? (
+                <Link
+                  className="btn btn-ancho catalogo-mas"
+                  to={urlDeCatalogo(filtrosCrudos, {}, tomar + PIEZAS_POR_PAGINA)}
+                  preventScrollReset
+                  replace
+                >
+                  Cargar más
+                </Link>
+              ) : (
+                <p className="catalogo-fin">
+                  {piezas.length === 1
+                    ? "Esta es la única pieza"
+                    : `Estas son las ${piezas.length} piezas`}
+                  {hayFiltros ? " con estos filtros." : " del catálogo."}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </Pagina>
   );
 }
