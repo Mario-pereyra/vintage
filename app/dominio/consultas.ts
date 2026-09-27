@@ -12,12 +12,10 @@ import type { EstadoDePieza } from "./piezas";
 
 /**
  * Consultas del inventario del panel (#13): búsqueda por código, filtros por
- * lote, tipo y condición de ingreso, y los días que una pieza vendida estuvo
- * publicada. A diferencia de `catalogo.ts` (que es público y excluye En
- * preparación), esto es una vista interna: trae piezas de cualquier estado.
- *
- * El filtro por drop queda para cuando el drop exista (#12, en paralelo): no
- * se agrega un campo por adelantado.
+ * lote, tipo, condición de ingreso y drop, y los días que una pieza vendida
+ * estuvo publicada. A diferencia de `catalogo.ts` (que es público y excluye
+ * En preparación), esto es una vista interna: trae piezas de cualquier
+ * estado.
  */
 
 /** Lo que el dominio necesita saber de la tienda para las consultas del panel. */
@@ -40,6 +38,7 @@ export interface FiltrosDeInventario {
   loteId?: number;
   tipoId?: number;
   condicionIngreso?: CondicionDePieza;
+  dropId?: number;
 }
 
 /** Una pieza del inventario del panel, agrupable por estado en la pantalla. */
@@ -139,13 +138,14 @@ function aPiezaDelInventario(
 /**
  * El inventario del panel: piezas de cualquier estado (En preparación,
  * Disponible, Reservada, Vendida o Retirada), para agrupar por estado en la
- * pantalla. Se puede acotar por código (completo o parcial), lote, tipo y
- * condición de ingreso, combinables entre sí. Las más recientes primero.
+ * pantalla. Se puede acotar por código (completo o parcial), lote, tipo,
+ * condición de ingreso y drop, combinables entre sí. Las más recientes
+ * primero.
  *
  * Todos los filtros llegan de parámetros de la URL: un valor fuera de rango
- * (un `loteId` o `tipoId` que no entra en una columna INTEGER, una condición
- * que no es de la lista, un texto absurdamente largo) se ignora o se acota,
- * nunca rompe la consulta.
+ * (un `loteId`, `tipoId` o `dropId` que no entra en una columna INTEGER, una
+ * condición que no es de la lista, un texto absurdamente largo) se ignora o
+ * se acota, nunca rompe la consulta.
  */
 export async function buscarInventario(
   db: PrismaClient,
@@ -163,6 +163,9 @@ export async function buscarInventario(
   if (filtrosCrudos.condicionIngreso !== undefined && esCondicionValida(filtrosCrudos.condicionIngreso)) {
     where.condicionIngreso = condicionAPrisma(filtrosCrudos.condicionIngreso);
   }
+
+  const dropId = idDeFiltro(filtrosCrudos.dropId);
+  if (dropId !== undefined) where.dropId = dropId;
 
   const textoBuscado = (filtrosCrudos.texto ?? "").trim();
   const digitosBuscados = digitosDeBusqueda(textoBuscado);

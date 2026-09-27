@@ -225,17 +225,43 @@ describe("consultas del inventario del panel", () => {
       expect(encontradas.map((p) => p.codigo)).toEqual([tote.codigo]);
     });
 
+    it("filtra por drop", async () => {
+      const primera = await piezaEnPreparacion("Primera"); // VT-0001
+      const segunda = await piezaEnPreparacion("Segunda"); // VT-0002
+      const drop = await dominio.crearDrop();
+      await dominio.asignarPiezasADrop(drop.id, [segunda.codigo]);
+
+      const encontradas = await dominio.buscarInventario({ dropId: drop.id });
+
+      expect(encontradas.map((p) => p.codigo)).toEqual([segunda.codigo]);
+      expect(primera.codigo).not.toBe(segunda.codigo);
+    });
+
+    it("combina el filtro por drop con los demás filtros", async () => {
+      const { tipos } = await dominio.listas();
+      const bandolera = await piezaEnPreparacion("Bandolera", { tipoId: tipos[0].id }); // VT-0001
+      const tote = await piezaEnPreparacion("Tote", { tipoId: tipos[1].id }); // VT-0002
+      const drop = await dominio.crearDrop();
+      await dominio.asignarPiezasADrop(drop.id, [bandolera.codigo, tote.codigo]);
+
+      const encontradas = await dominio.buscarInventario({ dropId: drop.id, tipoId: tipos[1].id });
+
+      expect(encontradas.map((p) => p.nombre)).toEqual(["Tote"]);
+    });
+
     // Los filtros llegan de parámetros de la URL: un valor fuera de rango no
     // debe romper la consulta (mismo cuidado que en `catalogo.ts`).
     describe("filtros fuera de rango", () => {
-      it("ignora un loteId o un tipoId que no entra en una columna INTEGER", async () => {
+      it("ignora un loteId, un tipoId o un dropId que no entra en una columna INTEGER", async () => {
         await piezaEnPreparacion("Pieza");
 
         const porLote = await dominio.buscarInventario({ loteId: 99_999_999_999 });
         const porTipo = await dominio.buscarInventario({ tipoId: -5 });
+        const porDrop = await dominio.buscarInventario({ dropId: 99_999_999_999 });
 
         expect(porLote.map((p) => p.nombre)).toEqual(["Pieza"]);
         expect(porTipo.map((p) => p.nombre)).toEqual(["Pieza"]);
+        expect(porDrop.map((p) => p.nombre)).toEqual(["Pieza"]);
       });
 
       it("ignora una condición de ingreso que no es de la lista", async () => {

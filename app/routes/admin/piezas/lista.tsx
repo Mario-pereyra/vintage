@@ -47,22 +47,25 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     loteId: parametros.get("loteId") ?? "",
     tipoId: parametros.get("tipoId") ?? "",
     condicionIngreso: parametros.get("condicionIngreso") ?? "",
+    dropId: parametros.get("dropId") ?? "",
   };
   const filtros: FiltrosDeInventario = {
     texto: filtrosCrudos.q || undefined,
     loteId: enteroPositivo(filtrosCrudos.loteId),
     tipoId: enteroPositivo(filtrosCrudos.tipoId),
     condicionIngreso: condicionValida(filtrosCrudos.condicionIngreso),
+    dropId: enteroPositivo(filtrosCrudos.dropId),
   };
 
   const dominio = obtenerDominio(context);
-  const [piezas, { tipos }, lotes] = await Promise.all([
+  const [piezas, { tipos }, lotes, drops] = await Promise.all([
     dominio.buscarInventario(filtros),
     dominio.listas(),
     dominio.listarLotes(),
+    dominio.listarDrops(),
   ]);
 
-  return { piezas, tipos, lotes, filtrosCrudos };
+  return { piezas, tipos, lotes, drops, filtrosCrudos };
 }
 
 type DatosDelInventario = Route.ComponentProps["loaderData"];
@@ -155,7 +158,7 @@ function Filas({ piezas }: { piezas: readonly PiezaDelInventario[] }) {
  * lo aplica y otro sobre el elegido lo quita.
  */
 function BuscarYFiltrar({ datos }: { datos: DatosDelInventario }) {
-  const { tipos, lotes, filtrosCrudos } = datos;
+  const { tipos, lotes, drops, filtrosCrudos } = datos;
   const cambiar = (cambios: Partial<FiltrosCrudos>) => urlDelInventario(filtrosCrudos, cambios);
 
   const opcionesDeTipo: OpcionDeFiltro[] = [
@@ -190,6 +193,19 @@ function BuscarYFiltrar({ datos }: { datos: DatosDelInventario }) {
     }),
   ];
 
+  const opcionesDeDrop: OpcionDeFiltro[] = [
+    { clave: "todos", texto: "Todos", href: cambiar({ dropId: "" }), activo: !filtrosCrudos.dropId },
+    ...drops.map((drop) => {
+      const activo = filtrosCrudos.dropId === String(drop.id);
+      return {
+        clave: String(drop.id),
+        texto: drop.numero,
+        href: cambiar({ dropId: activo ? "" : String(drop.id) }),
+        activo,
+      };
+    }),
+  ];
+
   const opcionesDeCondicion: OpcionDeFiltro[] = CONDICIONES.map((condicion) => {
     const activo = filtrosCrudos.condicionIngreso === condicion;
     return {
@@ -201,11 +217,13 @@ function BuscarYFiltrar({ datos }: { datos: DatosDelInventario }) {
   });
 
   const lote = lotes.find((l) => String(l.id) === filtrosCrudos.loteId);
+  const drop = drops.find((d) => String(d.id) === filtrosCrudos.dropId);
   const condicion = condicionValida(filtrosCrudos.condicionIngreso);
   const elegidos = [
     tipos.find((tipo) => String(tipo.id) === filtrosCrudos.tipoId)?.nombre,
     lote ? `Lote #${lote.id}` : undefined,
     condicion ? TEXTO_DE_CONDICION[condicion] : undefined,
+    drop?.numero,
   ].filter((valor): valor is string => Boolean(valor));
 
   const hayFiltros = Boolean(filtrosCrudos.q) || elegidos.length > 0;
@@ -222,6 +240,9 @@ function BuscarYFiltrar({ datos }: { datos: DatosDelInventario }) {
         ) : null}
         {filtrosCrudos.condicionIngreso ? (
           <input type="hidden" name="condicionIngreso" value={filtrosCrudos.condicionIngreso} />
+        ) : null}
+        {filtrosCrudos.dropId ? (
+          <input type="hidden" name="dropId" value={filtrosCrudos.dropId} />
         ) : null}
         <label htmlFor="q" className="etiqueta">
           Buscar por Ref.
@@ -274,6 +295,11 @@ function BuscarYFiltrar({ datos }: { datos: DatosDelInventario }) {
               <ChipsDeFiltro opciones={opcionesDeLote} carril />
             </GrupoDeFiltro>
           ) : null}
+          {drops.length > 0 ? (
+            <GrupoDeFiltro id="f-drop" titulo="Drop">
+              <ChipsDeFiltro opciones={opcionesDeDrop} carril />
+            </GrupoDeFiltro>
+          ) : null}
           <GrupoDeFiltro
             id="f-condicion"
             titulo="Condición de ingreso"
@@ -305,7 +331,10 @@ function BuscarYFiltrar({ datos }: { datos: DatosDelInventario }) {
 function avisoDeInventarioVacio(filtrosCrudos: FiltrosCrudos): string {
   const hayTexto = Boolean(filtrosCrudos.q);
   const hayOtrosFiltros = Boolean(
-    filtrosCrudos.loteId || filtrosCrudos.tipoId || filtrosCrudos.condicionIngreso,
+    filtrosCrudos.loteId ||
+      filtrosCrudos.tipoId ||
+      filtrosCrudos.condicionIngreso ||
+      filtrosCrudos.dropId,
   );
   if (hayTexto && hayOtrosFiltros) {
     return "Ninguna pieza coincide. Prueba con menos cifras de la Ref. o quita un filtro.";
