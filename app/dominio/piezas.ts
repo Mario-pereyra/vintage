@@ -1,8 +1,4 @@
-import type {
-  EstadoPieza,
-  Prisma,
-  PrismaClient,
-} from "~/generated/prisma/client";
+import type { EstadoPieza, Prisma } from "~/generated/prisma/client";
 
 import {
   condicionAPrisma,
@@ -219,7 +215,7 @@ type FilaDePieza = Prisma.PiezaGetPayload<{ include: { fotos: true } }>;
 
 /** Limpia y valida los datos; devuelve solo los campos presentes. */
 async function validar(
-  db: PrismaClient,
+  db: Prisma.TransactionClient,
   datos: DatosDePieza,
 ): Promise<DatosDePieza> {
   const errores: Record<string, string> = {};
@@ -366,7 +362,13 @@ function aDatosPrisma(
   };
 }
 
-export function crearPiezas(db: PrismaClient, config: ConfiguracionDePiezas) {
+/**
+ * `db` acepta tanto el cliente de Prisma como un cliente de transacción
+ * (`Prisma.TransactionClient`): `abrirLote` (abastecimiento.ts) crea piezas
+ * dentro de una transacción, para que el lote y sus piezas se guarden como
+ * una sola unidad atómica.
+ */
+export function crearPiezas(db: Prisma.TransactionClient, config: ConfiguracionDePiezas) {
   const codigoDe = (numero: number) =>
     formatearCodigo(numero, config.prefijoDeCodigo);
 

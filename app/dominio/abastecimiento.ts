@@ -6,7 +6,7 @@ import type {
 
 import { esCondicionValida, type CondicionDePieza } from "./condicion";
 import { ErrorDeDominio } from "./errores";
-import type { crearPiezas, PiezaDelPanel } from "./piezas";
+import { crearPiezas, type ConfiguracionDePiezas, type PiezaDelPanel } from "./piezas";
 
 /**
  * Abastecimiento (ticket #8, ADR 0001): proveedores, lotes, su apertura y la
@@ -155,6 +155,7 @@ type FilaDeLote = Prisma.LoteGetPayload<object>;
 export function crearAbastecimiento(
   db: PrismaClient,
   piezas: ReturnType<typeof crearPiezas>,
+  configDePiezas: ConfiguracionDePiezas,
 ) {
   async function aLoteDelPanel(fila: FilaDeLote): Promise<LoteDelPanel> {
     const [proveedor, calidadDeclarada, cantidadDePiezas] = await Promise.all([
@@ -353,28 +354,44 @@ export function crearAbastecimiento(
         throw new ErrorDeDominio("datos_invalidos", "Revisa los datos marcados.", errores);
       }
 
-      // El filtro por "todavía sin abrir" evita abrir el lote dos veces si dos
-      // operadoras pulsan a la vez.
-      const { count } = await db.lote.updateMany({
-        where: { id, fechaApertura: null },
-        data: {
-          fechaApertura: datos.fecha,
-          unidadesRecibidas,
-          descartes,
-          notaApertura,
-        },
-      });
-      if (count === 0) {
-        throw new ErrorDeDominio("transicion_no_permitida", `El lote ${id} ya fue abierto.`);
-      }
+      // Marcar el lote como abierto y crear sus piezas son una sola unidad:
+      // si cualquier pieza falla a mitad, la transacción entera se revierte y
+      // el lote queda como si nunca se hubiera intentado abrir (sin piezas de
+      // menos). El filtro por "todavía sin abrir" del `updateMany`, dentro de
+      // la misma transacción, evita abrir el lote dos veces si dos operadoras
+      // pulsan a la vez.
+      //
+      // Nota: `codigo` sale de una secuencia de Postgres, que no es
+      // transaccional (ADR 0006: nunca se reutiliza). Si esta transacción se
+      // revierte, los números ya sorteados quedan sin usar para siempre, tal
+      // como pasa hoy al borrar una pieza: es un salto esperado, no un error.
+      const codigos = await db.$transaction(async (tx) => {
+        const { count } = await tx.lote.updateMany({
+          where: { id, fechaApertura: null },
+          data: {
+            fechaApertura: datos.fecha,
+            unidadesRecibidas,
+            descartes,
+            notaApertura,
+          },
+        });
+        if (count === 0) {
+          throw new ErrorDeDominio("transicion_no_permitida", `El lote ${id} ya fue abierto.`);
+        }
 
-      // Se crean todas las piezas primero y se leen de nuevo al final: el
-      // costo de pieza se calcula con la cantidad final del lote, no con la
-      // cantidad parcial que hay a mitad de la carga.
-      const codigos: string[] = [];
-      for (const condicionIngreso of condicionesDeIngreso) {
-        codigos.push((await piezas.crearPieza({ loteId: id, condicionIngreso })).codigo);
-      }
+        const piezasDeLaTransaccion = crearPiezas(tx, configDePiezas);
+        const codigosCreados: string[] = [];
+        for (const condicionIngreso of condicionesDeIngreso) {
+          codigosCreados.push(
+            (await piezasDeLaTransaccion.crearPieza({ loteId: id, condicionIngreso })).codigo,
+          );
+        }
+        return codigosCreados;
+      }, { timeout: 20_000 }); // un lote grande crea muchas piezas: más margen que el default (5 s).
+
+      // Se leen de nuevo, ya fuera de la transacción: el costo de pieza se
+      // calcula con la cantidad final del lote, no con la cantidad parcial
+      // que hay a mitad de la carga.
       const piezasCreadas = await Promise.all(
         codigos.map((codigo) => piezas.piezaDelPanel(codigo)),
       ) as PiezaDelPanel[];

@@ -23,15 +23,17 @@ export type OpcionesDelDominio = Partial<ConfiguracionDePiezas>;
  *   los de `configuracionTienda` y la hora real; las pruebas los fijan.
  */
 export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}) {
-  const config: ConfiguracionDePiezas = {
+  const configDePiezas: ConfiguracionDePiezas = {
     prefijoDeCodigo: opciones.prefijoDeCodigo ?? configuracionTienda.prefijoDeCodigo,
     umbralesDeTamano: opciones.umbralesDeTamano ?? configuracionTienda.umbralesDeTamano,
     ahora: opciones.ahora ?? (() => new Date()),
   };
-  const piezas = crearPiezas(db, config);
-  const reservas = crearReservas(db, config);
-  const fotos = crearFotos(db, { prefijoDeCodigo: config.prefijoDeCodigo });
-  const abastecimiento = crearAbastecimiento(db, piezas);
+  const piezas = crearPiezas(db, configDePiezas);
+  const reservas = crearReservas(db, configDePiezas);
+  const fotos = crearFotos(db, { prefijoDeCodigo: configDePiezas.prefijoDeCodigo });
+  // `abrirLote` recibe también la configuración para poder crear las piezas
+  // del lote dentro de su propia transacción (ver abastecimiento.ts).
+  const abastecimiento = crearAbastecimiento(db, piezas, configDePiezas);
 
   /**
    * Vencimiento perezoso: antes de leer el estado de una pieza, vence las
@@ -46,8 +48,8 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
   }
 
   const configuracionDeCatalogo = {
-    prefijoDeCodigo: config.prefijoDeCodigo,
-    umbralesDeTamano: config.umbralesDeTamano,
+    prefijoDeCodigo: configDePiezas.prefijoDeCodigo,
+    umbralesDeTamano: configDePiezas.umbralesDeTamano,
   };
 
   return {

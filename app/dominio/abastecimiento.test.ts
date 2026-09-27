@@ -211,6 +211,49 @@ describe("abastecimiento", () => {
       });
     });
 
+    it("es atómica: si falla a mitad, el lote no queda abierto con piezas de menos", async () => {
+      // `ahora` es el reloj inyectado (las pruebas lo fijan): lo usamos para
+      // hacer fallar la creación de la segunda pieza, ya con la primera
+      // insertada, sin tocar el cliente de Prisma ni sus internos.
+      let llamadas = 0;
+      const otra = await crearBaseDePrueba({
+        ahora: () => {
+          llamadas++;
+          if (llamadas === 2) throw new Error("fallo simulado a mitad de la apertura");
+          return new Date("2026-09-10T00:00:00Z");
+        },
+      });
+      try {
+        const proveedor = await otra.dominio.registrarProveedor({
+          nombre: "Textiles del Sur",
+          contacto: "+591 700 00000",
+        });
+        const { calidadesDeclaradas } = await otra.dominio.listas();
+        const lote = await otra.dominio.registrarLote({
+          proveedorId: proveedor.id,
+          canal: "fardo_cerrado",
+          calidadDeclaradaId: calidadesDeclaradas[0].id,
+          costoCentavos: 10000,
+          fechaCompra: new Date("2026-09-01T00:00:00Z"),
+        });
+
+        await expect(
+          otra.dominio.abrirLote(lote.id, {
+            fecha: new Date("2026-09-10T00:00:00Z"),
+            unidadesRecibidas: 3,
+            descartes: 0,
+            condicionesDeIngreso: ["excelente", "buena", "muy_buena"],
+          }),
+        ).rejects.toThrow("fallo simulado a mitad de la apertura");
+
+        const loteTrasElFallo = await otra.dominio.loteDelPanel(lote.id);
+        expect(loteTrasElFallo).toMatchObject({ abierto: false, piezas: 0 });
+        expect(await otra.dominio.listarPiezasDeLote(lote.id)).toEqual([]);
+      } finally {
+        await otra.cerrar();
+      }
+    });
+
     it("exige una condición de ingreso por cada pieza recibida, ni más ni menos", async () => {
       const lote = await unLote();
 
