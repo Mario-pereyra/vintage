@@ -2,6 +2,7 @@
   "extends": "./tsconfig.json",
   "include": [
     "app/dominio/**/*",
+    "app/configuracion/**/*",
     "app/generated/**/*",
     "app/servidor/autenticacion.server.ts",
     "app/servidor/autenticacion.test.ts"

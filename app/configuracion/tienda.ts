@@ -14,6 +14,11 @@ export const configuracionTienda = {
    */
   whatsapp: "59169647971",
   /**
+   * Prefijo del código de pieza (`VT-0142`): va en la etiqueta física y en la
+   * Ref. de la ficha. Cambiarlo no altera los números ya asignados.
+   */
+  prefijoDeCodigo: "VT-",
+  /**
    * Umbrales de tamaño por ancho en cm (valores iniciales de PRODUCT.md):
    * Mini menos de 18, Pequeña de 18 a 24, Mediana de 25 a 32 y Grande más de 32.
    */

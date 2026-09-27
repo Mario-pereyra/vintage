@@ -21,16 +21,78 @@ enum EstadoPieza {
   RETIRADA
 }
 
-/// Un artículo físico único del inventario. El ticket #4 completa sus
-/// identificadores (código, slug), atributos, procedencia y visibilidad.
+/// Un artículo físico único del inventario, con los tres identificadores del
+/// ADR 0006:
+/// - `id`: UUID v7 interno, nunca visible;
+/// - `codigo`: correlativo de la secuencia `pieza_codigo_seq`, que nunca se
+///   reutiliza; se muestra con el prefijo de la marca (`VT-0001`);
+/// - `sufijo`: aleatorio y corto; la URL pública es `/carteras/<slug>-<sufijo>`
+///   y el slug se deriva del nombre, así que la URL sobrevive a un renombre.
+///
+/// Mientras está En preparación los datos pueden estar incompletos; publicar
+/// exige los obligatorios. Procedencia, costo, condición, visibilidad, drop y
+/// retiro llegan con sus tickets (#6, #8, #9, #10, #12).
 model Pieza {
-  id          String      @id @db.Uuid
-  estado      EstadoPieza @default(EN_PREPARACION)
-  publicadaEn DateTime?   @map("publicada_en")
-  creadaEn    DateTime    @default(now()) @map("creada_en")
+  id     String @id @db.Uuid
+  codigo Int    @unique @default(autoincrement())
+  sufijo String @unique
+
+  nombre     String?
+  tipoId     Int?           @map("tipo_id")
+  tipo       TipoDeCartera? @relation(fields: [tipoId], references: [id])
+  colorId    Int?           @map("color_id")
+  color      Color?         @relation(fields: [colorId], references: [id])
+  materialId Int?           @map("material_id")
+  material   Material?      @relation(fields: [materialId], references: [id])
+
+  /// Medidas en cm, con la cartera cerrada y sin asas.
+  altoCm        Float? @map("alto_cm")
+  anchoCm       Float? @map("ancho_cm")
+  profundidadCm Float? @map("profundidad_cm")
+  /// Caída del asa o de la correa, en cm. Opcional: un clutch puede no tener.
+  caidaCm       Float? @map("caida_cm")
+
+  /// Precio publicado en bolivianos (BOB), en centavos enteros.
+  precioCentavos Int? @map("precio_centavos")
+
+  estado        EstadoPieza @default(EN_PREPARACION)
+  publicadaEn   DateTime?   @map("publicada_en")
+  creadaEn      DateTime    @default(now()) @map("creada_en")
+  actualizadaEn DateTime    @default(now()) @updatedAt @map("actualizada_en")
 
   @@index([estado, publicadaEn])
   @@map("pieza")
+}
+
+// --- Listas cerradas que la operadora puede ampliar -------------------------
+// Los valores iniciales se cargan en la migración; el orden de la lista es el
+// de alta (`id`). Marca y calidad declarada llegan con #6 y #8.
+
+/// Estilo de una cartera: de hombro, de mano, bandolera, tote, clutch…
+model TipoDeCartera {
+  id     Int     @id @default(autoincrement())
+  nombre String  @unique
+  piezas Pieza[]
+
+  @@map("tipo_de_cartera")
+}
+
+model Color {
+  id      Int     @id @default(autoincrement())
+  nombre  String  @unique
+  /// Color de muestra para el chip (`#16130f`). Es un dato, no una tinta.
+  muestra String?
+  piezas  Pieza[]
+
+  @@map("color")
+}
+
+model Material {
+  id     Int     @id @default(autoincrement())
+  nombre String  @unique
+  piezas Pieza[]
+
+  @@map("material")
 }
 
 // --- Sesiones de las operadoras (Better Auth) ------------------------------

@@ -1,5 +1,8 @@
+import { Link } from "react-router";
+
 import { BloquePanel } from "~/componentes/bloque-panel";
 import { Correo } from "~/componentes/correo";
+import { Icono } from "~/componentes/icono";
 import { Renglon, Renglones } from "~/componentes/renglon";
 import { obtenerOperadora } from "~/servidor/contexto.server";
 
@@ -20,11 +23,21 @@ export default function InicioDelPanel({ loaderData }: Route.ComponentProps) {
     <>
       <h2 className="saludo">Hola, {nombre}</h2>
 
-      <BloquePanel titulo="Todavía no hay secciones">
-        <p className="ayuda">
-          Aquí vas a registrar lotes, cargar piezas con sus 8 tomas y anotar las
-          reservas. Cada sección aparece en esta pantalla cuando esté lista.
-        </p>
+      <BloquePanel titulo="Secciones">
+        <ul className="secciones">
+          <li>
+            <Link className="seccion" to="/admin/piezas">
+              <span>
+                <b>Piezas</b>
+                <span>Cargar, editar y publicar</span>
+              </span>
+              <Icono nombre="adelante" />
+            </Link>
+          </li>
+          <li className="seccion seccion-proxima">
+            <span>Lotes, fotos y reservas aparecen aquí cuando estén listos.</span>
+          </li>
+        </ul>
       </BloquePanel>
 
       <BloquePanel titulo="Tu sesión">

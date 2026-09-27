@@ -14,6 +14,8 @@ type Props =
       telefono: string;
       codigo: string;
       nombre: string;
+      /** URL absoluta de la ficha: va al final del mensaje. */
+      url?: string;
       texto?: string;
     }
   | {
@@ -36,7 +38,9 @@ export function BotonWhatsApp(props: Props) {
   if (props.variante === "principal") {
     const href = enlaceWhatsApp(
       props.telefono,
-      `Hola, me interesa la Ref. ${props.codigo} (${props.nombre})`,
+      `Hola, me interesa la Ref. ${props.codigo} (${props.nombre})${
+        props.url ? ` ${props.url}` : ""
+      }`,
     );
     return (
       <a className="boton" href={href} target="_blank" rel="noopener">
