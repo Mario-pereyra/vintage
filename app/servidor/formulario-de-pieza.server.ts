@@ -61,6 +61,13 @@ export async function leerFormularioDePieza(
     precioCentavos: leerPrecio(formulario.get("precio")),
   };
 
+  // Solo lo toca si el formulario lo trae: nueva.tsx no lo muestra (una pieza
+  // recién creada todavía no tiene procedencia).
+  const reacondicionamiento = formulario.get("reacondicionamiento");
+  if (reacondicionamiento !== null) {
+    datos.costoReacondicionamientoCentavos = leerPrecio(reacondicionamiento) ?? 0;
+  }
+
   for (const [campo, lista] of Object.entries(LISTA_DEL_CAMPO)) {
     const nuevo = String(formulario.get(`${campo}Nuevo`) ?? "").trim();
     if (!nuevo) continue;

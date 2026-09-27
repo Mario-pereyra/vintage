@@ -264,6 +264,11 @@ export function crearAbastecimiento(
       return db.proveedor.findMany({ orderBy: { id: "desc" } });
     },
 
+    /** Un proveedor por su id, o `null` si no existe. */
+    async proveedorDelPanel(id: number): Promise<Proveedor | null> {
+      return db.proveedor.findUnique({ where: { id } });
+    },
+
     /**
      * Registra un lote con su proveedor, canal, calidad declarada, costo,
      * transporte y fechas de compra y recepción. Todavía sin piezas: la

@@ -144,6 +144,13 @@ describe("abastecimiento", () => {
       expect(await dominio.loteDelPanel(lote.id)).toMatchObject({ id: lote.id });
       expect(await dominio.loteDelPanel(999999)).toBeNull();
     });
+
+    it("trae un proveedor por su id, o null si no existe", async () => {
+      const proveedor = await unProveedor();
+
+      expect(await dominio.proveedorDelPanel(proveedor.id)).toEqual(proveedor);
+      expect(await dominio.proveedorDelPanel(999999)).toBeNull();
+    });
   });
 
   describe("apertura", () => {
@@ -228,6 +235,21 @@ describe("abastecimiento", () => {
           condicionesDeIngreso: [],
         }),
       ).rejects.toMatchObject({ errores: { descartes: expect.any(String) } });
+    });
+
+    it("las piezas creadas se pueden listar por lote, para el detalle del panel", async () => {
+      const lote = await unLote();
+      await dominio.abrirLote(lote.id, {
+        fecha: new Date(),
+        unidadesRecibidas: 2,
+        descartes: 0,
+        condicionesDeIngreso: ["excelente", "buena"],
+      });
+
+      const piezasDelLote = await dominio.listarPiezasDeLote(lote.id);
+
+      expect(piezasDelLote).toHaveLength(2);
+      expect(piezasDelLote.map((p) => p.estado)).toEqual(["en_preparacion", "en_preparacion"]);
     });
 
     it("una apertura con todo descartado no crea piezas", async () => {

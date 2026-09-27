@@ -565,6 +565,21 @@ export function crearPiezas(db: PrismaClient, config: ConfiguracionDePiezas) {
       }));
     },
 
+    /** Las piezas de un lote (las que creó su apertura), en el orden en que se cargaron. */
+    async listarPiezasDeLote(loteId: number): Promise<PiezaEnPanel[]> {
+      const filas = await db.pieza.findMany({
+        where: { loteId },
+        orderBy: { codigo: "asc" },
+        select: { codigo: true, nombre: true, estado: true, precioCentavos: true },
+      });
+      return filas.map((fila) => ({
+        codigo: codigoDe(fila.codigo),
+        nombre: fila.nombre,
+        estado: nombreDeEstado[fila.estado],
+        precioCentavos: fila.precioCentavos,
+      }));
+    },
+
     /**
      * La ficha pública de una pieza a partir de su dirección
      * (`<slug>-<sufijo>`). Es la única función que produce lo que ve la
