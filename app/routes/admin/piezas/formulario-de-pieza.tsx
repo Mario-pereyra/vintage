@@ -12,14 +12,16 @@ import {
   TamanoDerivado,
 } from "~/componentes/campos";
 import { Chips } from "~/componentes/chips";
+import { TOMAS } from "~/componentes/galeria-tomas";
 import { TomasDelPanel } from "~/componentes/tomas-panel";
 import { configuracionTienda } from "~/configuracion/tienda";
-import type {
-  CampoDePieza,
-  EstadoDePieza,
-  FotoDelPanel,
-  Listas,
-  PiezaDelPanel,
+import {
+  TOMAS_REQUERIDAS,
+  type CampoDePieza,
+  type EstadoDePieza,
+  type FotoDelPanel,
+  type Listas,
+  type PiezaDelPanel,
 } from "~/dominio";
 
 /**
@@ -80,10 +82,23 @@ function faltanEnElFormulario(formulario: HTMLFormElement): Obligatorio[] {
   }).map(([campo]) => campo);
 }
 
-/** "Para publicar falta el tipo, las medidas, el precio y 3 tomas." */
+/** Cómo se nombran las tomas que faltan: "2 tomas (asas y puesta)". */
+function textoDeTomasFaltantes(tomas: readonly FotoDelPanel[]): string | undefined {
+  const faltan = TOMAS_REQUERIDAS.flatMap((tipo, indice) =>
+    tomas.some((foto) => foto.tipo === tipo) ? [] : [TOMAS[indice].toLowerCase()],
+  );
+  if (faltan.length === 0) return undefined;
+  if (faltan.length === TOMAS_REQUERIDAS.length) return "las 8 tomas";
+  const cuantas = faltan.length === 1 ? "1 toma" : `${faltan.length} tomas`;
+  // Con muchas, los nombres no entran en la línea de motivo: se ven en la grilla.
+  if (faltan.length > 4) return cuantas;
+  return `${cuantas} (${new Intl.ListFormat("es", { type: "conjunction" }).format(faltan)})`;
+}
+
+/** "Para publicar falta el tipo, las medidas, el precio y 2 tomas (asas y puesta)." */
 function lineaDeFaltantes(
   faltan: readonly CampoDePieza[],
-  tomasQueFaltan: number,
+  tomasQueFaltan: string | undefined,
 ): string | undefined {
   const todasLasMedidas = MEDIDAS.every((medida) => faltan.includes(medida));
   const partes: string[] = [];
@@ -95,12 +110,11 @@ function lineaDeFaltantes(
     }
     partes.push(texto);
   }
-  if (tomasQueFaltan > 0) {
-    partes.push(tomasQueFaltan === 1 ? "1 toma" : `${tomasQueFaltan} tomas`);
-  }
+  if (tomasQueFaltan) partes.push(tomasQueFaltan);
   if (partes.length === 0) return undefined;
   const lista = new Intl.ListFormat("es", { type: "conjunction" }).format(partes);
-  return `Para publicar falta ${lista}.`;
+  const varias = partes.length > 1 || /^(las |\d+ tomas)/.test(partes[0]);
+  return `Para publicar ${varias ? "faltan" : "falta"} ${lista}.`;
 }
 
 // --- Interfaz --------------------------------------------------------------
@@ -195,7 +209,7 @@ export function FormularioDePieza({
     pieza ? pieza.faltanParaPublicar : OBLIGATORIOS.map(([campo]) => campo),
   );
   const [tomas, setTomas] = useState<readonly FotoDelPanel[]>(fotos);
-  const tomasQueFaltan = 8 - tomas.length;
+  const tomasQueFaltan = textoDeTomasFaltantes(tomas);
   /** Mientras no se toque nada, la barra muestra el resultado del último envío. */
   const [tocado, setTocado] = useState(false);
   const [ultimoResultado, setUltimoResultado] = useState(resultado);
@@ -247,8 +261,8 @@ export function FormularioDePieza({
       <BloquePanel titulo="Fotos" detalle={`${tomas.length} de 8 tomas`} completo={tomas.length === 8}>
         {pieza ? (
           <p className="ayuda">
-            Tocá un hueco para subir esa toma. Con dos huecos llenos, tocalos de a
-            uno para intercambiar sus fotos.
+            Van siempre en este orden. Tocá una toma para sacarla, cambiarla o
+            usarla de portada.
           </p>
         ) : (
           <p className="ayuda">
@@ -373,7 +387,7 @@ export function FormularioDePieza({
             : {
                 name: "intencion",
                 value: "publicar",
-                disabled: enviando || faltan.length > 0 || tomasQueFaltan > 0,
+                disabled: enviando || faltan.length > 0 || tomasQueFaltan !== undefined,
               }
         }
         motivo={motivo}

@@ -108,9 +108,13 @@ export default function Ficha({ loaderData }: Route.ComponentProps) {
   const { ficha, url, whatsapp, r2PublicUrl } = loaderData;
   const { medidas } = ficha;
   const disponible = ficha.estado === "disponible";
+  // Catálogo (960 px) alcanza en la mayoría de los celulares; detalle (1800 px)
+  // queda para pantallas densas y escritorio.
   const fotos = ficha.fotos.map((foto) => ({
     src: `${r2PublicUrl}/${foto.claveDetalle}`,
+    srcSet: `${r2PublicUrl}/${foto.claveCatalogo} 960w, ${r2PublicUrl}/${foto.claveDetalle} 1800w`,
     alt: `${ficha.nombre} — ${foto.etiqueta}`,
+    toma: foto.etiqueta,
   }));
 
   return (

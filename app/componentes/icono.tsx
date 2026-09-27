@@ -27,6 +27,14 @@ const trazos = {
       <circle cx="12" cy="13.5" r="3.5" />
     </>
   ),
+  galeria: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="9" cy="9" r="2" />
+      <path d="m21 15-5-5L5 21" />
+    </>
+  ),
+  cerrar: <path d="M18 6 6 18M6 6l12 12" />,
   ubicacion: (
     <>
       <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z" />

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Icono } from "./icono";
 
@@ -19,7 +19,11 @@ export const TOMAS = [
 
 export interface FotoDeToma {
   src: string;
+  /** Variantes por ancho (catálogo y detalle), para no bajar la grande con datos. */
+  srcSet?: string;
   alt: string;
+  /** El nombre de la toma en la tira; si falta, el de `TOMAS` en esa posición. */
+  toma?: string;
 }
 
 /**
@@ -41,7 +45,19 @@ export function GaleriaDeTomas({
   sinFotos: ReactNode;
 }) {
   const carril = useRef<HTMLDivElement>(null);
+  const tira = useRef<HTMLDivElement>(null);
   const [activa, setActiva] = useState(0);
+
+  // En celular la tira se desliza: la toma activa siempre queda a la vista.
+  useEffect(() => {
+    const contenedor = tira.current;
+    const boton = contenedor?.children[activa] as HTMLElement | undefined;
+    if (!contenedor || !boton || contenedor.scrollWidth <= contenedor.clientWidth) return;
+    const izquierda = boton.offsetLeft - contenedor.offsetLeft;
+    if (izquierda < contenedor.scrollLeft || izquierda + boton.offsetWidth > contenedor.scrollLeft + contenedor.clientWidth) {
+      contenedor.scrollTo({ left: izquierda - 12 });
+    }
+  }, [activa]);
 
   if (fotos.length === 0) {
     return (
@@ -70,8 +86,8 @@ export function GaleriaDeTomas({
 
   return (
     <section className="galeria" aria-label="Fotos de la pieza">
-      <div className="tira-tomas" role="tablist" aria-label="Tomas">
-        {fotos.map((_, indice) => (
+      <div ref={tira} className="tira-tomas" role="tablist" aria-label="Tomas">
+        {fotos.map((foto, indice) => (
           <button
             key={indice}
             type="button"
@@ -80,7 +96,7 @@ export function GaleriaDeTomas({
             aria-controls={`toma-${indice}`}
             onClick={() => ir(indice)}
           >
-            <span className="cifra">{indice + 1}</span> {TOMAS[indice] ?? "Toma"}
+            <span className="cifra">{indice + 1}</span> {foto.toma ?? TOMAS[indice] ?? "Toma"}
           </button>
         ))}
       </div>
@@ -98,6 +114,8 @@ export function GaleriaDeTomas({
           <figure key={indice} className="toma" id={`toma-${indice}`}>
             <img
               src={foto.src}
+              srcSet={foto.srcSet}
+              sizes="(min-width: 900px) 560px, 100vw"
               alt={foto.alt}
               loading={indice === 0 ? "eager" : "lazy"}
               decoding="async"
