@@ -100,8 +100,15 @@ Si una sesión no ve las definiciones, lanza `general-purpose` con el modelo del
 - Los hallazgos menores de diseño se van anotando en el #19.
 - **Lección operativa:** los revisores en paralelo no deben tomar la rama con `gh pr checkout`, porque la bloquean para los demás worktrees. Tienen que usar `git fetch origin && git checkout --detach origin/ticket/N`.
 
+**Ola 3 (#4): terminada.**
+- #4 → PR #22, squash 3d5ca42. Una vuelta de corrección por un grave del code-review: `precioCentavos` no tenía tope y un valor enorme daba 500. Ahora el tope es de Bs 100.000.
+- Verificador 10 ✅. El diseño salió sin fallas materiales y con seis desvíos aceptados; los menores están en el #19, y la nota sobre las tomas tocables, en el #5.
+- Decisiones del modelo: una pieza En preparación admite datos incompletos. Para publicar hacen falta nombre, tipo, color, material, las tres medidas y el precio. El código es correlativo, sale de una secuencia de Postgres y el prefijo está en `configuracionTienda.prefijoDeCodigo`. La URL pública es `/carteras/<slug>-<sufijo>` y redirige si cambia el nombre.
+- Pendiente para la dueña: los valores iniciales de las listas (tipos, colores y materiales), que están en la migración.
+- **Lecciones operativas:** el `.env` apunta a Neon `dev`, así que los agentes pueden aplicar ahí sus migraciones. Cada agente usa su propia sesión de `playwright-cli`. En Neon `dev` quedan piezas de prueba.
+
 **Próximos pasos**
-- Ola 3: el #4 solo (`dominio-nucleo` y después `disenador-ui`).
+- Ola 4a: #5, #7 y #8 con `dominio`, y #9 con `dominio-nucleo`, en paralelo. Cada uno sigue con `disenador-ui`.
 
 ## Cómo retomar
 
