@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { Icono } from "./icono";
 import { Sello } from "./sello";
 import { formatearPrecio } from "./total";
 
@@ -69,7 +70,8 @@ export function PieComprobante({ children }: { children: ReactNode }) {
 /**
  * Comprobante mini (148px, dientes de 5px): nombre, Ref., precio y su foto 1:1
  * entera. Con `sello` (por ejemplo, "Vendida" o "Reservada") lleva el sello
- * pequeño; sin él, ninguno. También arma la fila del listado del catálogo.
+ * pequeño; sin él, ninguno. También arma la tarjeta del listado del catálogo,
+ * donde suma el tamaño derivado del ancho.
  */
 export function ComprobanteMini({
   href,
@@ -86,22 +88,32 @@ export function ComprobanteMini({
   precio: number;
   /** Tamaño derivado del ancho ("Mediana"), si corresponde mostrarlo. */
   tamano?: string;
-  /** URL de la foto de frente; se muestra entera sobre rosa claro. */
-  foto?: { src: string; alt: string };
+  /**
+   * La foto de frente, entera sobre rosa claro. Sin ella, el hueco muestra la
+   * cámara y "Fotos en camino" (la variante "catálogo" llega con el #5).
+   */
+  foto?: { src: string; alt: string } | null;
   sello?: string;
 }) {
   return (
     <a className="comprobante comprobante-mini" href={href}>
-      <div className="mini-foto">
-        {foto ? <img src={foto.src} alt={foto.alt} loading="lazy" /> : null}
+      <div className={foto ? "mini-foto" : "mini-foto mini-foto-vacia"}>
+        {foto ? (
+          <img src={foto.src} alt={foto.alt} loading="lazy" decoding="async" />
+        ) : (
+          <>
+            <Icono nombre="camara" tamano={24} />
+            <span>Fotos en camino</span>
+          </>
+        )}
       </div>
       {sello ? <Sello texto={sello} /> : null}
       <div className="mini-nombre">{nombre}</div>
-      <div className="mini-ref">
-        Ref. {codigo}
-        {tamano ? ` · ${tamano}` : ""}
+      <div className="mini-ref">Ref. {codigo}</div>
+      <div className="mini-pie">
+        <span className="mini-precio">{formatearPrecio(precio)}</span>
+        {tamano ? <span className="mini-tamano">{tamano}</span> : null}
       </div>
-      <div className="mini-precio">{formatearPrecio(precio)}</div>
     </a>
   );
 }
