@@ -2861,23 +2861,26 @@
   }
 
   /*
-   * Apagado, el dato se guarda pero no se publica: la etiqueta se tacha (el
-   * mismo código que la vista previa) y el control queda en segundo plano,
-   * todavía editable; vuelve al frente mientras se escribe.
+   * Apagado, el dato se guarda pero no se publica. Lo dicen la etiqueta
+   * tachada (el mismo código que la vista previa) y el interruptor apagado;
+   * el valor sigue en tinta, legible (WCAG AA).
    */
   .atributos .campo:has(> .etiqueta .mostrar > input:not(:checked)) > .etiqueta > :first-child {
     color: var(--tinta-2);
     text-decoration: line-through;
     text-decoration-thickness: 1.5px;
   }
-  .atributos .campo > :not(.etiqueta, .campo-error) {
-    transition: opacity 0.18s ease-out;
+
+  /* La escala de condición entra en una línea a 390px: "Con detalles" no se parte. */
+  .atributos .segmento > button {
+    white-space: nowrap;
+    padding-inline: 2px;
   }
-  .atributos .campo:has(> .etiqueta .mostrar > input:not(:checked)) > :not(.etiqueta, .campo-error) {
-    opacity: 0.55;
-  }
-  .atributos .campo:has(> .etiqueta .mostrar > input:not(:checked)):focus-within > * {
-    opacity: 1;
+
+  /* Descripción y detalle conservan los saltos de línea de la operadora. */
+  .texto-con-saltos,
+  .renglon-nota > dd {
+    white-space: pre-line;
   }
 
   /* Marca y autenticidad: la escala primero; con marca, cuál. */
@@ -2913,11 +2916,5 @@
   .renglon > dd small .marca-original {
     font-weight: 600;
     color: var(--sello);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .atributos .campo > * {
-    transition: none;
   }
 }

@@ -323,7 +323,7 @@ describe("pieza", () => {
         })),
         condicion: null,
         notaCondicion: null,
-        marca: { nombre: null, autenticidad: null, original: false },
+        marca: null,
         cierre: null,
         interior: null,
         colorHerrajes: null,
@@ -518,13 +518,13 @@ describe("pieza", () => {
       expect(ficha?.marca).toEqual({ nombre: marca.nombre, autenticidad: "atribuida", original: false });
     });
 
-    it("sin marca, la ficha la publica como 'Sin marca' (nombre null) si el interruptor está prendido", async () => {
-      const { codigo } = await dominio.crearPieza(await bandolera());
+    it("sin marca cargada, la ficha no publica marca ni autenticidad aunque el interruptor esté prendido", async () => {
+      const { codigo } = await dominio.crearPieza({ ...(await bandolera()), visibleMarca: true });
       const { rutaPublica } = await agregarTomasYPublicar(codigo);
 
       const ficha = await dominio.fichaPublica(rutaPublica.replace("/carteras/", ""));
 
-      expect(ficha?.marca).toEqual({ nombre: null, autenticidad: null, original: false });
+      expect(ficha?.marca).toBeNull();
     });
 
     it("quitar la marca limpia sola la autenticidad", async () => {
@@ -591,6 +591,32 @@ describe("pieza", () => {
       const ficha = await dominio.fichaPublica(rutaPublica.replace("/carteras/", ""));
 
       expect(ficha?.descripcion).toBe("Una descripción cualquiera.");
+    });
+
+    it("descripción y nota de condición conservan los saltos de línea: colapsa espacios por línea y 3 o más saltos a 2", async () => {
+      const { codigo } = await dominio.crearPieza({
+        ...(await bandolera()),
+        descripcion: "  Primera   frase.\t Sigue.\r\n\n\n\nSegunda  parte.  \n",
+        notaCondicion: "Base:\t leve marca.\nAsa:  intacta.",
+        cierre: "Solapa \n con   imán",
+      });
+      const { rutaPublica } = await agregarTomasYPublicar(codigo);
+
+      const ficha = await dominio.fichaPublica(rutaPublica.replace("/carteras/", ""));
+
+      expect(ficha?.descripcion).toBe("Primera frase. Sigue.\n\nSegunda parte.");
+      expect(ficha?.notaCondicion).toBe("Base: leve marca.\nAsa: intacta.");
+      expect(ficha?.cierre).toBe("Solapa con imán");
+    });
+
+    it("rechaza un texto opcional que no es texto ni null", async () => {
+      await expect(
+        // @ts-expect-error -- justo lo que la prueba quiere forzar
+        dominio.crearPieza({ descripcion: 42, cierre: { a: 1 } }),
+      ).rejects.toMatchObject({
+        motivo: "datos_invalidos",
+        errores: { descripcion: expect.any(String), cierre: expect.any(String) },
+      });
     });
 
     it("acota el largo de los textos opcionales, campo por campo", async () => {

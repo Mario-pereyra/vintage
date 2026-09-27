@@ -174,6 +174,25 @@ const TEXTOS_OPCIONALES = [
   ["descripcion", DESCRIPCION_MAXIMA],
 ] as const satisfies readonly (readonly [CampoDePieza, number])[];
 
+/** Los textos de varias líneas: conservan los saltos de línea que escribe la operadora. */
+const TEXTOS_CON_SALTOS: ReadonlySet<CampoDePieza> = new Set(["notaCondicion", "descripcion"]);
+
+/**
+ * Colapsa espacios y tabs dentro de cada línea, recorta los extremos y deja
+ * como mucho una línea en blanco entre párrafos. Vacío es `null`.
+ */
+function limpiarTextoConSaltos(texto: string): string | null {
+  return (
+    texto
+      .replace(/\r\n?/g, "\n")
+      .split("\n")
+      .map((linea) => linea.replace(/[^\S\n]+/g, " ").trim())
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim() || null
+  );
+}
+
 /** Los interruptores de visibilidad por campo (#6). `descripcion` no tiene uno. */
 const VISIBLES = [
   "visibleCondicion",
@@ -326,11 +345,11 @@ export interface FichaPublica {
   notaCondicion: string | null;
   /**
    * Marca y autenticidad, juntas o ninguna (ADR 0002): `null` si el
-   * interruptor "marca" está apagado. Si está encendido pero la pieza no
-   * tiene marca, se publica igual como "Sin marca" (`nombre: null`).
+   * interruptor "marca" está apagado o si la pieza no tiene marca cargada
+   * (no se publica "Sin marca": no hay nada que afirmar).
    * `original` es `true` solo con autenticidad comprobada.
    */
-  marca: { nombre: string | null; autenticidad: AutenticidadDePieza | null; original: boolean } | null;
+  marca: { nombre: string; autenticidad: AutenticidadDePieza | null; original: boolean } | null;
   cierre: string | null;
   interior: string | null;
   colorHerrajes: string | null;
@@ -466,9 +485,17 @@ async function validar(
   for (const [campo, maximo] of TEXTOS_OPCIONALES) {
     const valor = datos[campo];
     if (valor === undefined) continue;
+    if (valor !== null && typeof valor !== "string") {
+      errores[campo] = "Escribe un texto.";
+      continue;
+    }
     const limpio =
-      typeof valor === "string" ? valor.trim().replace(/\s+/g, " ") || null : valor;
-    if (limpio && typeof limpio === "string" && limpio.length > maximo) {
+      valor === null
+        ? null
+        : TEXTOS_CON_SALTOS.has(campo)
+          ? limpiarTextoConSaltos(valor)
+          : valor.trim().replace(/\s+/g, " ") || null;
+    if (limpio && limpio.length > maximo) {
       errores[campo] = `Usa como máximo ${maximo} caracteres.`;
     }
     limpios[campo] = limpio as never;
@@ -905,9 +932,11 @@ export function crearPiezas(db: Prisma.TransactionClient, config: ConfiguracionD
           fila.visibleCondicion && fila.condicion ? condicionDePrisma(fila.condicion) : null,
         notaCondicion:
           fila.visibleNotaCondicion && fila.notaCondicion ? fila.notaCondicion : null,
-        marca: fila.visibleMarca
+        // Sin marca cargada no hay renglón de marca ni autenticidad que publicar.
+        marca:
+          fila.visibleMarca && fila.marca
           ? {
-              nombre: fila.marca?.nombre ?? null,
+              nombre: fila.marca.nombre,
               autenticidad: fila.autenticidad ? autenticidadDePrisma(fila.autenticidad) : null,
               original: fila.autenticidad === "COMPROBADA",
             }

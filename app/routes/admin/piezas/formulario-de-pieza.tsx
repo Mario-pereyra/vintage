@@ -340,7 +340,7 @@ function CampoDeMarca({
           ? "La ficha dirá «Original». Elígela solo si la verificaste."
           : eleccion === "atribuida"
             ? "La ficha dirá «Atribuida, sin autenticar»."
-            : "Marca y autenticidad se publican juntas: un solo «Mostrar» para las dos."}
+            : "Sin marca, la ficha no muestra renglón de marca. Con marca, marca y autenticidad se publican juntas."}
       </p>
 
       {conMarca ? (

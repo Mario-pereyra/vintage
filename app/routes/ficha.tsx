@@ -208,17 +208,16 @@ export default function Ficha({ loaderData }: Route.ComponentProps) {
                       etiqueta="Marca"
                       aclaracion={
                         // "Original" solo con marca comprobada (ADR 0002), en
-                        // tinta azul: es lo verificado.
-                        ficha.marca.nombre ? (
-                          ficha.marca.original ? (
-                            <span className="marca-original">Original · comprobada</span>
-                          ) : (
-                            "Atribuida, sin autenticar"
-                          )
-                        ) : undefined
+                        // tinta azul: es lo verificado. Sin marca cargada no
+                        // hay renglón (el dominio publica `marca: null`).
+                        ficha.marca.original ? (
+                          <span className="marca-original">Original · comprobada</span>
+                        ) : (
+                          "Atribuida, sin autenticar"
+                        )
                       }
                     >
-                      {ficha.marca.nombre ?? "Sin marca"}
+                      {ficha.marca.nombre}
                     </Renglon>
                   ) : null}
                 </Renglones>
@@ -268,7 +267,7 @@ export default function Ficha({ loaderData }: Route.ComponentProps) {
           {ficha.descripcion ? (
             <section className="sobre-rosa" aria-labelledby="t-sobre">
               <h2 id="t-sobre">Sobre esta pieza</h2>
-              <p>{ficha.descripcion}</p>
+              <p className="texto-con-saltos">{ficha.descripcion}</p>
             </section>
           ) : null}
 
