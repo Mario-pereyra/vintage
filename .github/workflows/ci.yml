@@ -40,6 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       listas: ${{ steps.revisar.outputs.listas }}
+      preview_listas: ${{ steps.revisar.outputs.preview_listas }}
     steps:
       - id: revisar
         env:
@@ -47,6 +48,8 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          DEV_DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+          DEV_DIRECT_URL: ${{ secrets.DEV_DIRECT_URL }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
@@ -74,13 +77,20 @@ jobs:
           else
             echo "listas=true" >> "$GITHUB_OUTPUT"
           fi
+          # Las previews usan la rama dev de Neon, nunca la base de producción.
+          if [ -z "$DEV_DATABASE_URL" ] || [ -z "$DEV_DIRECT_URL" ]; then
+            echo "::warning title=Preview omitida::Faltan los secretos DEV_DATABASE_URL o DEV_DIRECT_URL (rama dev de Neon)."
+            echo "preview_listas=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "preview_listas=true" >> "$GITHUB_OUTPUT"
+          fi
 
   # Cada PR sube una versión de preview del Worker (sin tocar producción) con
   # el alias pr-<N> y publica su URL en el PR.
   preview:
     name: Preview en Workers
     needs: [verificar, credenciales]
-    if: github.event_name == 'pull_request' && needs.credenciales.outputs.listas == 'true'
+    if: github.event_name == 'pull_request' && needs.credenciales.outputs.listas == 'true' && needs.credenciales.outputs.preview_listas == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -108,13 +118,20 @@ jobs:
           fi
       - if: steps.worker.outputs.existe == 'true'
         run: npm run build
+      # Las previews comparten la rama dev de Neon: aquí se aplican las
+      # migraciones del PR. Producción no se toca.
+      - name: Aplicar migraciones (Neon dev, conexión directa)
+        if: steps.worker.outputs.existe == 'true'
+        env:
+          DIRECT_URL: ${{ secrets.DEV_DIRECT_URL }}
+        run: npx prisma migrate deploy
       - name: Subir versión de preview
         if: steps.worker.outputs.existe == 'true'
         env:
           WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.json
           ALIAS: pr-${{ github.event.pull_request.number }}
           SHA: ${{ github.event.pull_request.head.sha }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
@@ -159,7 +176,7 @@ jobs:
             if [ -n "$version_url" ]; then echo "- Esta versión (${SHA:0:7}): $version_url"; fi
             if [ -z "$alias_url$version_url" ]; then echo "No se obtuvo la URL de preview. Revisa que el Worker tenga habilitadas las Preview URLs."; fi
             echo
-            echo "Ojo: la preview usa la base de producción, y las migraciones de este PR todavía no están aplicadas en ella."
+            echo "La preview usa la rama \`dev\` de Neon, compartida con las demás previews y el desarrollo local. Las migraciones de este PR ya están aplicadas en ella."
           } > "$RUNNER_TEMP/comentario.md"
           cat "$RUNNER_TEMP/comentario.md" >> "$GITHUB_STEP_SUMMARY"
           gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/comentario.md" --edit-last --create-if-none

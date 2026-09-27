@@ -40,6 +40,7 @@ Todas están documentadas en `.env.example`. En local basta con un `.env`: lo le
 |---|---|---|
 | `DATABASE_URL` | secreto | Secreto de GitHub → secreto del Worker |
 | `DIRECT_URL` | secreto | Secreto de GitHub (solo migraciones en CI) |
+| `DEV_DATABASE_URL`, `DEV_DIRECT_URL` | secreto | Secretos de GitHub con la rama `dev` de Neon: runtime y migraciones de las previews de PR |
 | `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ADMIN_EMAILS` | secreto | Secreto de GitHub → secreto del Worker |
 | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | secreto | Secreto de GitHub (Wrangler en CI) |
 | `APP_URL` | variable | Variable de GitHub → `BETTER_AUTH_URL` del Worker |
@@ -77,7 +78,7 @@ Cada llamada a `crearBaseDePrueba()` clona una base ya migrada, así que cada pr
 ### Automático (GitHub Actions, `.github/workflows/ci.yml`)
 
 - **Cada PR y cada push a `main`**: typecheck, pruebas y build. No necesita secretos.
-- **Cada PR**: sube una versión de preview del Worker con `wrangler versions upload --preview-alias pr-<N>` (producción no cambia) y comenta la URL en el PR. Si `APP_URL` es `https://vintage.<sub>.workers.dev`, la preview recibe `BETTER_AUTH_URL=https://pr-<N>-vintage.<sub>.workers.dev`. La preview usa la base de producción y no aplica las migraciones del PR.
+- **Cada PR**: sube una versión de preview del Worker con `wrangler versions upload --preview-alias pr-<N>` (producción no cambia) y comenta la URL en el PR. Si `APP_URL` es `https://vintage.<sub>.workers.dev`, la preview recibe `BETTER_AUTH_URL=https://pr-<N>-vintage.<sub>.workers.dev`. Antes de subirla aplica las migraciones del PR a la rama `dev` de Neon (`DEV_DIRECT_URL`), y la preview usa esa rama (`DEV_DATABASE_URL`), nunca la base de producción. La rama `dev` es compartida con el desarrollo local y las demás previews.
 - **Push a `main`**: verifica que el bucket `R2_BUCKET` exista y coincida con `wrangler.jsonc`, hace el build, aplica `prisma migrate deploy` con `DIRECT_URL` y despliega con `wrangler deploy --secrets-file`, que sube los secretos de runtime en la misma versión.
 
 Si falta algún secreto o las variables `APP_URL` o `R2_BUCKET`, los jobs de despliegue se saltan con un aviso en lugar de fallar. La primera preview aparece después del primer despliegue a producción.
