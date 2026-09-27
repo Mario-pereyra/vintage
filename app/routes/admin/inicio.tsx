@@ -2,22 +2,32 @@ import { Link } from "react-router";
 
 import { BloquePanel } from "~/componentes/bloque-panel";
 import { Correo } from "~/componentes/correo";
+import { horaDeBolivia } from "~/componentes/hora";
 import { Icono } from "~/componentes/icono";
 import { Renglon, Renglones } from "~/componentes/renglon";
-import { obtenerOperadora } from "~/servidor/contexto.server";
+import { obtenerDominio, obtenerOperadora } from "~/servidor/contexto.server";
 
 import type { Route } from "./+types/inicio";
 import type { BarraDelPanel } from "./layout";
 
 export const handle = { titulo: "Inicio" } satisfies BarraDelPanel;
 
-export function loader({ context }: Route.LoaderArgs) {
+export async function loader({ context }: Route.LoaderArgs) {
   const { nombre, correo } = obtenerOperadora(context);
-  return { nombre, correo };
+  const reservas = await obtenerDominio(context).listarReservasActivas();
+  return { nombre, correo, reservas: resumenDeReservas(reservas) };
+}
+
+/** "2 activas · la próxima vence 16:40", para decidir de un vistazo si entrar. */
+function resumenDeReservas(reservas: { venceEn: Date }[]): string {
+  const [proxima] = reservas;
+  if (!proxima) return "Ninguna activa ahora";
+  const activas = reservas.length === 1 ? "1 activa" : `${reservas.length} activas`;
+  return `${activas} · la próxima vence ${horaDeBolivia(proxima.venceEn)}`;
 }
 
 export default function InicioDelPanel({ loaderData }: Route.ComponentProps) {
-  const { nombre, correo } = loaderData;
+  const { nombre, correo, reservas } = loaderData;
 
   return (
     <>
@@ -38,7 +48,7 @@ export default function InicioDelPanel({ loaderData }: Route.ComponentProps) {
             <Link className="seccion" to="/admin/reservas">
               <span>
                 <b>Reservas</b>
-                <span>Activas, por vencimiento</span>
+                <span>{reservas}</span>
               </span>
               <Icono nombre="adelante" />
             </Link>
