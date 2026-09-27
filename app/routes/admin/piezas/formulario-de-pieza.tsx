@@ -193,6 +193,7 @@ export function FormularioDePieza({
   fotos,
   r2PublicUrl,
   resultado,
+  onTomasCambian,
 }: {
   /** `null` al cargar una pieza nueva. */
   pieza: PiezaDelPanel | null;
@@ -201,6 +202,8 @@ export function FormularioDePieza({
   fotos: readonly FotoDelPanel[];
   r2PublicUrl: string;
   resultado?: ResultadoDelFormulario;
+  /** Cuántas tomas tiene ahora la pieza, para el sello de la cabecera. */
+  onTomasCambian?: (cuantas: number) => void;
 }) {
   const formulario = useRef<HTMLFormElement>(null);
   const navegacion = useNavigation();
@@ -277,6 +280,7 @@ export function FormularioDePieza({
           onCambio={(nuevas) => {
             setTomas(nuevas);
             setTocado(true);
+            onTomasCambian?.(nuevas.length);
           }}
         />
         <MensajeDeError texto={errores.fotos} />

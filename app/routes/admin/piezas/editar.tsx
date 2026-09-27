@@ -1,8 +1,10 @@
 import { env } from "cloudflare:workers";
+import { useState } from "react";
 import { data, Link, useSearchParams } from "react-router";
 
 import { Icono } from "~/componentes/icono";
 import { Sello } from "~/componentes/sello";
+import { TOMAS_REQUERIDAS } from "~/dominio";
 import { obtenerDominio } from "~/servidor/contexto.server";
 import {
   leerFormularioDePieza,
@@ -71,6 +73,11 @@ export default function EditarPieza({
   const [busqueda] = useSearchParams();
   const publicada = pieza.estado !== "en_preparacion";
   const alLlegar = AL_LLEGAR[busqueda.get("nueva") ?? ""];
+  // Solo presentación (DESIGN.md, Sello): en preparación con las 8 tomas, el
+  // sello del panel dice "Lista". El estado de la pieza no cambia.
+  const [tomas, setTomas] = useState({ desde: fotos, cuantas: fotos.length });
+  if (tomas.desde !== fotos) setTomas({ desde: fotos, cuantas: fotos.length });
+  const lista = pieza.estado === "en_preparacion" && tomas.cuantas === TOMAS_REQUERIDAS.length;
 
   return (
     <>
@@ -107,7 +114,7 @@ export default function EditarPieza({
             </Link>
           ) : null}
         </div>
-        <Sello texto={TEXTO_DEL_ESTADO[pieza.estado]} />
+        <Sello texto={lista ? "Lista" : TEXTO_DEL_ESTADO[pieza.estado]} />
       </div>
 
       {/* La key reinicia el formulario cuando cambia la pieza guardada. */}
@@ -117,6 +124,7 @@ export default function EditarPieza({
         listas={listas}
         fotos={fotos}
         r2PublicUrl={r2PublicUrl}
+        onTomasCambian={(cuantas) => setTomas({ desde: fotos, cuantas })}
         resultado={actionData ?? (alLlegar ? { mensaje: alLlegar } : undefined)}
       />
     </>

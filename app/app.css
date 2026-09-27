@@ -1433,10 +1433,18 @@
     height: 100%;
     object-fit: cover;
   }
-  /* La toma elegida (o la primera de un intercambio): contorno de tinta azul de 3px. */
-  .hueco[aria-pressed="true"] {
-    outline: 3px solid var(--sello);
-    outline-offset: 2px;
+  /*
+   * La toma elegida (o la primera de un intercambio): contorno de tinta azul
+   * de 3px por dentro del hueco. El foco de teclado va por fuera, separado
+   * 3px, así que las dos marcas no se confunden.
+   */
+  .hueco[aria-pressed="true"]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 3px solid var(--sello);
+    border-radius: var(--r-1);
+    pointer-events: none;
   }
   .hueco-numero {
     position: absolute;
@@ -1518,6 +1526,7 @@
   .tomas-botones > .btn {
     padding: 0 10px;
     font-size: 14.5px;
+    white-space: nowrap;
   }
   .tomas-botones .cifra {
     font-size: 13px;
@@ -1557,7 +1566,6 @@
   }
   .toma-elegida .cifra {
     font-size: 13px;
-    color: var(--sello);
   }
   .toma-elegida em {
     font: 800 10px / 1 var(--f-texto);

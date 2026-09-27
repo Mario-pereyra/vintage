@@ -35,19 +35,71 @@ function pedir(
     pedido.onload = () => {
       const cuerpo = (pedido.response ?? {}) as RespuestaDeFotos;
       if (pedido.status >= 200 && pedido.status < 300 && cuerpo.fotos) resolver(cuerpo.fotos);
-      else rechazar(new Error(cuerpo.mensaje ?? "El servidor no la aceptó."));
+      else rechazar(new FallaDeFoto(causaSegunEstado(pedido.status)));
     };
-    pedido.onerror = () => rechazar(new Error("Se cortó la conexión."));
+    pedido.onerror = () => rechazar(new FallaDeFoto("conexion"));
+    pedido.ontimeout = () => rechazar(new FallaDeFoto("conexion"));
     pedido.send(formulario);
   });
 }
 
-function conPunto(texto: string): string {
-  return /[.!?]$/.test(texto) ? texto : `${texto}.`;
+/**
+ * Por qué no se pudo subir o cambiar una foto. La operadora nunca ve el texto
+ * del navegador ni el del servidor tal cual: cada causa tiene su mensaje, y
+ * solo las pasajeras invitan a probar de nuevo.
+ */
+type CausaDeFalla =
+  | "no_es_foto"
+  | "muy_pesada"
+  | "rechazada"
+  | "conexion"
+  | "sesion"
+  | "servidor";
+
+const TEXTO_DE_FALLA: Record<CausaDeFalla, string> = {
+  no_es_foto: "Ese archivo no es una foto que podamos abrir. Elegí otra.",
+  muy_pesada: "La foto pesa demasiado. Elegí otra o sacala de nuevo.",
+  rechazada: "La foto no es JPEG ni WEBP, o quedó demasiado pesada. Elegí otra.",
+  conexion: "Se cortó la conexión. Probá de nuevo.",
+  sesion: "Tu sesión venció. Volvé a entrar y probá de nuevo.",
+  servidor: "El servidor no la aceptó. Probá de nuevo en un rato.",
+};
+
+class FallaDeFoto extends Error {
+  constructor(readonly causa: CausaDeFalla) {
+    super(TEXTO_DE_FALLA[causa]);
+  }
 }
 
-function mensajeDe(error: unknown, porDefecto: string): string {
-  return error instanceof Error && error.message ? error.message : porDefecto;
+function causaSegunEstado(estado: number): CausaDeFalla {
+  if (estado === 0) return "conexion";
+  if (estado === 401 || estado === 403) return "sesion";
+  if (estado === 413) return "muy_pesada";
+  if (estado >= 400 && estado < 500) return "rechazada";
+  return "servidor";
+}
+
+/**
+ * Tope del archivo original, antes de achicarlo: una foto de celular pesa
+ * pocos MB; algo mucho más grande no es una foto o ahoga el navegador.
+ */
+const TOPE_DEL_ORIGINAL = 40 * 1024 * 1024;
+
+/** Achica la foto en el navegador; si no se puede abrir, lo dice sin jerga. */
+async function achicar(archivo: File) {
+  if (archivo.type && !archivo.type.startsWith("image/")) throw new FallaDeFoto("no_es_foto");
+  if (archivo.size > TOPE_DEL_ORIGINAL) throw new FallaDeFoto("muy_pesada");
+  try {
+    return await generarVariantesDeFoto(archivo);
+  } catch {
+    // createImageBitmap no pudo decodificarla (no es una imagen, está
+    // dañada o el navegador no conoce el formato).
+    throw new FallaDeFoto("no_es_foto");
+  }
+}
+
+function causaDe(error: unknown): CausaDeFalla {
+  return error instanceof FallaDeFoto ? error.causa : "servidor";
 }
 
 /** Dónde va cada foto que se elija en la cámara o la galería. */
@@ -64,6 +116,18 @@ interface Subida {
 
 const NUMERO = new Map(TOMAS_REQUERIDAS.map((tipo, indice) => [tipo, indice + 1]));
 const NOMBRE = new Map(TOMAS_REQUERIDAS.map((tipo, indice) => [tipo, TOMAS[indice]]));
+
+/** En el botón de la cámara a 390 px, el nombre largo parte la línea. */
+const NOMBRE_CORTO: Record<TipoDeToma, string> = {
+  frente: "Frente",
+  dorso: "Dorso",
+  lateral: "Lateral",
+  base_y_esquinas: "Base",
+  interior: "Interior",
+  herrajes_y_cierre: "Herrajes",
+  asas: "Asas",
+  puesta: "Puesta",
+};
 
 const TEXTO_DE_ETAPA: Record<Subida["etapa"], string> = {
   en_cola: "En cola",
@@ -167,11 +231,11 @@ export function TomasDelPanel({
     setSubidas((previas) => ({ ...previas, ...nuevas }));
 
     const fallidas: string[] = [];
-    let motivo = "";
+    let causa: CausaDeFalla = "servidor";
     for (const [tipo, archivo] of pares) {
       try {
         actualizar(tipo, { etapa: "achicando" });
-        const variantes = await generarVariantesDeFoto(archivo);
+        const variantes = await achicar(archivo);
         actualizar(tipo, { etapa: "subiendo" });
         const resultado = await pedir(
           codigoDeLaPieza,
@@ -187,7 +251,7 @@ export function TomasDelPanel({
         onCambio(resultado);
       } catch (e) {
         fallidas.push(`${NUMERO.get(tipo)} ${NOMBRE.get(tipo)}`);
-        motivo = mensajeDe(e, "No se pudo procesar la foto.");
+        causa = causaDe(e);
       } finally {
         terminar(tipo);
       }
@@ -195,7 +259,7 @@ export function TomasDelPanel({
     if (fallidas.length > 0) {
       const cuales = new Intl.ListFormat("es", { type: "conjunction" }).format(fallidas);
       setError(
-        `${fallidas.length === 1 ? "No se subió la toma" : "No se subieron las tomas"} ${cuales}. ${conPunto(motivo)} Probá de nuevo.`,
+        `${fallidas.length === 1 ? "No se subió la toma" : "No se subieron las tomas"} ${cuales}. ${TEXTO_DE_FALLA[causa]}`,
       );
     }
   }
@@ -208,7 +272,15 @@ export function TomasDelPanel({
       onCambio(await pedir(codigoDeLaPieza, datos));
       return true;
     } catch (e) {
-      setError(`${siFalla} ${mensajeDe(e, "")}`.trim());
+      const causa = causaDe(e);
+      // Un 400 aquí no es la foto: las tomas cambiaron en otra pestaña.
+      setError(
+        `${siFalla} ${
+          causa === "rechazada"
+            ? "Las tomas cambiaron mientras tanto. Recargá la pantalla y probá de nuevo."
+            : TEXTO_DE_FALLA[causa]
+        }`,
+      );
       return false;
     } finally {
       setTrabajando(false);
@@ -431,12 +503,13 @@ export function TomasDelPanel({
                   type="button"
                   className="btn"
                   disabled={ocupado}
+                  aria-label={`Sacar la toma ${NUMERO.get(proxima)}, ${NOMBRE.get(proxima)}`}
                   onClick={() => abrir("camara", { tipo: proxima })}
                 >
                   <Icono nombre="camara" />
                   <span>
                     Sacar <span className="cifra">{NUMERO.get(proxima)}</span>{" "}
-                    {NOMBRE.get(proxima)}
+                    {NOMBRE_CORTO[proxima]}
                   </span>
                 </button>
                 <button
