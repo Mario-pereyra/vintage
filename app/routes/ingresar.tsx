@@ -1,5 +1,9 @@
-import { redirect } from "react-router";
+import { Link, redirect } from "react-router";
 
+import { AvisoSinConexion } from "~/componentes/aviso-sin-conexion";
+import { BloquePanel } from "~/componentes/bloque-panel";
+import { PaginaPanel } from "~/componentes/pagina-panel";
+import { Sello } from "~/componentes/sello";
 import { CORREO_NO_PERMITIDO } from "~/servidor/autenticacion.server";
 import { obtenerAutenticacion } from "~/servidor/contexto.server";
 
@@ -16,13 +20,28 @@ export function meta(_: Route.MetaArgs) {
 
 export const links: Route.LinksFunction = () => enlacesDelPanel;
 
-/** Mensaje para el `?error=` con que Better Auth vuelve después de Google. */
-function mensajeDeError(codigo: string | null): string | null {
+/**
+ * Mensaje para el `?error=` con que Better Auth vuelve después de Google. El
+ * correo fuera de la lista lleva el sello "Sin acceso"; cualquier otro error
+ * solo pide intentar de nuevo.
+ */
+function mensajeDeError(
+  codigo: string | null,
+): { sinAcceso: boolean; texto: string; ayuda: string } | null {
   if (!codigo) return null;
   if (codigo === CORREO_NO_PERMITIDO) {
-    return "Este correo no tiene acceso al panel. Entra con una cuenta de Google autorizada o pide que agreguen tu correo a la lista.";
+    return {
+      sinAcceso: true,
+      texto: "Este correo no tiene acceso al panel.",
+      ayuda:
+        "Entra con la cuenta de Google autorizada o pide que agreguen tu correo a la lista de operadoras.",
+    };
   }
-  return "No se pudo entrar con Google. Intenta de nuevo.";
+  return {
+    sinAcceso: false,
+    texto: "No se pudo entrar con Google.",
+    ayuda: "Intenta de nuevo. Si vuelve a pasar, revisa tu conexión.",
+  };
 }
 
 export async function loader({ request, context }: Route.LoaderArgs) {
@@ -49,31 +68,41 @@ export default function Ingresar({ loaderData }: Route.ComponentProps) {
   const { error, loginDeDesarrollo } = loaderData;
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 px-4 py-12">
-      <header>
-        <p className="text-sm font-semibold">Vintage Secret's</p>
-        <h1 className="text-2xl font-bold">Panel de operadoras</h1>
-      </header>
+    <PaginaPanel titulo="Ingresar" aviso={<AvisoSinConexion />}>
+      <div className="ingreso">
+        {error ? (
+          <div role="alert" className="bloque ingreso-rechazo">
+            {error.sinAcceso ? (
+              <Sello texto="Sin acceso" detalle="correo no permitido" />
+            ) : null}
+            <div>
+              <p>
+                <strong>{error.texto}</strong>
+              </p>
+              <p>{error.ayuda}</p>
+            </div>
+          </div>
+        ) : null}
 
-      {error ? (
-        <p role="alert" className="border border-current p-3">
-          {error}
-        </p>
-      ) : null}
+        <BloquePanel titulo="Entrar al panel">
+          <p className="ayuda">
+            Solo para las operadoras de Vintage Secret's. Usa la cuenta de Google con
+            la que te dieron acceso.
+          </p>
+          <form method="post">
+            <button type="submit" className="btn btn-primario">
+              Entrar con Google
+            </button>
+          </form>
+        </BloquePanel>
 
-      <form method="post">
-        <button type="submit" className="w-full border border-current px-4 py-3 font-semibold">
-          Entrar con Google
-        </button>
-      </form>
-
-      {loginDeDesarrollo ? (
-        <p className="text-sm">
-          <a href="/ingresar/desarrollo" className="underline">
-            Entrar como operadora de prueba (login de desarrollo)
-          </a>
-        </p>
-      ) : null}
-    </main>
+        {loginDeDesarrollo ? (
+          <p className="ingreso-pie">
+            ¿Probando en local o en una vista previa?{" "}
+            <Link to="/ingresar/desarrollo">Entrar como operadora de prueba</Link>
+          </p>
+        ) : null}
+      </div>
+    </PaginaPanel>
   );
 }

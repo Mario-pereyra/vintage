@@ -1,5 +1,10 @@
 import { redirect } from "react-router";
 
+import { BloquePanel } from "~/componentes/bloque-panel";
+import { Correo } from "~/componentes/correo";
+import { PaginaPanel } from "~/componentes/pagina-panel";
+import { Renglon, Renglones } from "~/componentes/renglon";
+import { OPERADORA_DE_PRUEBA } from "~/dominio";
 import { obtenerAutenticacion } from "~/servidor/contexto.server";
 
 import type { Route } from "./+types/ingresar-desarrollo";
@@ -25,7 +30,7 @@ export function meta(_: Route.MetaArgs) {
 
 export function loader({ context }: Route.LoaderArgs) {
   exigirLoginDeDesarrollo(obtenerAutenticacion(context).loginDeDesarrollo);
-  return null;
+  return { operadora: OPERADORA_DE_PRUEBA };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -36,19 +41,29 @@ export async function action({ request, context }: Route.ActionArgs) {
   return redirect("/admin", { headers });
 }
 
-export default function IngresarDesarrollo() {
+export default function IngresarDesarrollo({ loaderData }: Route.ComponentProps) {
+  const { operadora } = loaderData;
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 px-4 py-12">
-      <h1 className="text-2xl font-bold">Login de desarrollo</h1>
-      <p>
-        Entra al panel como la operadora de prueba, sin Google. Solo está activo en
-        local y en las vistas previas.
-      </p>
-      <form method="post">
-        <button type="submit" className="w-full border border-current px-4 py-3 font-semibold">
-          Entrar como operadora de prueba
-        </button>
-      </form>
-    </main>
+    <PaginaPanel titulo="Login de desarrollo" volverA="/ingresar">
+      <div className="ingreso">
+        <BloquePanel titulo="Entrar sin Google">
+          <p className="ayuda">
+            Abre una sesión de prueba para recorrer el panel. Solo existe en local y en
+            las vistas previas; en producción esta página no existe.
+          </p>
+          <Renglones>
+            <Renglon etiqueta="Operadora">{operadora.nombre}</Renglon>
+            <Renglon etiqueta="Correo">
+              <Correo>{operadora.correo}</Correo>
+            </Renglon>
+          </Renglones>
+          <form method="post" className="mt-s-5">
+            <button type="submit" className="btn btn-primario">
+              Entrar como operadora de prueba
+            </button>
+          </form>
+        </BloquePanel>
+      </div>
+    </PaginaPanel>
   );
 }
