@@ -25,6 +25,8 @@ export default [
     route("piezas/:codigo/reserva", "routes/admin/piezas/reserva.tsx"),
     route("piezas/:codigo/venta", "routes/admin/piezas/venta.tsx"),
     route("piezas/:codigo/retiro", "routes/admin/piezas/retiro.tsx"),
+    // Precio publicado e historial de rebajas (#12).
+    route("piezas/:codigo/precio", "routes/admin/piezas/precio.tsx"),
     route("reservas", "routes/admin/reservas.tsx"),
     // Subida y gestión de fotos de una pieza (R2 + dominio). Sin pantalla
     // propia: lo llama `TomasDelPanel` con `fetch`.
@@ -34,5 +36,8 @@ export default [
     route("lotes/nuevo", "routes/admin/lotes/nuevo.tsx"),
     route("lotes/:id", "routes/admin/lotes/detalle.tsx"),
     route("entregas", "routes/admin/entregas.tsx"),
+    // Drops: agrupan piezas En preparación y las publican juntas o de a poco (#12).
+    route("drops", "routes/admin/drops/lista.tsx"),
+    route("drops/:id", "routes/admin/drops/detalle.tsx"),
   ]),
 ] satisfies RouteConfig;

@@ -86,6 +86,15 @@ export default function InicioDelPanel({ loaderData }: Route.ComponentProps) {
             </Link>
           </li>
           <li>
+            <Link className="seccion" to="/admin/drops">
+              <span>
+                <b>Drops</b>
+                <span>Agrupar piezas y publicarlas juntas</span>
+              </span>
+              <Icono nombre="adelante" />
+            </Link>
+          </li>
+          <li>
             <Link className="seccion" to="/admin/proveedores">
               <span>
                 <b>Proveedores</b>

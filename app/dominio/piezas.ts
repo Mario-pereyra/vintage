@@ -126,8 +126,12 @@ export interface DatosDePieza {
 
 export type CampoDePieza = keyof DatosDePieza;
 
-/** Sin estos datos una pieza no se publica. La caída es opcional. */
-const CAMPOS_OBLIGATORIOS = [
+/**
+ * Sin estos datos una pieza no se publica. La caída es opcional. Se exporta
+ * para que `drops.ts` (#12) sepa qué pieza está lista para publicar sin
+ * recalcular el costo de pieza de cada una (`piezaDelPanel` es más caro).
+ */
+export const CAMPOS_OBLIGATORIOS = [
   "nombre",
   "tipoId",
   "colorId",

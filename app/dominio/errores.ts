@@ -8,6 +8,8 @@ export type MotivoDeRechazo =
   | "pieza_no_encontrada"
   /** El lote no existe. */
   | "lote_no_encontrado"
+  /** El drop no existe. */
+  | "drop_no_encontrado"
   /** El estado actual de la pieza (o del lote) no admite esa operación. */
   | "transicion_no_permitida"
   /** La pieza no tiene una reserva activa (o ya venció). */

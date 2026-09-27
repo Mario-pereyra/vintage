@@ -148,6 +148,12 @@ export default function EditarPieza({
               <Icono nombre="adelante" />
             </Link>
           ) : null}
+          {publicada ? (
+            <Link className="enlace-ficha" to={`/admin/piezas/${pieza.codigo}/precio`}>
+              Precio publicado e historial
+              <Icono nombre="adelante" />
+            </Link>
+          ) : null}
           {pieza.estado === "en_preparacion" || pieza.estado === "disponible" || pieza.estado === "retirada" ? (
             <Link className="enlace-ficha" to={`/admin/piezas/${pieza.codigo}/retiro`}>
               {pieza.estado === "retirada" ? "Retiro" : "Retirar pieza"}
