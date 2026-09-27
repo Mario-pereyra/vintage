@@ -1024,3 +1024,426 @@
     text-wrap: balance;
   }
 }
+
+/* ── Piezas en el panel (/admin/piezas) ── */
+@layer components {
+  /* Error de un campo: tinta y peso, sin tinta de alerta (el sistema no tiene). */
+  .campo-error {
+    margin: var(--s-2) 0 0;
+    font: 600 13.5px / 1.4 var(--f-texto);
+    color: var(--tinta);
+  }
+  .texto[aria-invalid="true"] {
+    border-color: var(--tinta);
+  }
+  .medida:has(input[aria-invalid="true"]) > span,
+  .precio:has(input[aria-invalid="true"]) > b {
+    color: var(--tinta);
+    font-weight: 700;
+  }
+  .campo-otro {
+    margin-top: var(--s-2);
+  }
+  .campo-otro > .ayuda {
+    margin: 6px 0 0;
+    font-size: 12.5px;
+  }
+  .medida-sola {
+    margin-top: var(--s-5);
+    max-width: 60%;
+  }
+  .medida-sola > .ayuda {
+    margin: 6px 0 0;
+    font-size: 12.5px;
+  }
+
+  /* Huecos de las 8 tomas: 4 × 2, formato 4:5, trazo discontinuo sobre papel rosado. */
+  .tomas {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--s-2);
+    max-width: 440px; /* en escritorio, huecos del tamaño de una foto de celular */
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .hueco {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 6px;
+    border: 1.5px dashed var(--linea);
+    border-radius: var(--r-1);
+    background: var(--papel-2);
+    color: var(--tinta-2);
+    overflow: hidden;
+  }
+  .hueco-numero {
+    position: absolute;
+    top: 6px;
+    left: 7px;
+    font: 700 11px var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+  }
+  .hueco-nombre {
+    font: 600 10.5px / 1.2 var(--f-texto);
+    hyphens: auto;
+  }
+
+  /* Cabecera de la pieza: la Ref. como número de comprobante y el sello. */
+  .pieza-cabecera {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding: var(--s-2) var(--s-1) var(--s-4);
+  }
+  .pieza-cabecera-ref {
+    margin: 0;
+    font: 700 30px / 1 var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.04em;
+    white-space: nowrap;
+  }
+  .pieza-cabecera-ref > span {
+    font: 500 14px var(--f-texto);
+    letter-spacing: 0;
+    color: var(--tinta-2);
+    margin-right: 6px;
+  }
+  .pieza-cabecera-detalle {
+    margin: var(--s-2) 0 0;
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: var(--tinta-2);
+  }
+  .pieza-cabecera > .pieza-cabecera-detalle {
+    margin: var(--s-1) 0 0;
+    max-width: 34ch;
+  }
+  .pieza-cabecera-detalle .cifra {
+    font-size: 12.5px;
+  }
+  .pieza-cabecera > .sello {
+    flex: none;
+    margin: 6px 6px 0 0;
+  }
+  .enlace-ficha {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: var(--s-2);
+    font: 700 14px var(--f-texto);
+    color: var(--tinta);
+  }
+  .enlace-ficha .icono {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Lista de piezas */
+  .btn-ancho {
+    display: flex;
+    width: 100%;
+    margin: var(--s-2) 0 var(--s-4);
+  }
+  .filas-pieza {
+    margin: 0 calc(var(--s-4) * -1);
+    padding: 0;
+    list-style: none;
+  }
+  .fila-pieza {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--s-1) var(--s-3);
+    min-height: 64px;
+    padding: var(--s-3) var(--s-4);
+    border-top: 1.5px dotted var(--linea);
+    text-decoration: none;
+    color: var(--tinta);
+  }
+  li:first-child > .fila-pieza {
+    border-top: 0;
+  }
+  .fila-pieza:hover .fila-pieza-nombre {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .fila-pieza:focus-visible {
+    outline-offset: -3px;
+  }
+  .fila-pieza-ref {
+    font: 700 15px var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .fila-pieza-nombre {
+    display: block;
+    margin-top: 2px;
+    font: 500 14.5px / 1.35 var(--f-texto);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .fila-pieza-nombre-vacio {
+    color: var(--tinta-2);
+    font-style: italic;
+  }
+  .fila-pieza-derecha {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    text-align: right;
+  }
+  .fila-pieza-precio {
+    font: 700 14px var(--f-cifra);
+    font-variant-numeric: tabular-nums;
+  }
+  .fila-pieza-precio-vacio {
+    font: 500 13px var(--f-texto);
+    color: var(--tinta-2);
+  }
+  .fila-pieza .icono {
+    color: var(--tinta-2);
+  }
+
+  /* Portada del panel: secciones como renglones que se tocan. */
+  .secciones {
+    margin: 0 calc(var(--s-4) * -1);
+    padding: 0;
+    list-style: none;
+  }
+  .seccion {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--s-3);
+    min-height: 64px;
+    padding: var(--s-3) var(--s-4);
+    text-decoration: none;
+    color: var(--tinta);
+  }
+  .seccion b {
+    display: block;
+    font: 800 17px var(--f-texto);
+  }
+  .seccion > span > span {
+    font-size: 14px;
+    color: var(--tinta-2);
+  }
+  .seccion-proxima {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .seccion:hover b {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .seccion:focus-visible {
+    outline-offset: -3px;
+  }
+  .seccion-proxima {
+    border-top: 1.5px dotted var(--linea);
+    color: var(--tinta-2);
+  }
+}
+
+/* ── Ficha pública (/carteras/<slug>-<sufijo>) ── */
+@layer components {
+  .pagina-sin-margen {
+    padding: 0 0 var(--s-7);
+  }
+
+  /* Galería: tira de 8 tomas nombradas y carrusel con scroll-snap. */
+  .galeria {
+    margin: 0 var(--s-3);
+  }
+  .tira-tomas {
+    display: flex;
+    gap: 6px;
+    margin: 0;
+    padding: 0 0 var(--s-3);
+    list-style: none;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tira-tomas::-webkit-scrollbar {
+    display: none;
+  }
+  .tira-tomas > button,
+  .tira-tomas > li {
+    flex: none;
+    font: 500 12px / 1.2 var(--f-texto);
+    color: var(--tinta);
+    background: none;
+    border: 1.5px solid var(--tinta);
+    border-radius: 3px;
+    padding: 6px 9px;
+    white-space: nowrap;
+  }
+  .tira-tomas .cifra {
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .tira-tomas > button[aria-selected="true"] {
+    background: var(--tinta);
+    color: var(--papel);
+  }
+  /* Sin fotos, la tira es un índice y no se toca: trazo discontinuo, como un hueco vacío. */
+  .tira-tomas-indice > li {
+    border-style: dashed;
+    color: var(--rosa-tinta);
+    border-color: color-mix(in srgb, var(--tinta) 45%, transparent);
+  }
+
+  .carril {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    border-radius: var(--r-1);
+  }
+  .carril::-webkit-scrollbar {
+    display: none;
+  }
+  .toma {
+    flex: 0 0 100%;
+    scroll-snap-align: center;
+    aspect-ratio: 1;
+    margin: 0;
+    background: var(--rosa-claro);
+    border-radius: var(--r-1);
+    display: grid;
+    place-items: center;
+  }
+  .toma img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  /* El marco sin foto: el texto queda por encima de los 48px que tapa el comprobante. */
+  .toma-sin-foto {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-2);
+    padding: var(--s-6) var(--s-6) calc(48px + var(--s-6));
+    text-align: center;
+    color: var(--rosa-tinta);
+  }
+  .toma-sin-foto .icono {
+    margin-bottom: var(--s-1);
+  }
+  .toma-sin-foto-titulo {
+    margin: 0;
+    max-width: 22ch;
+    font: 700 17px / 1.25 var(--f-texto);
+    color: var(--tinta);
+    text-wrap: balance;
+  }
+  .toma-sin-foto-detalle {
+    margin: 0;
+    max-width: 30ch;
+    font: 400 14px / 1.45 var(--f-texto);
+    text-wrap: pretty;
+  }
+  .toma-sin-foto-detalle .cifra {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  /* El comprobante sube 48px sobre la foto y queda a 20px del borde. */
+  .ficha-comprobante {
+    position: relative;
+    z-index: 1;
+    margin: -48px var(--s-5) 0;
+  }
+  .ficha-no-disponible .toma img {
+    filter: grayscale(0.5) contrast(0.95);
+  }
+
+  .ficha-textos .sobre-rosa {
+    padding: var(--s-6) var(--s-5) 0;
+  }
+  .lista-sobre-rosa {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .lista-sobre-rosa > li {
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    gap: var(--s-3);
+    padding: var(--s-3) 0;
+    border-top: 1.5px solid color-mix(in srgb, var(--tinta) 25%, transparent);
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  .lista-sobre-rosa > li:last-child {
+    border-bottom: 1.5px solid color-mix(in srgb, var(--tinta) 25%, transparent);
+  }
+  .lista-sobre-rosa b {
+    display: block;
+  }
+  /* Rangos de tamaño: nombre, rango y la marca del tamaño de esta pieza. */
+  .lista-tamanos > li {
+    grid-template-columns: 5.5em 1fr auto;
+    align-items: baseline;
+    padding: 10px 0;
+  }
+  .lista-tamanos > li > span {
+    color: var(--rosa-tinta);
+  }
+  .lista-tamanos em {
+    font: 600 11px var(--f-texto);
+    font-style: normal;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--papel);
+    color: var(--tinta);
+    padding: 4px 7px;
+    border-radius: var(--r-1);
+  }
+
+  @media (min-width: 900px) {
+    .ficha {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      grid-template-areas: "gal der" "txt der";
+      column-gap: var(--s-7);
+      align-items: start;
+      padding: 0 var(--s-5);
+    }
+    .galeria {
+      grid-area: gal;
+      margin: 0;
+    }
+    .tira-tomas {
+      flex-wrap: wrap;
+      overflow: visible;
+    }
+    .toma {
+      aspect-ratio: 4 / 5;
+    }
+    .toma-sin-foto {
+      padding-bottom: var(--s-6);
+    }
+    .ficha-comprobante {
+      grid-area: der;
+      position: sticky;
+      top: var(--s-4);
+      margin: 0;
+    }
+    .ficha-textos {
+      grid-area: txt;
+    }
+    .ficha-textos .sobre-rosa {
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+}

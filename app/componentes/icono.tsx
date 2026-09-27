@@ -12,6 +12,46 @@ const trazos = {
   ),
   chat: <path d="M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12Z" />,
   volver: <path d="m15 18-6-6 6-6" />,
+  adelante: <path d="m9 18 6-6-6-6" />,
+  mas: <path d="M12 5v14M5 12h14" />,
+  externo: (
+    <>
+      <path d="M14 4h6v6" />
+      <path d="M20 4 11 13" />
+      <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+    </>
+  ),
+  camara: (
+    <>
+      <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" />
+      <circle cx="12" cy="13.5" r="3.5" />
+    </>
+  ),
+  ubicacion: (
+    <>
+      <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z" />
+      <circle cx="12" cy="10" r="2.5" />
+    </>
+  ),
+  delivery: (
+    <>
+      <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" />
+      <circle cx="7" cy="18" r="1.8" />
+      <circle cx="17" cy="18" r="1.8" />
+    </>
+  ),
+  paquete: (
+    <>
+      <path d="M4 8l8-4 8 4v8l-8 4-8-4Z" />
+      <path d="M4 8l8 4 8-4M12 12v8" />
+    </>
+  ),
+  regla: (
+    <>
+      <path d="M3 16 16 3l5 5L8 21Z" />
+      <path d="m7 12 2 2M10 9l2 2M13 6l2 2" />
+    </>
+  ),
   ojo: (
     <>
       <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
