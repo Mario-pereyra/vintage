@@ -86,7 +86,8 @@ jobs:
           fi
 
   # Cada PR sube una versión de preview del Worker (sin tocar producción) con
-  # el alias pr-<N> y publica su URL en el PR.
+  # el alias pr-<N> y publica su URL en el PR. Las previews tienen el login de
+  # desarrollo activado (DEV_LOGIN) para que Playwright recorra /admin.
   preview:
     name: Preview en Workers
     needs: [verificar, credenciales]
@@ -157,6 +158,8 @@ jobs:
             --tag "${SHA:0:7}" \
             --message "PR #${{ github.event.pull_request.number }} (${SHA:0:7})" \
             --secrets-file "$secretos" \
+            --var "BETTER_AUTH_URL:$auth_url" \
+            --var "DEV_LOGIN:true" \
             --var "WHATSAPP_NUMBER:$WHATSAPP_NUMBER" \
             --var "R2_PUBLIC_URL:$R2_PUBLIC_URL"
       - name: Publicar la URL en el PR
@@ -175,6 +178,8 @@ jobs:
             if [ -n "$alias_url" ]; then echo "- Alias del PR: $alias_url"; fi
             if [ -n "$version_url" ]; then echo "- Esta versión (${SHA:0:7}): $version_url"; fi
             if [ -z "$alias_url$version_url" ]; then echo "No se obtuvo la URL de preview. Revisa que el Worker tenga habilitadas las Preview URLs."; fi
+            echo
+            echo "Entra al panel con el login de desarrollo: \`/ingresar/desarrollo\` (Google no acepta las URLs de preview)."
             echo
             echo "La preview usa la rama \`dev\` de Neon, compartida con las demás previews y el desarrollo local. Las migraciones de este PR ya están aplicadas en ella."
           } > "$RUNNER_TEMP/comentario.md"
@@ -209,6 +214,15 @@ jobs:
             exit 1
           fi
           npx wrangler r2 bucket info "$R2_BUCKET" > /dev/null
+      # El login de desarrollo solo existe en local y en las previews (con
+      # `--var DEV_LOGIN:true`). En producción toma el valor de wrangler.jsonc,
+      # que debe quedar vacío: así /ingresar/desarrollo responde 404.
+      - name: Verificar que el login de desarrollo esté apagado
+        run: |
+          if ! grep -Eq '"DEV_LOGIN": ""' wrangler.jsonc; then
+            echo "::error::DEV_LOGIN debe estar vacío en wrangler.jsonc: producción no puede tener el login de desarrollo."
+            exit 1
+          fi
       # El build va antes de migrar: si falla, la base no queda adelantada.
       - run: npm run build
       - name: Aplicar migraciones (Neon, conexión directa)
