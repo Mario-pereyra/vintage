@@ -1,6 +1,7 @@
 import { configuracionTienda } from "~/configuracion/tienda";
 import type { PrismaClient } from "~/generated/prisma/client";
 
+import { crearAbastecimiento } from "./abastecimiento";
 import { listarCatalogo, type FiltrosDeCatalogo } from "./catalogo";
 import { crearFotos } from "./fotos";
 import { ampliarLista, obtenerListas, type Lista } from "./listas";
@@ -22,14 +23,17 @@ export type OpcionesDelDominio = Partial<ConfiguracionDePiezas>;
  *   los de `configuracionTienda` y la hora real; las pruebas los fijan.
  */
 export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}) {
-  const config: ConfiguracionDePiezas = {
+  const configDePiezas: ConfiguracionDePiezas = {
     prefijoDeCodigo: opciones.prefijoDeCodigo ?? configuracionTienda.prefijoDeCodigo,
     umbralesDeTamano: opciones.umbralesDeTamano ?? configuracionTienda.umbralesDeTamano,
     ahora: opciones.ahora ?? (() => new Date()),
   };
-  const piezas = crearPiezas(db, config);
-  const reservas = crearReservas(db, config);
-  const fotos = crearFotos(db, { prefijoDeCodigo: config.prefijoDeCodigo });
+  const piezas = crearPiezas(db, configDePiezas);
+  const reservas = crearReservas(db, configDePiezas);
+  const fotos = crearFotos(db, { prefijoDeCodigo: configDePiezas.prefijoDeCodigo });
+  // `abrirLote` recibe también la configuración para poder crear las piezas
+  // del lote dentro de su propia transacción (ver abastecimiento.ts).
+  const abastecimiento = crearAbastecimiento(db, piezas, configDePiezas);
 
   /**
    * Vencimiento perezoso: antes de leer el estado de una pieza, vence las
@@ -44,8 +48,8 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
   }
 
   const configuracionDeCatalogo = {
-    prefijoDeCodigo: config.prefijoDeCodigo,
-    umbralesDeTamano: config.umbralesDeTamano,
+    prefijoDeCodigo: configDePiezas.prefijoDeCodigo,
+    umbralesDeTamano: configDePiezas.umbralesDeTamano,
   };
 
   return {
@@ -70,7 +74,10 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
     // --- Fotos de pieza: las 8 tomas mínimas, su orden fijo y su portada ---
     ...fotos,
 
-    // --- Listas ampliables (tipo de cartera, color, material) ---
+    // --- Abastecimiento: proveedores, lotes, apertura y compra a particular ---
+    ...abastecimiento,
+
+    // --- Listas ampliables (tipo de cartera, color, material, calidad declarada) ---
     /** Los valores de cada lista, en orden de alta. */
     listas: () => obtenerListas(db),
     /** Suma un valor a una lista, o devuelve el que ya existe con ese nombre. */
@@ -81,11 +88,26 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
 export type Dominio = ReturnType<typeof crearDominio>;
 
 export type {
+  CanalDeAbastecimiento,
+  DatosDeApertura,
+  DatosDeCompraAParticular,
+  DatosDeLote,
+  DatosDeProveedor,
+  LoteDelPanel,
+  Proveedor,
+} from "./abastecimiento";
+export {
+  CANALES_DE_ABASTECIMIENTO,
+  TEXTO_DE_CANAL,
+  UNIDADES_MAXIMAS,
+} from "./abastecimiento";
+export type {
   FiltrosDeCatalogo,
   PaginaDeCatalogo,
   PiezaEnCatalogo,
 } from "./catalogo";
 export { PIEZAS_POR_PAGINA } from "./catalogo";
+export { CONDICIONES, TEXTO_DE_CONDICION, type CondicionDePieza } from "./condicion";
 export { ErrorDeDominio, type MotivoDeRechazo } from "./errores";
 export {
   TOMAS_REQUERIDAS,
@@ -103,6 +125,7 @@ export type {
   PiezaDelPanel,
   PiezaEnPanel,
 } from "./piezas";
+export { COSTO_DIRECTO_MAXIMO_CENTAVOS, repartoDeLote } from "./piezas";
 export {
   PLAZO_POR_DEFECTO,
   type Compradora,

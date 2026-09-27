@@ -5,13 +5,15 @@
     "app/configuracion/**/*",
     "app/generated/**/*",
     "app/servidor/autenticacion.server.ts",
-    "app/servidor/autenticacion.test.ts"
+    "app/servidor/autenticacion.test.ts",
+    "app/servidor/formulario-de-abastecimiento.server.ts",
+    "app/servidor/formulario-de-abastecimiento.test.ts"
   ],
   "compilerOptions": {
     "composite": true,
     "strict": true,
     "types": ["node"],
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "bundler",

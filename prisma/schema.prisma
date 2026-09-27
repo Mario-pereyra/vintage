@@ -21,6 +21,25 @@ enum EstadoPieza {
   RETIRADA
 }
 
+/// Modalidad por la que se obtiene un lote (ver "Canal de abastecimiento" en
+/// CONTEXT.md). Compra a particular no tiene lote (ver `Pieza.proveedorId`) y
+/// consignación queda fuera de la Etapa 1 (spec, "Out of Scope").
+enum CanalDeAbastecimiento {
+  FARDO_CERRADO
+  LOTE_CLASIFICADO
+  LOTE_SELECCIONADO
+}
+
+/// Escala fija de condición de una pieza (ver "Condición" en CONTEXT.md). La
+/// condición de ingreso usa esta misma escala; la condición con la que se
+/// publica (#6) la reutilizará.
+enum Condicion {
+  EXCELENTE
+  MUY_BUENA
+  BUENA
+  CON_DETALLES
+}
+
 /// Un artículo físico único del inventario, con los tres identificadores del
 /// ADR 0006:
 /// - `id`: UUID v7 interno, nunca visible;
@@ -30,8 +49,9 @@ enum EstadoPieza {
 ///   y el slug se deriva del nombre, así que la URL sobrevive a un renombre.
 ///
 /// Mientras está En preparación los datos pueden estar incompletos; publicar
-/// exige los obligatorios. Procedencia, costo, condición, visibilidad, drop y
-/// retiro llegan con sus tickets (#6, #8, #9, #10, #12).
+/// exige los obligatorios. Procedencia y costo de reacondicionamiento llegan
+/// con #8 (ver más abajo); condición, visibilidad, drop y retiro llegan con
+/// sus tickets (#6, #9, #10, #12).
 model Pieza {
   id     String @id @db.Uuid
   codigo Int    @unique @default(autoincrement())
@@ -55,6 +75,28 @@ model Pieza {
   /// Precio publicado en bolivianos (BOB), en centavos enteros.
   precioCentavos Int? @map("precio_centavos")
 
+  // --- Procedencia y costo (ticket #8, ADR 0001) ----------------------------
+  // Toda pieza llega por un lote (con su reparto de costo) o por una compra a
+  // particular (con costo directo): nunca por las dos vías. El dominio exige
+  // una de las dos al abrir un lote o registrar una compra a particular; estos
+  // campos quedan sueltos aquí para que `crearPieza`/`editarPieza` (#4) los
+  // guarden como el resto de los datos. Nunca se publican.
+  loteId                           Int?       @map("lote_id")
+  lote                             Lote?      @relation(fields: [loteId], references: [id])
+  /// Proveedor directo, solo cuando la pieza viene de una compra a particular
+  /// (sin lote). Si viene de un lote, su proveedor es el del lote.
+  proveedorId                      Int?       @map("proveedor_id")
+  proveedor                        Proveedor? @relation(fields: [proveedorId], references: [id])
+  /// Lo pagado por la pieza en una compra a particular, sin lote.
+  costoDirectoCentavos             Int?       @map("costo_directo_centavos")
+  /// Limpieza o reparación de esta pieza. Se suma al reparto del costo del
+  /// lote (o al costo directo) para dar el costo de pieza.
+  costoReacondicionamientoCentavos Int        @default(0) @map("costo_reacondicionamiento_centavos")
+  /// Condición asignada en la apertura del lote (o, si es compra a
+  /// particular, al registrarla). Puede diferir de la condición de
+  /// publicación (#6).
+  condicionIngreso                 Condicion? @map("condicion_ingreso")
+
   estado        EstadoPieza @default(EN_PREPARACION)
   publicadaEn   DateTime?   @map("publicada_en")
   creadaEn      DateTime    @default(now()) @map("creada_en")
@@ -65,6 +107,8 @@ model Pieza {
   fotos       Foto[]
 
   @@index([estado, publicadaEn])
+  @@index([loteId])
+  @@index([proveedorId])
   @@map("pieza")
 }
 
@@ -104,6 +148,69 @@ model Foto {
 
   @@unique([piezaId, tipo])
   @@map("foto")
+}
+
+/// La persona o negocio a quien se le compra un lote o una pieza (ver
+/// "Proveedor" en CONTEXT.md). Un particular que vende una sola cartera
+/// también es proveedor.
+model Proveedor {
+  id       Int    @id @default(autoincrement())
+  nombre   String
+  contacto String
+
+  lotes  Lote[]
+  piezas Pieza[]
+
+  creadoEn DateTime @default(now()) @map("creado_en")
+
+  @@map("proveedor")
+}
+
+/// Denominación de mercado con la que el proveedor vende un lote (Primera,
+/// Segunda…). Lista cerrada ampliable, con los mismos valores iniciales de
+/// PRODUCT.md.
+model CalidadDeclarada {
+  id     Int    @id @default(autoincrement())
+  nombre String @unique
+  lotes  Lote[]
+
+  @@map("calidad_declarada")
+}
+
+/// Un conjunto de piezas adquiridas juntas a un proveedor en una sola compra
+/// (ver "Lote" en CONTEXT.md). La apertura (`fechaApertura` en adelante) se
+/// registra una sola vez y crea las piezas del lote; los descartes no generan
+/// fila de pieza y por eso no reciben parte del costo.
+model Lote {
+  id Int @id @default(autoincrement())
+
+  proveedorId Int                   @map("proveedor_id")
+  proveedor   Proveedor             @relation(fields: [proveedorId], references: [id])
+  canal       CanalDeAbastecimiento
+
+  calidadDeclaradaId Int              @map("calidad_declarada_id")
+  calidadDeclarada   CalidadDeclarada @relation(fields: [calidadDeclaradaId], references: [id])
+
+  /// Precio pagado por el lote, sin transporte.
+  costoCentavos      Int @map("costo_centavos")
+  /// Transporte de esa compra. Junto al costo, se reparte entre las piezas.
+  transporteCentavos Int @default(0) @map("transporte_centavos")
+
+  fechaCompra    DateTime  @map("fecha_compra")
+  fechaRecepcion DateTime? @map("fecha_recepcion")
+
+  // --- Apertura: se llenan las cinco juntas, una sola vez ------------------
+  fechaApertura     DateTime? @map("fecha_apertura")
+  unidadesRecibidas Int?      @map("unidades_recibidas")
+  descartes         Int?
+  notaApertura      String?   @map("nota_apertura")
+
+  piezas Pieza[]
+
+  creadoEn DateTime @default(now()) @map("creado_en")
+
+  @@index([proveedorId])
+  @@map("lote")
 }
 
 // --- Listas cerradas que la operadora puede ampliar -------------------------

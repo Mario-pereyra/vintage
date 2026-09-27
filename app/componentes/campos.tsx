@@ -113,6 +113,43 @@ export function TamanoDerivado({
   );
 }
 
+/**
+ * Lo tipeado en un monto ("150" o "150,50") en bolivianos, o `null` si todavía
+ * no es un número. Solo sirve para mostrar cálculos mientras se escribe: las
+ * reglas las aplica el dominio al guardar.
+ */
+export function leerMonto(texto: string): number | null {
+  const limpio = texto.trim().replace(",", ".");
+  return /^\d+(\.\d+)?$/.test(limpio) ? Number(limpio) : null;
+}
+
+/**
+ * Cifra interna de 24px sobre una línea de tinta de 2px, sin caja: montos que
+ * nunca se publican (costo de lote, transporte, costo directo,
+ * reacondicionamiento) y conteos (unidades recibidas, descartes). La regla
+ * doble queda reservada al precio publicado, el eco del TOTAL.
+ *
+ * `prefijo` va delante ("Bs") y `unidad` detrás ("u."), en cifra de 12–14px
+ * tinta suave. Se etiqueta con <Campo para={id}>.
+ */
+export function CampoCifra({
+  prefijo,
+  unidad,
+  inputMode = "decimal",
+  ...input
+}: {
+  prefijo?: string;
+  unidad?: string;
+} & Omit<InputHTMLAttributes<HTMLInputElement>, "type">) {
+  return (
+    <div className="campo-cifra">
+      {prefijo ? <b aria-hidden="true">{prefijo}</b> : null}
+      <input inputMode={inputMode} placeholder="0" {...input} />
+      {unidad ? <em aria-hidden="true">{unidad}</em> : null}
+    </div>
+  );
+}
+
 /** Precio publicado: "Bs" en cifra de 22px y el valor en 40px sobre regla doble. */
 export function CampoPrecio(
   props: Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "inputMode">,

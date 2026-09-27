@@ -4,7 +4,7 @@ import { data, Link, useSearchParams } from "react-router";
 
 import { Icono } from "~/componentes/icono";
 import { Sello } from "~/componentes/sello";
-import { TOMAS_REQUERIDAS } from "~/dominio";
+import { TEXTO_DE_CANAL, TOMAS_REQUERIDAS } from "~/dominio";
 import { obtenerDominio } from "~/servidor/contexto.server";
 import {
   leerFormularioDePieza,
@@ -13,7 +13,11 @@ import {
 
 import type { BarraDelPanel } from "../layout";
 import type { Route } from "./+types/editar";
-import { FormularioDePieza, TEXTO_DEL_ESTADO } from "./formulario-de-pieza";
+import {
+  FormularioDePieza,
+  TEXTO_DEL_ESTADO,
+  type ProcedenciaEnPanel,
+} from "./formulario-de-pieza";
 
 export const handle = {
   titulo: "Editar pieza",
@@ -28,7 +32,32 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   ]);
   if (!pieza) throw data(null, { status: 404 });
   const fotos = await dominio.fotosDePieza(params.codigo);
-  return { pieza, listas, fotos, r2PublicUrl: env.R2_PUBLIC_URL };
+
+  // Procedencia (#8): un lote (con su proveedor) o una compra a particular.
+  let procedencia: ProcedenciaEnPanel | null = null;
+  if (pieza.loteId !== null) {
+    const lote = await dominio.loteDelPanel(pieza.loteId);
+    if (lote) {
+      procedencia = {
+        origen: "lote",
+        loteId: lote.id,
+        proveedorNombre: lote.proveedorNombre,
+        canal: TEXTO_DE_CANAL[lote.canal],
+        calidadDeclaradaNombre: lote.calidadDeclaradaNombre,
+      };
+    }
+  } else if (pieza.proveedorId !== null) {
+    const proveedor = await dominio.proveedorDelPanel(pieza.proveedorId);
+    if (proveedor) {
+      procedencia = {
+        origen: "particular",
+        proveedorNombre: proveedor.nombre,
+        costoDirectoCentavos: pieza.costoDirectoCentavos ?? 0,
+      };
+    }
+  }
+
+  return { pieza, listas, fotos, r2PublicUrl: env.R2_PUBLIC_URL, procedencia };
 }
 
 /** Guarda los cambios y, si la operadora lo pidió, publica la pieza. */
@@ -69,7 +98,7 @@ export default function EditarPieza({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { pieza, listas, fotos, r2PublicUrl } = loaderData;
+  const { pieza, listas, fotos, r2PublicUrl, procedencia } = loaderData;
   const [busqueda] = useSearchParams();
   const publicada = pieza.estado !== "en_preparacion";
   const alLlegar = AL_LLEGAR[busqueda.get("nueva") ?? ""];
@@ -126,6 +155,7 @@ export default function EditarPieza({
         r2PublicUrl={r2PublicUrl}
         onTomasCambian={(cuantas) => setTomas({ desde: fotos, cuantas })}
         resultado={actionData ?? (alLlegar ? { mensaje: alLlegar } : undefined)}
+        procedencia={procedencia}
       />
     </>
   );

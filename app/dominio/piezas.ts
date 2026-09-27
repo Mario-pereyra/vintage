@@ -1,9 +1,11 @@
-import type {
-  EstadoPieza,
-  Prisma,
-  PrismaClient,
-} from "~/generated/prisma/client";
+import type { EstadoPieza, Prisma } from "~/generated/prisma/client";
 
+import {
+  condicionAPrisma,
+  condicionDePrisma,
+  esCondicionValida,
+  type CondicionDePieza,
+} from "./condicion";
 import { ErrorDeDominio } from "./errores";
 import {
   fotosPublicasDesde,
@@ -68,6 +70,18 @@ export interface DatosDePieza {
   profundidadCm?: number | null;
   caidaCm?: number | null;
   precioCentavos?: number | null;
+
+  // --- Procedencia y costo (#8, ADR 0001) -----------------------------------
+  /** El lote del que viene la pieza. Excluyente con `proveedorId` directo. */
+  loteId?: number | null;
+  /** Proveedor directo, solo en una compra a particular (sin lote). */
+  proveedorId?: number | null;
+  /** Lo pagado por la pieza en una compra a particular, sin lote. */
+  costoDirectoCentavos?: number | null;
+  /** Costo de limpieza o reparación de esta pieza. Nunca `null`: sin costo es 0. */
+  costoReacondicionamientoCentavos?: number;
+  /** Condición asignada en la apertura del lote o en la compra a particular. */
+  condicionIngreso?: CondicionDePieza | null;
 }
 
 export type CampoDePieza = keyof DatosDePieza;
@@ -93,6 +107,14 @@ const MEDIDA_MAXIMA_CM = 300;
  * cualquier cartera y muy por debajo del máximo de la columna (INTEGER).
  */
 export const PRECIO_MAXIMO_CENTAVOS = 10_000_000;
+/**
+ * Tope del costo directo (compra a particular): igual que el precio máximo.
+ * Se exporta para que `registrarCompraAParticular` (abastecimiento.ts) lo
+ * valide también en su propia capa, antes de llegar a `crearPieza`.
+ */
+export const COSTO_DIRECTO_MAXIMO_CENTAVOS = 10_000_000;
+/** Tope del reacondicionamiento: Bs 5.000, en centavos. */
+const REACONDICIONAMIENTO_MAXIMO_CENTAVOS = 500_000;
 
 const NOMBRE_DEL_CAMPO: Record<CampoDePieza, string> = {
   nombre: "el nombre",
@@ -104,6 +126,11 @@ const NOMBRE_DEL_CAMPO: Record<CampoDePieza, string> = {
   profundidadCm: "la profundidad",
   caidaCm: "la caída",
   precioCentavos: "el precio",
+  loteId: "el lote",
+  proveedorId: "el proveedor",
+  costoDirectoCentavos: "el costo directo",
+  costoReacondicionamientoCentavos: "el reacondicionamiento",
+  condicionIngreso: "la condición de ingreso",
 };
 
 /** Una pieza tal como la ve la operadora en el panel. */
@@ -128,6 +155,19 @@ export interface PiezaDelPanel {
   faltanParaPublicar: CampoDePieza[];
   /** De las 8 tomas mínimas, las que todavía no se cargaron. */
   tomasFaltantes: TipoDeToma[];
+
+  // --- Procedencia y costo (#8, ADR 0001): nunca se publican ----------------
+  loteId: number | null;
+  proveedorId: number | null;
+  costoDirectoCentavos: number | null;
+  costoReacondicionamientoCentavos: number;
+  condicionIngreso: CondicionDePieza | null;
+  /**
+   * (costo del lote + transporte) ÷ piezas del lote + reacondicionamiento, o
+   * costo directo + reacondicionamiento en una compra a particular. `null`
+   * mientras la pieza no tenga procedencia (piezas creadas fuera de #8).
+   */
+  costoDePiezaCentavos: number | null;
 }
 
 /** Una fila del listado de piezas del panel. */
@@ -179,7 +219,7 @@ type FilaDePieza = Prisma.PiezaGetPayload<{ include: { fotos: true } }>;
 
 /** Limpia y valida los datos; devuelve solo los campos presentes. */
 async function validar(
-  db: PrismaClient,
+  db: Prisma.TransactionClient,
   datos: DatosDePieza,
 ): Promise<DatosDePieza> {
   const errores: Record<string, string> = {};
@@ -223,6 +263,8 @@ async function validar(
     ["tipoId", (id: number) => db.tipoDeCartera.count({ where: { id } }), "Elige un tipo de la lista."],
     ["colorId", (id: number) => db.color.count({ where: { id } }), "Elige un color de la lista."],
     ["materialId", (id: number) => db.material.count({ where: { id } }), "Elige un material de la lista."],
+    ["loteId", (id: number) => db.lote.count({ where: { id } }), "Elige un lote existente."],
+    ["proveedorId", (id: number) => db.proveedor.count({ where: { id } }), "Elige un proveedor existente."],
   ] as const;
   for (const [campo, contar, mensaje] of listas) {
     const id = datos[campo];
@@ -238,6 +280,43 @@ async function validar(
     limpios[campo] = id;
   }
 
+  if (datos.costoDirectoCentavos !== undefined) {
+    const valor = datos.costoDirectoCentavos;
+    if (
+      valor !== null &&
+      !(Number.isSafeInteger(valor) && valor > 0 && valor <= COSTO_DIRECTO_MAXIMO_CENTAVOS)
+    ) {
+      errores.costoDirectoCentavos = `Escribe un costo mayor que 0 y de hasta Bs ${(
+        COSTO_DIRECTO_MAXIMO_CENTAVOS / 100
+      ).toLocaleString("es-BO")}.`;
+    }
+    limpios.costoDirectoCentavos = valor;
+  }
+
+  if (datos.costoReacondicionamientoCentavos !== undefined) {
+    const valor = datos.costoReacondicionamientoCentavos;
+    if (
+      !(
+        Number.isSafeInteger(valor) &&
+        valor >= 0 &&
+        valor <= REACONDICIONAMIENTO_MAXIMO_CENTAVOS
+      )
+    ) {
+      errores.costoReacondicionamientoCentavos = `Escribe un monto entre 0 y Bs ${(
+        REACONDICIONAMIENTO_MAXIMO_CENTAVOS / 100
+      ).toLocaleString("es-BO")}.`;
+    }
+    limpios.costoReacondicionamientoCentavos = valor;
+  }
+
+  if (datos.condicionIngreso !== undefined) {
+    const condicion = datos.condicionIngreso;
+    if (condicion !== null && !esCondicionValida(condicion)) {
+      errores.condicionIngreso = "Elige una condición de la lista.";
+    }
+    limpios.condicionIngreso = condicion;
+  }
+
   if (Object.keys(errores).length > 0) {
     throw new ErrorDeDominio(
       "datos_invalidos",
@@ -248,7 +327,13 @@ async function validar(
   return limpios;
 }
 
-function faltantes(pieza: Required<DatosDePieza>): CampoDePieza[] {
+/**
+ * Solo mira los campos obligatorios para publicar (nunca la procedencia, que
+ * usa otro tipo de condición en la fila cruda de Prisma).
+ */
+function faltantes(
+  pieza: Required<Pick<DatosDePieza, (typeof CAMPOS_OBLIGATORIOS)[number]>>,
+): CampoDePieza[] {
   return CAMPOS_OBLIGATORIOS.filter((campo) => pieza[campo] === null);
 }
 
@@ -263,11 +348,74 @@ function erroresDeFaltantes(campos: CampoDePieza[], motivo: string) {
 
 // --- Operaciones -----------------------------------------------------------
 
-export function crearPiezas(db: PrismaClient, config: ConfiguracionDePiezas) {
+/**
+ * Convierte los datos limpios del dominio a lo que espera Prisma: solo
+ * `condicionIngreso` cambia de forma (nuestro string en minúsculas al enum de
+ * Prisma en mayúsculas).
+ */
+function aDatosPrisma(
+  datos: DatosDePieza,
+): Omit<DatosDePieza, "condicionIngreso"> & {
+  condicionIngreso?: ReturnType<typeof condicionAPrisma> | null;
+} {
+  const { condicionIngreso, ...resto } = datos;
+  if (condicionIngreso === undefined) return resto;
+  return {
+    ...resto,
+    condicionIngreso: condicionIngreso === null ? null : condicionAPrisma(condicionIngreso),
+  };
+}
+
+/**
+ * `db` acepta tanto el cliente de Prisma como un cliente de transacción
+ * (`Prisma.TransactionClient`): `abrirLote` (abastecimiento.ts) crea piezas
+ * dentro de una transacción, para que el lote y sus piezas se guarden como
+ * una sola unidad atómica.
+ */
+/**
+ * El reparto del costo de un lote entre sus piezas (ADR 0001): el costo total
+ * del lote (costo + transporte) dividido entre sus piezas, redondeado al
+ * centavo. No incluye el reacondicionamiento de cada pieza, que se suma
+ * aparte. Es una función pura de módulo (sin `db`) para que el panel muestre
+ * el mismo cálculo (p. ej. el detalle de un lote) sin reimplementar la
+ * fórmula; `costoDePiezaCentavos`, más abajo, es quien la usa para el costo
+ * real de cada pieza.
+ */
+export function repartoDeLote(costoTotalCentavos: number, piezasDelLote: number): number {
+  return piezasDelLote > 0 ? Math.round(costoTotalCentavos / piezasDelLote) : 0;
+}
+
+export function crearPiezas(db: Prisma.TransactionClient, config: ConfiguracionDePiezas) {
   const codigoDe = (numero: number) =>
     formatearCodigo(numero, config.prefijoDeCodigo);
 
-  function aPiezaDelPanel(fila: FilaDePieza): PiezaDelPanel {
+  /**
+   * El costo de pieza (ADR 0001): el reparto del costo de su lote (más
+   * transporte, entre sus piezas: los descartes no generan fila y por eso no
+   * reciben parte) más su reacondicionamiento, o el costo directo más
+   * reacondicionamiento en una compra a particular. `null` sin procedencia.
+   */
+  async function costoDePiezaCentavos(fila: FilaDePieza): Promise<number | null> {
+    const reacondicionamiento = fila.costoReacondicionamientoCentavos;
+    if (fila.loteId !== null) {
+      const lote = await db.lote.findUnique({
+        where: { id: fila.loteId },
+        select: { costoCentavos: true, transporteCentavos: true },
+      });
+      if (!lote) return null;
+      const piezasDelLote = await db.pieza.count({ where: { loteId: fila.loteId } });
+      return (
+        repartoDeLote(lote.costoCentavos + lote.transporteCentavos, piezasDelLote) +
+        reacondicionamiento
+      );
+    }
+    if (fila.proveedorId !== null && fila.costoDirectoCentavos !== null) {
+      return fila.costoDirectoCentavos + reacondicionamiento;
+    }
+    return null;
+  }
+
+  async function aPiezaDelPanel(fila: FilaDePieza): Promise<PiezaDelPanel> {
     return {
       codigo: codigoDe(fila.codigo),
       estado: nombreDeEstado[fila.estado],
@@ -287,6 +435,12 @@ export function crearPiezas(db: PrismaClient, config: ConfiguracionDePiezas) {
       rutaPublica: rutaPublica(fila.nombre, fila.sufijo),
       faltanParaPublicar: faltantes(fila),
       tomasFaltantes: tomasFaltantesDe(fila.fotos.map((foto) => foto.tipo)),
+      loteId: fila.loteId,
+      proveedorId: fila.proveedorId,
+      costoDirectoCentavos: fila.costoDirectoCentavos,
+      costoReacondicionamientoCentavos: fila.costoReacondicionamientoCentavos,
+      condicionIngreso: fila.condicionIngreso ? condicionDePrisma(fila.condicionIngreso) : null,
+      costoDePiezaCentavos: await costoDePiezaCentavos(fila),
     };
   }
 
@@ -319,13 +473,13 @@ export function crearPiezas(db: PrismaClient, config: ConfiguracionDePiezas) {
         try {
           const fila = await db.pieza.create({
             data: {
-              ...limpios,
+              ...aDatosPrisma(limpios),
               id: uuidV7(config.ahora().getTime()),
               sufijo: sufijoAleatorio(),
             },
             include: { fotos: true },
           });
-          return aPiezaDelPanel(fila);
+          return await aPiezaDelPanel(fila);
         } catch (error) {
           // Un sufijo repetido es muy improbable; si pasa, se sortea otro.
           const repetido =
@@ -360,10 +514,10 @@ export function crearPiezas(db: PrismaClient, config: ConfiguracionDePiezas) {
 
       const editada = await db.pieza.update({
         where: { id: fila.id },
-        data: limpios,
+        data: aDatosPrisma(limpios),
         include: { fotos: true },
       });
-      return aPiezaDelPanel(editada);
+      return await aPiezaDelPanel(editada);
     },
 
     /**
@@ -406,19 +560,34 @@ export function crearPiezas(db: PrismaClient, config: ConfiguracionDePiezas) {
           `La pieza ${codigoDe(fila.codigo)} ya está publicada.`,
         );
       }
-      return aPiezaDelPanel(await exigirFila(codigo));
+      return await aPiezaDelPanel(await exigirFila(codigo));
     },
 
     /** Una pieza por su código (`VT-0142`, `vt-142` o `142`), o `null`. */
     async piezaDelPanel(codigo: string): Promise<PiezaDelPanel | null> {
       const fila = await buscarFila(codigo);
-      return fila ? aPiezaDelPanel(fila) : null;
+      return fila ? await aPiezaDelPanel(fila) : null;
     },
 
     /** Todas las piezas, las últimas cargadas primero. */
     async listarPiezasDelPanel(): Promise<PiezaEnPanel[]> {
       const filas = await db.pieza.findMany({
         orderBy: { codigo: "desc" },
+        select: { codigo: true, nombre: true, estado: true, precioCentavos: true },
+      });
+      return filas.map((fila) => ({
+        codigo: codigoDe(fila.codigo),
+        nombre: fila.nombre,
+        estado: nombreDeEstado[fila.estado],
+        precioCentavos: fila.precioCentavos,
+      }));
+    },
+
+    /** Las piezas de un lote (las que creó su apertura), en el orden en que se cargaron. */
+    async listarPiezasDeLote(loteId: number): Promise<PiezaEnPanel[]> {
+      const filas = await db.pieza.findMany({
+        where: { loteId },
+        orderBy: { codigo: "asc" },
         select: { codigo: true, nombre: true, estado: true, precioCentavos: true },
       });
       return filas.map((fila) => ({

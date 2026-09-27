@@ -81,6 +81,9 @@ export default function ListaDePiezas({ loaderData }: Route.ComponentProps) {
         <Icono nombre="mas" />
         Cargar pieza
       </Link>
+      <Link className="btn btn-ancho" to="/admin/piezas/comprar">
+        Comprar a un particular
+      </Link>
 
       {piezas.length === 0 ? (
         <BloquePanel titulo="Inventario" detalle="0 piezas">

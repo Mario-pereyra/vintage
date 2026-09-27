@@ -53,8 +53,23 @@ export default function InicioDelPanel({ loaderData }: Route.ComponentProps) {
               <Icono nombre="adelante" />
             </Link>
           </li>
-          <li className="seccion seccion-proxima">
-            <span>Lotes y fotos aparecen aquí cuando estén listos.</span>
+          <li>
+            <Link className="seccion" to="/admin/lotes">
+              <span>
+                <b>Lotes</b>
+                <span>Registrar, abrir y repartir su costo</span>
+              </span>
+              <Icono nombre="adelante" />
+            </Link>
+          </li>
+          <li>
+            <Link className="seccion" to="/admin/proveedores">
+              <span>
+                <b>Proveedores</b>
+                <span>A quién le compras lotes y piezas</span>
+              </span>
+              <Icono nombre="adelante" />
+            </Link>
           </li>
         </ul>
       </BloquePanel>

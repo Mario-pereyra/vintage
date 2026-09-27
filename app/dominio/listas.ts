@@ -3,7 +3,7 @@ import type { PrismaClient } from "~/generated/prisma/client";
 import { ErrorDeDominio } from "./errores";
 
 /** Las listas cerradas que la operadora puede ampliar. */
-export type Lista = "tipos" | "colores" | "materiales";
+export type Lista = "tipos" | "colores" | "materiales" | "calidadesDeclaradas";
 
 /** Un valor de una lista. Los colores traen además su color de muestra. */
 export interface OpcionDeLista {
@@ -20,17 +20,20 @@ export interface Listas {
   tipos: OpcionDeLista[];
   colores: OpcionDeColor[];
   materiales: OpcionDeLista[];
+  /** Calidad declarada de un lote (Primera, Segunda…). */
+  calidadesDeclaradas: OpcionDeLista[];
 }
 
 /** Los valores de cada lista, en el orden en que se dieron de alta. */
 export async function obtenerListas(db: PrismaClient): Promise<Listas> {
   const orden = { orderBy: { id: "asc" } } as const;
-  const [tipos, colores, materiales] = await Promise.all([
+  const [tipos, colores, materiales, calidadesDeclaradas] = await Promise.all([
     db.tipoDeCartera.findMany({ ...orden, select: { id: true, nombre: true } }),
     db.color.findMany({ ...orden, select: { id: true, nombre: true, muestra: true } }),
     db.material.findMany({ ...orden, select: { id: true, nombre: true } }),
+    db.calidadDeclarada.findMany({ ...orden, select: { id: true, nombre: true } }),
   ]);
-  return { tipos, colores, materiales };
+  return { tipos, colores, materiales, calidadesDeclaradas };
 }
 
 /** "  riñonera  de mano" → "Riñonera de mano". */
@@ -79,6 +82,14 @@ export async function ampliarLista(
       return (
         (await db.material.findFirst({ where: donde, select: { id: true, nombre: true } })) ??
         db.material.create({ data: { nombre: normalizado }, select: { id: true, nombre: true } })
+      );
+    case "calidadesDeclaradas":
+      return (
+        (await db.calidadDeclarada.findFirst({ where: donde, select: { id: true, nombre: true } })) ??
+        db.calidadDeclarada.create({
+          data: { nombre: normalizado },
+          select: { id: true, nombre: true },
+        })
       );
   }
 }

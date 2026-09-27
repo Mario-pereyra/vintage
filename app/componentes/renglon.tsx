@@ -13,6 +13,8 @@ export function Renglones({ children }: { children: ReactNode }) {
  * - `aclaracion`: texto de 12px debajo del valor ("alto × ancho × profundidad").
  * - `nota`: el valor es texto libre de hasta 30ch.
  * - `oculto`: en la vista previa del panel, dato cargado pero no publicado.
+ * - `calculado`: el valor lo calcula el sistema (costo de pieza, reparto del
+ *   lote) y va en tinta azul, como todo lo calculado.
  */
 export function Renglon({
   etiqueta,
@@ -21,6 +23,7 @@ export function Renglon({
   aclaracion,
   nota = false,
   oculto = false,
+  calculado = false,
 }: {
   etiqueta: ReactNode;
   children: ReactNode;
@@ -28,8 +31,9 @@ export function Renglon({
   aclaracion?: ReactNode;
   nota?: boolean;
   oculto?: boolean;
+  calculado?: boolean;
 }) {
-  const clases = ["renglon", nota && "renglon-nota", oculto && "renglon-oculto"]
+  const clases = ["renglon", nota && "renglon-nota", oculto && "renglon-oculto", calculado && "renglon-calculado"]
     .filter(Boolean)
     .join(" ");
 
