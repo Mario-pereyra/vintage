@@ -15,6 +15,7 @@ import {
 } from "./identificadores";
 import {
   rangoDeTamano,
+  TAMANOS,
   tamanoPorAncho,
   type Tamano,
   type UmbralesDeTamano,
@@ -84,7 +85,7 @@ const MEDIDA_MAXIMA_CM = 300;
  * Tope del precio publicado: Bs 100.000, en centavos. Muy por encima de
  * cualquier cartera y muy por debajo del máximo de la columna (INTEGER).
  */
-const PRECIO_MAXIMO_CENTAVOS = 10_000_000;
+export const PRECIO_MAXIMO_CENTAVOS = 10_000_000;
 
 const NOMBRE_DEL_CAMPO: Record<CampoDePieza, string> = {
   nombre: "el nombre",
@@ -155,8 +156,6 @@ export interface FichaPublica {
   precioCentavos: number;
   publicadaEn: Date;
 }
-
-const TAMANOS: Tamano[] = ["Mini", "Pequeña", "Mediana", "Grande"];
 
 type FilaDePieza = Prisma.PiezaGetPayload<object>;
 

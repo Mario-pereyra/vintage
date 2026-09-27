@@ -49,8 +49,25 @@ export interface BaseDePrueba {
    * Provisorio: existe solo para los estados que todavía no tienen operación
    * (Reservada, Vendida y Retirada, tickets #9 y #10). Para En preparación y
    * Disponible, usa `crearPieza` y `publicarPieza`.
+   *
+   * Los datos obligatorios (nombre, tipo, color, material, medidas y precio)
+   * traen un valor por defecto válido, como los tendría cualquier pieza que
+   * llegó a publicarse; pásalos para probar un filtro o un dato del listado.
+   * Pasar `null` explícito (a diferencia de no pasar el campo) deja la columna
+   * vacía, para simular una pieza publicada con datos incompletos.
    */
-  sembrarPieza(pieza: { estado: EstadoPieza; publicadaEn?: Date }): Promise<void>;
+  sembrarPieza(pieza: {
+    estado: EstadoPieza;
+    publicadaEn?: Date;
+    nombre?: string | null;
+    tipoId?: number | null;
+    colorId?: number | null;
+    materialId?: number | null;
+    altoCm?: number | null;
+    anchoCm?: number | null;
+    profundidadCm?: number | null;
+    precioCentavos?: number | null;
+  }): Promise<void>;
   /**
    * Borra una pieza por fuera del dominio (el dominio nunca borra piezas), para
    * comprobar que su código no vuelve a asignarse.
@@ -69,11 +86,39 @@ export async function crearBaseDePrueba(
 ): Promise<BaseDePrueba> {
   const { prisma, cerrar } = await crearPrismaDePrueba();
 
+  const primerId = async (
+    modelo: { findFirstOrThrow: (args: { orderBy: { id: "asc" } }) => Promise<{ id: number }> },
+  ) => (await modelo.findFirstOrThrow({ orderBy: { id: "asc" } })).id;
+
   return {
     dominio: crearDominio(prisma, opciones),
-    async sembrarPieza({ estado, publicadaEn }) {
+    async sembrarPieza({
+      estado,
+      publicadaEn,
+      nombre,
+      tipoId,
+      colorId,
+      materialId,
+      altoCm,
+      anchoCm,
+      profundidadCm,
+      precioCentavos,
+    }) {
       await prisma.pieza.create({
-        data: { id: crypto.randomUUID(), sufijo: sufijoAleatorio(), estado, publicadaEn },
+        data: {
+          id: crypto.randomUUID(),
+          sufijo: sufijoAleatorio(),
+          estado,
+          publicadaEn,
+          nombre: nombre === undefined ? "Pieza de prueba" : nombre,
+          tipoId: tipoId === undefined ? await primerId(prisma.tipoDeCartera) : tipoId,
+          colorId: colorId === undefined ? await primerId(prisma.color) : colorId,
+          materialId: materialId === undefined ? await primerId(prisma.material) : materialId,
+          altoCm: altoCm === undefined ? 20 : altoCm,
+          anchoCm: anchoCm === undefined ? 20 : anchoCm,
+          profundidadCm: profundidadCm === undefined ? 10 : profundidadCm,
+          precioCentavos: precioCentavos === undefined ? 10000 : precioCentavos,
+        },
       });
     },
     async borrarPiezaSinDominio(codigo) {

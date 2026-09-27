@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { rangoDeTamano, tamanoPorAncho, type UmbralesDeTamano } from "./tamano";
+import { anchoDeTamano, rangoDeTamano, tamanoPorAncho, type UmbralesDeTamano } from "./tamano";
 
 const iniciales: UmbralesDeTamano = {
   pequenaDesde: 18,
@@ -35,5 +35,12 @@ describe("tamaño derivado del ancho", () => {
     expect(rangoDeTamano("Pequeña", iniciales)).toBe("de 18 a 24 cm de ancho");
     expect(rangoDeTamano("Mediana", iniciales)).toBe("de 25 a 32 cm de ancho");
     expect(rangoDeTamano("Grande", iniciales)).toBe("más de 32 cm de ancho");
+  });
+
+  it("da el rango de ancho de cada tamaño, para filtrar por él", () => {
+    expect(anchoDeTamano("Mini", iniciales)).toEqual({ desde: 0, hasta: 18 });
+    expect(anchoDeTamano("Pequeña", iniciales)).toEqual({ desde: 18, hasta: 25 });
+    expect(anchoDeTamano("Mediana", iniciales)).toEqual({ desde: 25, hasta: 33 });
+    expect(anchoDeTamano("Grande", iniciales)).toEqual({ desde: 33, hasta: null });
   });
 });

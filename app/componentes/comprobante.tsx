@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { Icono } from "./icono";
 import { Sello } from "./sello";
 import { formatearPrecio } from "./total";
 
@@ -67,34 +68,53 @@ export function PieComprobante({ children }: { children: ReactNode }) {
 }
 
 /**
- * Comprobante mini (148px, dientes de 5px): una vendida reciente con su foto
- * 1:1 entera, nombre, Ref., precio y un sello "Vendida" pequeño.
+ * Comprobante mini (148px, dientes de 5px): nombre, Ref., precio y su foto 1:1
+ * entera. Con `sello` (por ejemplo, "Vendida" o "Reservada") lleva el sello
+ * pequeño; sin él, ninguno. También arma la tarjeta del listado del catálogo,
+ * donde suma el tamaño derivado del ancho.
  */
 export function ComprobanteMini({
   href,
   codigo,
   nombre,
   precio,
+  tamano,
   foto,
-  sello = "Vendida",
+  sello,
 }: {
   href: string;
   codigo: string;
   nombre: string;
   precio: number;
-  /** URL de la foto de frente; se muestra entera sobre rosa claro. */
-  foto?: { src: string; alt: string };
+  /** Tamaño derivado del ancho ("Mediana"), si corresponde mostrarlo. */
+  tamano?: string;
+  /**
+   * La foto de frente, entera sobre rosa claro. Sin ella, el hueco muestra la
+   * cámara y "Fotos en camino" (la variante "catálogo" llega con el #5).
+   */
+  foto?: { src: string; alt: string } | null;
   sello?: string;
 }) {
   return (
     <a className="comprobante comprobante-mini" href={href}>
-      <div className="mini-foto">
-        {foto ? <img src={foto.src} alt={foto.alt} loading="lazy" /> : null}
+      <div className={foto ? "mini-foto" : "mini-foto mini-foto-vacia"}>
+        {foto ? (
+          <img src={foto.src} alt={foto.alt} loading="lazy" decoding="async" />
+        ) : (
+          <>
+            <Icono nombre="camara" tamano={24} />
+            {/* Decorativo: el nombre accesible de la tarjeta empieza por la pieza. */}
+            <span aria-hidden="true">Fotos en camino</span>
+          </>
+        )}
       </div>
-      <Sello texto={sello} />
+      {sello ? <Sello texto={sello} /> : null}
       <div className="mini-nombre">{nombre}</div>
       <div className="mini-ref">Ref. {codigo}</div>
-      <div className="mini-precio">{formatearPrecio(precio)}</div>
+      <div className="mini-pie">
+        <span className="mini-precio">{formatearPrecio(precio)}</span>
+        {tamano ? <span className="mini-tamano">{tamano}</span> : null}
+      </div>
     </a>
   );
 }
