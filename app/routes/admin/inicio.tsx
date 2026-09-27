@@ -14,8 +14,22 @@ export const handle = { titulo: "Inicio" } satisfies BarraDelPanel;
 
 export async function loader({ context }: Route.LoaderArgs) {
   const { nombre, correo } = obtenerOperadora(context);
-  const reservas = await obtenerDominio(context).listarReservasActivas();
-  return { nombre, correo, reservas: resumenDeReservas(reservas) };
+  const dominio = obtenerDominio(context);
+  const [reservas, entregas] = await Promise.all([
+    dominio.listarReservasActivas(),
+    dominio.listarEntregasPendientes(),
+  ]);
+  return {
+    nombre,
+    correo,
+    reservas: resumenDeReservas(reservas),
+    entregas:
+      entregas.length === 0
+        ? "Ninguna pendiente"
+        : entregas.length === 1
+          ? "1 pendiente"
+          : `${entregas.length} pendientes`,
+  };
 }
 
 /** "2 activas · la próxima vence 16:40", para decidir de un vistazo si entrar. */
@@ -27,7 +41,7 @@ function resumenDeReservas(reservas: { venceEn: Date }[]): string {
 }
 
 export default function InicioDelPanel({ loaderData }: Route.ComponentProps) {
-  const { nombre, correo, reservas } = loaderData;
+  const { nombre, correo, reservas, entregas } = loaderData;
 
   return (
     <>
@@ -49,6 +63,15 @@ export default function InicioDelPanel({ loaderData }: Route.ComponentProps) {
               <span>
                 <b>Reservas</b>
                 <span>{reservas}</span>
+              </span>
+              <Icono nombre="adelante" />
+            </Link>
+          </li>
+          <li>
+            <Link className="seccion" to="/admin/entregas">
+              <span>
+                <b>Entregas</b>
+                <span>{entregas}</span>
               </span>
               <Icono nombre="adelante" />
             </Link>

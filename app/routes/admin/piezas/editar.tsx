@@ -142,6 +142,18 @@ export default function EditarPieza({
               <Icono nombre="adelante" />
             </Link>
           ) : null}
+          {publicada ? (
+            <Link className="enlace-ficha" to={`/admin/piezas/${pieza.codigo}/venta`}>
+              Venta y entrega
+              <Icono nombre="adelante" />
+            </Link>
+          ) : null}
+          {pieza.estado === "en_preparacion" || pieza.estado === "disponible" || pieza.estado === "retirada" ? (
+            <Link className="enlace-ficha" to={`/admin/piezas/${pieza.codigo}/retiro`}>
+              {pieza.estado === "retirada" ? "Retiro" : "Retirar pieza"}
+              <Icono nombre="adelante" />
+            </Link>
+          ) : null}
         </div>
         <Sello texto={lista ? "Lista" : TEXTO_DEL_ESTADO[pieza.estado]} />
       </div>

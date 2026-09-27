@@ -247,6 +247,11 @@ export default function ReservaDePieza({ loaderData, actionData }: Route.Compone
             Escribir a {reserva.compradora.nombre}
           </a>
 
+          <Link className="btn btn-ancho" to={`/admin/piezas/${pieza.codigo}/venta`}>
+            Pagó: registrar venta
+            <Icono nombre="adelante" />
+          </Link>
+
           <Form method="post" className="extender">
             <input type="hidden" name="intencion" value="extender" />
             <h3 className="grupo" id="extender">

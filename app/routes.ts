@@ -23,6 +23,8 @@ export default [
     route("piezas/comprar", "routes/admin/piezas/comprar.tsx"),
     route("piezas/:codigo", "routes/admin/piezas/editar.tsx"),
     route("piezas/:codigo/reserva", "routes/admin/piezas/reserva.tsx"),
+    route("piezas/:codigo/venta", "routes/admin/piezas/venta.tsx"),
+    route("piezas/:codigo/retiro", "routes/admin/piezas/retiro.tsx"),
     route("reservas", "routes/admin/reservas.tsx"),
     // Subida y gestión de fotos de una pieza (R2 + dominio). Sin pantalla
     // propia: lo llama `TomasDelPanel` con `fetch`.
@@ -31,5 +33,6 @@ export default [
     route("lotes", "routes/admin/lotes/lista.tsx"),
     route("lotes/nuevo", "routes/admin/lotes/nuevo.tsx"),
     route("lotes/:id", "routes/admin/lotes/detalle.tsx"),
+    route("entregas", "routes/admin/entregas.tsx"),
   ]),
 ] satisfies RouteConfig;

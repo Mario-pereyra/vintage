@@ -59,12 +59,15 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     tamano: parametros.get("tamano") ?? "",
     precioMin: parametros.get("precioMin") ?? "",
     precioMax: parametros.get("precioMax") ?? "",
+    // "Ver vendidas": solo "1" activa el filtro.
+    vendidas: parametros.get("vendidas") === "1" ? "1" : "",
   };
 
   const filtros: FiltrosDeCatalogo = {
     tipoId: enteroPositivo(filtrosCrudos.tipo),
     colorId: enteroPositivo(filtrosCrudos.color),
     tamano: tamanoValido(filtrosCrudos.tamano),
+    vendidas: filtrosCrudos.vendidas === "1",
   };
   const precioMinBs = enteroPositivo(filtrosCrudos.precioMin);
   const precioMaxBs = enteroPositivo(filtrosCrudos.precioMax);
@@ -189,6 +192,7 @@ function filtrosEnPalabras({ filtrosCrudos, listas }: DatosDelCatalogo) {
     { etiqueta: "Color", valor: color?.nombre, cifra: false },
     { etiqueta: "Tamaño", valor: filtrosCrudos.tamano || undefined, cifra: false },
     { etiqueta: "Precio", valor: describirPrecio(filtrosCrudos) ?? undefined, cifra: true },
+    { etiqueta: "Estado", valor: filtrosCrudos.vendidas ? "Vendidas" : undefined, cifra: false },
   ];
   return filas.filter(
     (fila): fila is { etiqueta: string; valor: string; cifra: boolean } => Boolean(fila.valor),
@@ -277,6 +281,25 @@ function Filtros({
 
   return (
     <section className="filtros" aria-label="Filtrar el catálogo">
+      <GrupoDeFiltro id="f-vendidas" titulo="Estado">
+        <ChipsDeFiltro
+          opciones={[
+            {
+              clave: "en-venta",
+              texto: "En venta",
+              href: cambiar({ vendidas: "" }),
+              activo: !filtrosCrudos.vendidas,
+            },
+            {
+              clave: "vendidas",
+              texto: "Ver vendidas",
+              href: cambiar({ vendidas: "1" }),
+              activo: Boolean(filtrosCrudos.vendidas),
+            },
+          ]}
+        />
+      </GrupoDeFiltro>
+
       <GrupoDeFiltro id="f-tipo" titulo="Tipo">
         <ChipsDeFiltro opciones={tipos} carril />
       </GrupoDeFiltro>
@@ -329,6 +352,9 @@ function Filtros({
               ) : null}
               {filtrosCrudos.tamano ? (
                 <input type="hidden" name="tamano" value={filtrosCrudos.tamano} />
+              ) : null}
+              {filtrosCrudos.vendidas ? (
+                <input type="hidden" name="vendidas" value="1" />
               ) : null}
               <label className="rango-extremo">
                 <span>Desde</span>
@@ -396,7 +422,13 @@ function TarjetaDePieza({
             ? { src: `${r2PublicUrl}/${pieza.foto.claveCatalogo}`, alt: pieza.foto.alt }
             : null
         }
-        sello={pieza.estado === "reservada" ? "Reservada" : undefined}
+        sello={
+          pieza.estado === "reservada"
+            ? "Reservada"
+            : pieza.estado === "vendida"
+              ? "Vendida"
+              : undefined
+        }
       />
     </li>
   );
