@@ -3,7 +3,7 @@ import type { PrismaClient } from "~/generated/prisma/client";
 import { ErrorDeDominio } from "./errores";
 
 /** Las listas cerradas que la operadora puede ampliar. */
-export type Lista = "tipos" | "colores" | "materiales" | "calidadesDeclaradas";
+export type Lista = "tipos" | "colores" | "materiales" | "calidadesDeclaradas" | "marcas";
 
 /** Un valor de una lista. Los colores traen además su color de muestra. */
 export interface OpcionDeLista {
@@ -22,18 +22,21 @@ export interface Listas {
   materiales: OpcionDeLista[];
   /** Calidad declarada de un lote (Primera, Segunda…). */
   calidadesDeclaradas: OpcionDeLista[];
+  /** Marca de una pieza (ticket #6). */
+  marcas: OpcionDeLista[];
 }
 
 /** Los valores de cada lista, en el orden en que se dieron de alta. */
 export async function obtenerListas(db: PrismaClient): Promise<Listas> {
   const orden = { orderBy: { id: "asc" } } as const;
-  const [tipos, colores, materiales, calidadesDeclaradas] = await Promise.all([
+  const [tipos, colores, materiales, calidadesDeclaradas, marcas] = await Promise.all([
     db.tipoDeCartera.findMany({ ...orden, select: { id: true, nombre: true } }),
     db.color.findMany({ ...orden, select: { id: true, nombre: true, muestra: true } }),
     db.material.findMany({ ...orden, select: { id: true, nombre: true } }),
     db.calidadDeclarada.findMany({ ...orden, select: { id: true, nombre: true } }),
+    db.marca.findMany({ ...orden, select: { id: true, nombre: true } }),
   ]);
-  return { tipos, colores, materiales, calidadesDeclaradas };
+  return { tipos, colores, materiales, calidadesDeclaradas, marcas };
 }
 
 /** "  riñonera  de mano" → "Riñonera de mano". */
@@ -90,6 +93,11 @@ export async function ampliarLista(
           data: { nombre: normalizado },
           select: { id: true, nombre: true },
         })
+      );
+    case "marcas":
+      return (
+        (await db.marca.findFirst({ where: donde, select: { id: true, nombre: true } })) ??
+        db.marca.create({ data: { nombre: normalizado }, select: { id: true, nombre: true } })
       );
   }
 }

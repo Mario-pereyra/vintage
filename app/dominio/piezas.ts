@@ -1,6 +1,12 @@
 import type { EstadoPieza, Prisma } from "~/generated/prisma/client";
 
 import {
+  autenticidadAPrisma,
+  autenticidadDePrisma,
+  esAutenticidadValida,
+  type AutenticidadDePieza,
+} from "./autenticidad";
+import {
   condicionAPrisma,
   condicionDePrisma,
   esCondicionValida,
@@ -82,6 +88,40 @@ export interface DatosDePieza {
   costoReacondicionamientoCentavos?: number;
   /** Condición asignada en la apertura del lote o en la compra a particular. */
   condicionIngreso?: CondicionDePieza | null;
+
+  // --- Atributos opcionales y visibilidad por campo (#6) ---------------------
+  // Cada uno lleva su propio interruptor `visible*` (booleano, nunca `null`:
+  // sin decidir es visible), salvo `descripcion`, que no tiene interruptor y
+  // se publica siempre que exista. Lo que la operadora apaga nunca llega a
+  // `fichaPublica`.
+  /** Condición con la que se publica (puede diferir de `condicionIngreso`). */
+  condicion?: CondicionDePieza | null;
+  visibleCondicion?: boolean;
+  /** Detalle breve y opcional de lo que la pieza conserva. */
+  notaCondicion?: string | null;
+  visibleNotaCondicion?: boolean;
+  /**
+   * Marca (lista ampliable) y autenticidad se publican juntas o ninguna: un
+   * solo interruptor, `visibleMarca` (ADR 0002). Sin marca, `autenticidad`
+   * vuelve a `null` sola: no hay nada que autenticar.
+   */
+  marcaId?: number | null;
+  autenticidad?: AutenticidadDePieza | null;
+  visibleMarca?: boolean;
+  cierre?: string | null;
+  visibleCierre?: boolean;
+  /** Interior y sus compartimentos, en un solo campo de texto libre. */
+  interior?: string | null;
+  visibleInterior?: boolean;
+  colorHerrajes?: string | null;
+  visibleHerrajes?: boolean;
+  incluye?: string | null;
+  visibleIncluye?: boolean;
+  /** Qué objetos entran (celular, billetera, lentes…). */
+  queCabe?: string | null;
+  visibleQueCabe?: boolean;
+  /** Descripción libre de 2 a 4 frases. Siempre visible: no tiene interruptor. */
+  descripcion?: string | null;
 }
 
 export type CampoDePieza = keyof DatosDePieza;
@@ -116,6 +156,55 @@ export const COSTO_DIRECTO_MAXIMO_CENTAVOS = 10_000_000;
 /** Tope del reacondicionamiento: Bs 5.000, en centavos. */
 const REACONDICIONAMIENTO_MAXIMO_CENTAVOS = 500_000;
 
+/** Largo máximo de la nota de condición: es un detalle breve, no un reporte. */
+export const NOTA_CONDICION_MAXIMA = 200;
+/** Largo máximo de cierre, interior, color de herrajes, "Incluye" y "Qué cabe". */
+export const ATRIBUTO_TEXTO_MAXIMO = 160;
+/** Largo máximo de la descripción libre (guía: 2 a 4 frases). */
+export const DESCRIPCION_MAXIMA = 600;
+
+/** Los campos de texto libre opcionales, con su tope. */
+const TEXTOS_OPCIONALES = [
+  ["notaCondicion", NOTA_CONDICION_MAXIMA],
+  ["cierre", ATRIBUTO_TEXTO_MAXIMO],
+  ["interior", ATRIBUTO_TEXTO_MAXIMO],
+  ["colorHerrajes", ATRIBUTO_TEXTO_MAXIMO],
+  ["incluye", ATRIBUTO_TEXTO_MAXIMO],
+  ["queCabe", ATRIBUTO_TEXTO_MAXIMO],
+  ["descripcion", DESCRIPCION_MAXIMA],
+] as const satisfies readonly (readonly [CampoDePieza, number])[];
+
+/** Los textos de varias líneas: conservan los saltos de línea que escribe la operadora. */
+const TEXTOS_CON_SALTOS: ReadonlySet<CampoDePieza> = new Set(["notaCondicion", "descripcion"]);
+
+/**
+ * Colapsa espacios y tabs dentro de cada línea, recorta los extremos y deja
+ * como mucho una línea en blanco entre párrafos. Vacío es `null`.
+ */
+function limpiarTextoConSaltos(texto: string): string | null {
+  return (
+    texto
+      .replace(/\r\n?/g, "\n")
+      .split("\n")
+      .map((linea) => linea.replace(/[^\S\n]+/g, " ").trim())
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim() || null
+  );
+}
+
+/** Los interruptores de visibilidad por campo (#6). `descripcion` no tiene uno. */
+const VISIBLES = [
+  "visibleCondicion",
+  "visibleNotaCondicion",
+  "visibleMarca",
+  "visibleCierre",
+  "visibleInterior",
+  "visibleHerrajes",
+  "visibleIncluye",
+  "visibleQueCabe",
+] as const satisfies readonly CampoDePieza[];
+
 const NOMBRE_DEL_CAMPO: Record<CampoDePieza, string> = {
   nombre: "el nombre",
   tipoId: "el tipo",
@@ -131,6 +220,24 @@ const NOMBRE_DEL_CAMPO: Record<CampoDePieza, string> = {
   costoDirectoCentavos: "el costo directo",
   costoReacondicionamientoCentavos: "el reacondicionamiento",
   condicionIngreso: "la condición de ingreso",
+  condicion: "la condición",
+  visibleCondicion: "mostrar condición",
+  notaCondicion: "la nota de condición",
+  visibleNotaCondicion: "mostrar nota de condición",
+  marcaId: "la marca",
+  autenticidad: "la autenticidad",
+  visibleMarca: "mostrar marca",
+  cierre: "el cierre",
+  visibleCierre: "mostrar cierre",
+  interior: "el interior",
+  visibleInterior: "mostrar interior",
+  colorHerrajes: "el color de herrajes",
+  visibleHerrajes: "mostrar herrajes",
+  incluye: "Incluye",
+  visibleIncluye: "mostrar Incluye",
+  queCabe: "Qué cabe",
+  visibleQueCabe: "mostrar Qué cabe",
+  descripcion: "la descripción",
 };
 
 /** Una pieza tal como la ve la operadora en el panel. */
@@ -168,6 +275,26 @@ export interface PiezaDelPanel {
    * mientras la pieza no tenga procedencia (piezas creadas fuera de #8).
    */
   costoDePiezaCentavos: number | null;
+
+  // --- Atributos opcionales y visibilidad por campo (#6) ---------------------
+  condicion: CondicionDePieza | null;
+  visibleCondicion: boolean;
+  notaCondicion: string | null;
+  visibleNotaCondicion: boolean;
+  marcaId: number | null;
+  autenticidad: AutenticidadDePieza | null;
+  visibleMarca: boolean;
+  cierre: string | null;
+  visibleCierre: boolean;
+  interior: string | null;
+  visibleInterior: boolean;
+  colorHerrajes: string | null;
+  visibleHerrajes: boolean;
+  incluye: string | null;
+  visibleIncluye: boolean;
+  queCabe: string | null;
+  visibleQueCabe: boolean;
+  descripcion: string | null;
 }
 
 /** Una fila del listado de piezas del panel. */
@@ -211,6 +338,25 @@ export interface FichaPublica {
   reservadaHasta: Date | null;
   /** Las 8 fotos, en el orden fijo de las tomas. Siempre una es `portada`. */
   fotos: FotoPublica[];
+
+  // --- Atributos opcionales (#6): `null` si la operadora los ocultó o no hay
+  // dato. Cada uno depende de su propio interruptor, salvo `descripcion`. ---
+  condicion: CondicionDePieza | null;
+  notaCondicion: string | null;
+  /**
+   * Marca y autenticidad, juntas o ninguna (ADR 0002): `null` si el
+   * interruptor "marca" está apagado o si la pieza no tiene marca cargada
+   * (no se publica "Sin marca": no hay nada que afirmar).
+   * `original` es `true` solo con autenticidad comprobada.
+   */
+  marca: { nombre: string; autenticidad: AutenticidadDePieza | null; original: boolean } | null;
+  cierre: string | null;
+  interior: string | null;
+  colorHerrajes: string | null;
+  incluye: string | null;
+  queCabe: string | null;
+  /** Sin interruptor propio: se publica siempre que exista. */
+  descripcion: string | null;
 }
 
 type FilaDePieza = Prisma.PiezaGetPayload<{ include: { fotos: true } }>;
@@ -265,6 +411,7 @@ async function validar(
     ["materialId", (id: number) => db.material.count({ where: { id } }), "Elige un material de la lista."],
     ["loteId", (id: number) => db.lote.count({ where: { id } }), "Elige un lote existente."],
     ["proveedorId", (id: number) => db.proveedor.count({ where: { id } }), "Elige un proveedor existente."],
+    ["marcaId", (id: number) => db.marca.count({ where: { id } }), "Elige una marca de la lista."],
   ] as const;
   for (const [campo, contar, mensaje] of listas) {
     const id = datos[campo];
@@ -317,6 +464,52 @@ async function validar(
     limpios.condicionIngreso = condicion;
   }
 
+  // --- Atributos opcionales (#6) ---------------------------------------------
+
+  if (datos.condicion !== undefined) {
+    const condicion = datos.condicion;
+    if (condicion !== null && !esCondicionValida(condicion)) {
+      errores.condicion = "Elige una condición de la lista.";
+    }
+    limpios.condicion = condicion;
+  }
+
+  if (datos.autenticidad !== undefined) {
+    const autenticidad = datos.autenticidad;
+    if (autenticidad !== null && !esAutenticidadValida(autenticidad)) {
+      errores.autenticidad = "Elige comprobada o atribuida.";
+    }
+    limpios.autenticidad = autenticidad;
+  }
+
+  for (const [campo, maximo] of TEXTOS_OPCIONALES) {
+    const valor = datos[campo];
+    if (valor === undefined) continue;
+    if (valor !== null && typeof valor !== "string") {
+      errores[campo] = "Escribe un texto.";
+      continue;
+    }
+    const limpio =
+      valor === null
+        ? null
+        : TEXTOS_CON_SALTOS.has(campo)
+          ? limpiarTextoConSaltos(valor)
+          : valor.trim().replace(/\s+/g, " ") || null;
+    if (limpio && limpio.length > maximo) {
+      errores[campo] = `Usa como máximo ${maximo} caracteres.`;
+    }
+    limpios[campo] = limpio as never;
+  }
+
+  for (const campo of VISIBLES) {
+    const valor = datos[campo];
+    if (valor === undefined) continue;
+    if (typeof valor !== "boolean") {
+      errores[campo] = "Este interruptor solo puede estar encendido o apagado.";
+    }
+    limpios[campo] = Boolean(valor) as never;
+  }
+
   if (Object.keys(errores).length > 0) {
     throw new ErrorDeDominio(
       "datos_invalidos",
@@ -349,21 +542,59 @@ function erroresDeFaltantes(campos: CampoDePieza[], motivo: string) {
 // --- Operaciones -----------------------------------------------------------
 
 /**
- * Convierte los datos limpios del dominio a lo que espera Prisma: solo
- * `condicionIngreso` cambia de forma (nuestro string en minúsculas al enum de
- * Prisma en mayúsculas).
+ * Convierte los datos limpios del dominio a lo que espera Prisma: los enums en
+ * minúsculas del dominio (condición, autenticidad) pasan a los de Prisma, en
+ * mayúsculas. El resto de los campos ya tiene la misma forma.
  */
 function aDatosPrisma(
   datos: DatosDePieza,
-): Omit<DatosDePieza, "condicionIngreso"> & {
+): Omit<DatosDePieza, "condicionIngreso" | "condicion" | "autenticidad"> & {
   condicionIngreso?: ReturnType<typeof condicionAPrisma> | null;
+  condicion?: ReturnType<typeof condicionAPrisma> | null;
+  autenticidad?: ReturnType<typeof autenticidadAPrisma> | null;
 } {
-  const { condicionIngreso, ...resto } = datos;
-  if (condicionIngreso === undefined) return resto;
+  const { condicionIngreso, condicion, autenticidad, ...resto } = datos;
   return {
     ...resto,
-    condicionIngreso: condicionIngreso === null ? null : condicionAPrisma(condicionIngreso),
+    ...(condicionIngreso !== undefined && {
+      condicionIngreso: condicionIngreso === null ? null : condicionAPrisma(condicionIngreso),
+    }),
+    ...(condicion !== undefined && {
+      condicion: condicion === null ? null : condicionAPrisma(condicion),
+    }),
+    ...(autenticidad !== undefined && {
+      autenticidad: autenticidad === null ? null : autenticidadAPrisma(autenticidad),
+    }),
   };
+}
+
+/**
+ * Marca y autenticidad son coherentes entre sí (ADR 0002): sin marca no hay
+ * autenticidad que declarar (se limpia sola) y con marca hace falta decir si
+ * está comprobada o solo atribuida. Solo actúa si esta llamada toca alguno de
+ * los dos campos; si no, la pieza sigue como estaba. Muta `limpios` con el
+ * resultado y devuelve el error, si hay.
+ */
+function normalizarMarcaYAutenticidad(
+  limpios: DatosDePieza,
+  actual: { marcaId: number | null; autenticidad: AutenticidadDePieza | null },
+): Record<string, string> {
+  if (!("marcaId" in limpios) && !("autenticidad" in limpios)) return {};
+  const marcaId = "marcaId" in limpios ? (limpios.marcaId ?? null) : actual.marcaId;
+  const autenticidadPedida =
+    "autenticidad" in limpios ? (limpios.autenticidad ?? null) : actual.autenticidad;
+
+  if (marcaId === null) {
+    limpios.marcaId = null;
+    limpios.autenticidad = null;
+    return {};
+  }
+  if (autenticidadPedida === null) {
+    return { autenticidad: "Elige si la marca está comprobada o solo atribuida." };
+  }
+  limpios.marcaId = marcaId;
+  limpios.autenticidad = autenticidadPedida;
+  return {};
 }
 
 /**
@@ -441,6 +672,24 @@ export function crearPiezas(db: Prisma.TransactionClient, config: ConfiguracionD
       costoReacondicionamientoCentavos: fila.costoReacondicionamientoCentavos,
       condicionIngreso: fila.condicionIngreso ? condicionDePrisma(fila.condicionIngreso) : null,
       costoDePiezaCentavos: await costoDePiezaCentavos(fila),
+      condicion: fila.condicion ? condicionDePrisma(fila.condicion) : null,
+      visibleCondicion: fila.visibleCondicion,
+      notaCondicion: fila.notaCondicion,
+      visibleNotaCondicion: fila.visibleNotaCondicion,
+      marcaId: fila.marcaId,
+      autenticidad: fila.autenticidad ? autenticidadDePrisma(fila.autenticidad) : null,
+      visibleMarca: fila.visibleMarca,
+      cierre: fila.cierre,
+      visibleCierre: fila.visibleCierre,
+      interior: fila.interior,
+      visibleInterior: fila.visibleInterior,
+      colorHerrajes: fila.colorHerrajes,
+      visibleHerrajes: fila.visibleHerrajes,
+      incluye: fila.incluye,
+      visibleIncluye: fila.visibleIncluye,
+      queCabe: fila.queCabe,
+      visibleQueCabe: fila.visibleQueCabe,
+      descripcion: fila.descripcion,
     };
   }
 
@@ -469,6 +718,13 @@ export function crearPiezas(db: Prisma.TransactionClient, config: ConfiguracionD
      */
     async crearPieza(datos: DatosDePieza = {}): Promise<PiezaDelPanel> {
       const limpios = await validar(db, datos);
+      const erroresCruzados = normalizarMarcaYAutenticidad(limpios, {
+        marcaId: null,
+        autenticidad: null,
+      });
+      if (Object.keys(erroresCruzados).length > 0) {
+        throw new ErrorDeDominio("datos_invalidos", "Revisa los datos marcados.", erroresCruzados);
+      }
       for (let intento = 1; ; intento++) {
         try {
           const fila = await db.pieza.create({
@@ -500,6 +756,13 @@ export function crearPiezas(db: Prisma.TransactionClient, config: ConfiguracionD
     ): Promise<PiezaDelPanel> {
       const fila = await exigirFila(codigo);
       const limpios = await validar(db, datos);
+      const erroresCruzados = normalizarMarcaYAutenticidad(limpios, {
+        marcaId: fila.marcaId,
+        autenticidad: fila.autenticidad ? autenticidadDePrisma(fila.autenticidad) : null,
+      });
+      if (Object.keys(erroresCruzados).length > 0) {
+        throw new ErrorDeDominio("datos_invalidos", "Revisa los datos marcados.", erroresCruzados);
+      }
 
       if (fila.estado !== "EN_PREPARACION") {
         const faltan = faltantes({ ...fila, ...limpios });
@@ -616,6 +879,7 @@ export function crearPiezas(db: Prisma.TransactionClient, config: ConfiguracionD
           tipo: true,
           color: true,
           material: true,
+          marca: true,
           fotos: true,
           reservas: {
             where: { estado: "ACTIVA" },
@@ -660,6 +924,29 @@ export function crearPiezas(db: Prisma.TransactionClient, config: ConfiguracionD
         reservadaHasta:
           fila.estado === "RESERVADA" ? (fila.reservas[0]?.venceEn ?? null) : null,
         fotos: fotosPublicasDesde(fila.fotos),
+
+        // --- Atributos opcionales (#6): la regla de oro es acá. Lo que la
+        // operadora apagó no llega a este objeto, ni siquiera como `null` con
+        // forma reconocible: la propiedad entera se resuelve en `null`. ---
+        condicion:
+          fila.visibleCondicion && fila.condicion ? condicionDePrisma(fila.condicion) : null,
+        notaCondicion:
+          fila.visibleNotaCondicion && fila.notaCondicion ? fila.notaCondicion : null,
+        // Sin marca cargada no hay renglón de marca ni autenticidad que publicar.
+        marca:
+          fila.visibleMarca && fila.marca
+          ? {
+              nombre: fila.marca.nombre,
+              autenticidad: fila.autenticidad ? autenticidadDePrisma(fila.autenticidad) : null,
+              original: fila.autenticidad === "COMPROBADA",
+            }
+          : null,
+        cierre: fila.visibleCierre && fila.cierre ? fila.cierre : null,
+        interior: fila.visibleInterior && fila.interior ? fila.interior : null,
+        colorHerrajes: fila.visibleHerrajes && fila.colorHerrajes ? fila.colorHerrajes : null,
+        incluye: fila.visibleIncluye && fila.incluye ? fila.incluye : null,
+        queCabe: fila.visibleQueCabe && fila.queCabe ? fila.queCabe : null,
+        descripcion: fila.descripcion,
       };
     },
   };

@@ -15,7 +15,7 @@ import { Pagina } from "~/componentes/pagina";
 import { Grupo, Renglon, Renglones } from "~/componentes/renglon";
 import { Total } from "~/componentes/total";
 import { configuracionTienda, tituloDePagina } from "~/configuracion/tienda";
-import type { FichaPublica } from "~/dominio";
+import { TEXTO_DE_CONDICION, type FichaPublica } from "~/dominio";
 import { obtenerDominio } from "~/servidor/contexto.server";
 
 import type { Route } from "./+types/ficha";
@@ -178,13 +178,51 @@ export default function Ficha({ loaderData }: Route.ComponentProps) {
               <Renglon etiqueta="Tamaño" aclaracion={ficha.tamano.rango}>
                 {ficha.tamano.nombre}
               </Renglon>
+              {ficha.queCabe ? <Renglon etiqueta="Qué cabe">{ficha.queCabe}</Renglon> : null}
             </Renglones>
             <Grupo>La pieza</Grupo>
             <Renglones>
               <Renglon etiqueta="Tipo">{ficha.tipo}</Renglon>
-              <Renglon etiqueta="Color">{ficha.color}</Renglon>
+              <Renglon etiqueta={ficha.colorHerrajes ? "Color · herrajes" : "Color"}>
+                {ficha.colorHerrajes ? `${ficha.color} · ${ficha.colorHerrajes}` : ficha.color}
+              </Renglon>
               <Renglon etiqueta="Material">{ficha.material}</Renglon>
+              {ficha.cierre ? <Renglon etiqueta="Cierre">{ficha.cierre}</Renglon> : null}
+              {ficha.interior ? <Renglon etiqueta="Interior">{ficha.interior}</Renglon> : null}
+              {ficha.incluye ? <Renglon etiqueta="Incluye">{ficha.incluye}</Renglon> : null}
             </Renglones>
+            {ficha.condicion || ficha.notaCondicion || ficha.marca ? (
+              <>
+                <Grupo>Revisión</Grupo>
+                <Renglones>
+                  {ficha.condicion ? (
+                    <Renglon etiqueta="Condición">{TEXTO_DE_CONDICION[ficha.condicion]}</Renglon>
+                  ) : null}
+                  {ficha.notaCondicion ? (
+                    <Renglon etiqueta="Detalle" nota>
+                      {ficha.notaCondicion}
+                    </Renglon>
+                  ) : null}
+                  {ficha.marca ? (
+                    <Renglon
+                      etiqueta="Marca"
+                      aclaracion={
+                        // "Original" solo con marca comprobada (ADR 0002), en
+                        // tinta azul: es lo verificado. Sin marca cargada no
+                        // hay renglón (el dominio publica `marca: null`).
+                        ficha.marca.original ? (
+                          <span className="marca-original">Original · comprobada</span>
+                        ) : (
+                          "Atribuida, sin autenticar"
+                        )
+                      }
+                    >
+                      {ficha.marca.nombre}
+                    </Renglon>
+                  ) : null}
+                </Renglones>
+              </>
+            ) : null}
             <Total precio={precio(ficha)} />
             <PieComprobante>
               Publicada {fechaCorta(ficha.publicadaEn)} ·{" "}
@@ -223,6 +261,13 @@ export default function Ficha({ loaderData }: Route.ComponentProps) {
             <section className="sobre-rosa ficha-final" aria-labelledby="t-final">
               <h2 id="t-final">Ya no está a la venta</h2>
               <p>Esta pieza salió del catálogo. Mirá las carteras que están disponibles ahora.</p>
+            </section>
+          ) : null}
+
+          {ficha.descripcion ? (
+            <section className="sobre-rosa" aria-labelledby="t-sobre">
+              <h2 id="t-sobre">Sobre esta pieza</h2>
+              <p className="texto-con-saltos">{ficha.descripcion}</p>
             </section>
           ) : null}
 

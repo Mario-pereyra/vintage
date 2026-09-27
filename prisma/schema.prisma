@@ -31,13 +31,22 @@ enum CanalDeAbastecimiento {
 }
 
 /// Escala fija de condición de una pieza (ver "Condición" en CONTEXT.md). La
-/// condición de ingreso usa esta misma escala; la condición con la que se
-/// publica (#6) la reutilizará.
+/// condición de ingreso y la condición con la que se publica (ticket #6) usan
+/// esta misma escala.
 enum Condicion {
   EXCELENTE
   MUY_BUENA
   BUENA
   CON_DETALLES
+}
+
+/// Grado de certeza sobre la marca de una pieza (ver "Autenticidad" en
+/// CONTEXT.md, ADR 0002). Sin marca (`Pieza.marcaId` nulo) no hay autenticidad
+/// que declarar: solo existe cuando hay una marca elegida. "Original" no es un
+/// valor de este enum: es una consecuencia de `COMPROBADA` (#6).
+enum Autenticidad {
+  COMPROBADA
+  ATRIBUIDA
 }
 
 /// Un artículo físico único del inventario, con los tres identificadores del
@@ -97,6 +106,42 @@ model Pieza {
   /// publicación (#6).
   condicionIngreso                 Condicion? @map("condicion_ingreso")
 
+  // --- Atributos opcionales y visibilidad por campo (ticket #6) -------------
+  // Fotos, medidas y los datos de arriba (tipo, color, material, precio) se
+  // publican siempre. Estos son opcionales: cada uno lleva su propio
+  // interruptor `visible*`, salvo `descripcion`, que se publica siempre que
+  // haya una (como el resto de los datos siempre visibles). Lo que la
+  // operadora marca como no visible no llega a `fichaPublica`.
+  /// Condición con la que se publica la pieza. Puede diferir de
+  /// `condicionIngreso` (la de la apertura del lote o la compra a particular).
+  condicion             Condicion? @map("condicion")
+  visibleCondicion      Boolean    @default(true) @map("visible_condicion")
+  /// Detalle breve y opcional de lo que la pieza conserva tras su preparación.
+  notaCondicion         String?    @map("nota_condicion")
+  visibleNotaCondicion  Boolean    @default(true) @map("visible_nota_condicion")
+  /// Marca (lista ampliable) y autenticidad se publican juntas o ninguna: un
+  /// solo interruptor (`visibleMarca`) cubre ambas (ADR 0002). Sin marca,
+  /// `autenticidad` queda en `null`: no hay nada que autenticar.
+  marcaId               Int?          @map("marca_id")
+  marca                 Marca?        @relation(fields: [marcaId], references: [id])
+  autenticidad          Autenticidad? @map("autenticidad")
+  visibleMarca          Boolean       @default(true) @map("visible_marca")
+  cierre                String?    @map("cierre")
+  visibleCierre         Boolean    @default(true) @map("visible_cierre")
+  /// Interior y sus compartimentos, en un solo campo de texto libre.
+  interior              String?    @map("interior")
+  visibleInterior       Boolean    @default(true) @map("visible_interior")
+  colorHerrajes         String?    @map("color_herrajes")
+  visibleHerrajes       Boolean    @default(true) @map("visible_herrajes")
+  incluye               String?    @map("incluye")
+  visibleIncluye        Boolean    @default(true) @map("visible_incluye")
+  /// Qué objetos entran (celular, billetera, lentes…), en texto libre.
+  queCabe               String?    @map("que_cabe")
+  visibleQueCabe        Boolean    @default(true) @map("visible_que_cabe")
+  /// Descripción libre de 2 a 4 frases. Siempre visible cuando existe: no
+  /// tiene interruptor propio.
+  descripcion           String?    @map("descripcion")
+
   estado        EstadoPieza @default(EN_PREPARACION)
   publicadaEn   DateTime?   @map("publicada_en")
   creadaEn      DateTime    @default(now()) @map("creada_en")
@@ -111,6 +156,7 @@ model Pieza {
   @@index([estado, publicadaEn])
   @@index([loteId])
   @@index([proveedorId])
+  @@index([marcaId])
   @@map("pieza")
 }
 
@@ -244,6 +290,16 @@ model Material {
   piezas Pieza[]
 
   @@map("material")
+}
+
+/// Marca de una pieza (ticket #6). Lista cerrada ampliable, igual que tipo,
+/// color y material; su autenticidad se registra aparte en `Pieza`.
+model Marca {
+  id     Int     @id @default(autoincrement())
+  nombre String  @unique
+  piezas Pieza[]
+
+  @@map("marca")
 }
 
 // --- Reservas (ticket #9, ADR 0003) ----------------------------------------

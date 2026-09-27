@@ -121,6 +121,10 @@ export type {
 } from "./catalogo";
 export { PIEZAS_POR_PAGINA } from "./catalogo";
 export { CONDICIONES, TEXTO_DE_CONDICION, type CondicionDePieza } from "./condicion";
+export {
+  TEXTO_DE_AUTENTICIDAD,
+  type AutenticidadDePieza,
+} from "./autenticidad";
 export { ErrorDeDominio, type MotivoDeRechazo } from "./errores";
 export {
   TOMAS_REQUERIDAS,
@@ -139,7 +143,13 @@ export {
   type PiezaDelPanel,
   type PiezaEnPanel,
 } from "./piezas";
-export { COSTO_DIRECTO_MAXIMO_CENTAVOS, repartoDeLote } from "./piezas";
+export {
+  ATRIBUTO_TEXTO_MAXIMO,
+  COSTO_DIRECTO_MAXIMO_CENTAVOS,
+  DESCRIPCION_MAXIMA,
+  NOTA_CONDICION_MAXIMA,
+  repartoDeLote,
+} from "./piezas";
 export {
   PLAZO_POR_DEFECTO,
   type Compradora,
