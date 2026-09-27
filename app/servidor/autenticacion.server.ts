@@ -2,6 +2,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { APIError, createAuthEndpoint } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
 import { betterAuth } from "better-auth/minimal";
+import type { GoogleOptions } from "better-auth/social-providers";
 
 import { OPERADORA_DE_PRUEBA, type AccesoAlPanel } from "~/dominio";
 import type { PrismaClient } from "~/generated/prisma/client";
@@ -17,7 +18,12 @@ export interface ConfiguracionDeAutenticacion {
   secreto: string;
   /** URL pública de la app (`BETTER_AUTH_URL`); de ella sale el redirect de Google. */
   urlBase: string;
-  google: { clientId: string; clientSecret: string };
+  google: {
+    clientId: string;
+    clientSecret: string;
+    /** Solo en pruebas: reemplaza la verificación contra Google. */
+    simulado?: Pick<GoogleOptions, "verifyIdToken" | "getUserInfo">;
+  };
   /** Quién puede entrar al panel y si el login de desarrollo está activado. */
   acceso: AccesoAlPanel;
 }
@@ -53,7 +59,7 @@ function loginDeDesarrollo(acceso: AccesoAlPanel) {
               name: OPERADORA_DE_PRUEBA.nombre,
               email: OPERADORA_DE_PRUEBA.correo,
               emailVerified: true,
-            }));
+            }, { method: "desarrollo" }));
           const session = await adaptador.createSession(user.id);
           await setSessionCookie(ctx, { session, user });
           return ctx.json({ ok: true });
@@ -61,6 +67,27 @@ function loginDeDesarrollo(acceso: AccesoAlPanel) {
       ),
     },
   } as const;
+}
+
+export interface Autenticacion {
+  /** `true` en local y en las vistas previas con `DEV_LOGIN` activado. */
+  loginDeDesarrollo: boolean;
+  /** Atiende `/api/auth/*` (regreso de Google, login de desarrollo). */
+  handler(request: Request): Promise<Response>;
+  /** La operadora de la sesión de esta request, o `null` si no hay o ya no tiene acceso. */
+  operadoraDeLaSesion(headers: Headers): Promise<Operadora | null>;
+  /**
+   * Empieza el login con Google. Devuelve la URL de Google a la que hay que
+   * redirigir y las cookies de estado que deben acompañar la redirección.
+   */
+  ingresarConGoogle(headers: Headers): Promise<{ url: string; headers: Headers }>;
+  /**
+   * Abre una sesión de la operadora de prueba. Devuelve los `Set-Cookie`.
+   * Falla con 404 si el login de desarrollo está apagado.
+   */
+  ingresarComoOperadoraDePrueba(headers: Headers): Promise<Headers>;
+  /** Cierra la sesión. Devuelve los `Set-Cookie` que la borran del navegador. */
+  salir(headers: Headers): Promise<Headers>;
 }
 
 /**
@@ -74,16 +101,7 @@ function loginDeDesarrollo(acceso: AccesoAlPanel) {
 export function crearAutenticacion(
   db: PrismaClient,
   { secreto, urlBase, google, acceso }: ConfiguracionDeAutenticacion,
-) {
-  const rechazarSiNoEsOperadora = (correo: string) => {
-    if (!acceso.permite(correo)) {
-      throw new APIError("FORBIDDEN", {
-        code: CORREO_NO_PERMITIDO,
-        message: MENSAJE_NO_PERMITIDO,
-      });
-    }
-  };
-
+): Autenticacion {
   const instancia = betterAuth({
     secret: secreto,
     baseURL: urlBase,
@@ -93,49 +111,35 @@ export function crearAutenticacion(
         clientId: google.clientId,
         clientSecret: google.clientSecret,
         prompt: "select_account",
+        ...google.simulado,
       },
     },
     session: { expiresIn: DURACION_DE_SESION },
     // Sin telemetría de Better Auth.
     telemetry: { enabled: false },
-    databaseHooks: {
-      user: {
-        create: {
-          before: async (user) => rechazarSiNoEsOperadora(user.email),
-        },
-      },
-      session: {
-        create: {
-          // Una cuenta que ya existía pero cuyo correo salió de la lista no
-          // vuelve a abrir sesión.
-          before: async (session, ctx) => {
-            const user = await ctx?.context.internalAdapter.findUserById(session.userId);
-            if (user) rechazarSiNoEsOperadora(user.email);
-          },
-        },
-      },
+    user: {
+      // Se revisa al crear la cuenta y en cada regreso de Google, con el
+      // correo que Google informa. Si no está en la lista, Better Auth vuelve
+      // a /ingresar con `?error=correo_no_permitido`.
+      validateUserInfo: ({ user }) =>
+        acceso.permite(user.email)
+          ? undefined
+          : { error: CORREO_NO_PERMITIDO, errorDescription: MENSAJE_NO_PERMITIDO },
     },
     plugins: [loginDeDesarrollo(acceso)],
   });
 
   return {
-    /** La instancia de Better Auth. */
-    instancia,
+    loginDeDesarrollo: acceso.loginDeDesarrollo,
 
-    /** Atiende `/api/auth/*` (regreso de Google, login de desarrollo). */
     handler: (request: Request) => instancia.handler(request),
 
-    /** La operadora de la sesión de esta request, o `null` si no hay o ya no tiene acceso. */
     async operadoraDeLaSesion(headers: Headers): Promise<Operadora | null> {
       const sesion = await instancia.api.getSession({ headers });
       if (!sesion || !acceso.permite(sesion.user.email)) return null;
       return { nombre: sesion.user.name, correo: sesion.user.email };
     },
 
-    /**
-     * Empieza el login con Google. Devuelve la URL de Google a la que hay que
-     * redirigir y las cookies de estado que deben acompañar la redirección.
-     */
     async ingresarConGoogle(headers: Headers) {
       const { headers: cookies, response } = await instancia.api.signInSocial({
         headers,
@@ -150,10 +154,6 @@ export function crearAutenticacion(
       return { url: response.url, headers: cookies };
     },
 
-    /**
-     * Abre una sesión de la operadora de prueba. Devuelve los `Set-Cookie`.
-     * Falla con 404 si el login de desarrollo está apagado.
-     */
     async ingresarComoOperadoraDePrueba(headers: Headers): Promise<Headers> {
       const { headers: cookies } = await instancia.api.ingresarComoOperadoraDePrueba({
         headers,
@@ -162,7 +162,6 @@ export function crearAutenticacion(
       return cookies;
     },
 
-    /** Cierra la sesión. Devuelve los `Set-Cookie` que la borran del navegador. */
     async salir(headers: Headers): Promise<Headers> {
       const { headers: cookies } = await instancia.api.signOut({
         headers,
@@ -172,5 +171,3 @@ export function crearAutenticacion(
     },
   };
 }
-
-export type Autenticacion = ReturnType<typeof crearAutenticacion>;

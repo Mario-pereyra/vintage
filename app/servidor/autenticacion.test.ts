@@ -1,10 +1,11 @@
+import type { GoogleProfile } from "better-auth/social-providers";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { crearAccesoAlPanel, OPERADORA_DE_PRUEBA } from "~/dominio";
 import type { PrismaClient } from "~/generated/prisma/client";
 
 import { crearPrismaDePrueba } from "../dominio/pruebas/base-de-prueba";
-import { crearAutenticacion } from "./autenticacion.server";
+import { crearAutenticacion, type Autenticacion } from "./autenticacion.server";
 
 const URL_BASE = "http://localhost:5173";
 
@@ -15,9 +16,38 @@ function autenticacion(
   return crearAutenticacion(prisma, {
     secreto: "un-secreto-de-prueba-suficientemente-largo-123",
     urlBase: URL_BASE,
-    google: { clientId: "id-de-prueba", clientSecret: "secreto-de-prueba" },
+    google: {
+      clientId: "id-de-prueba",
+      clientSecret: "secreto-de-prueba",
+      // Google simulado: el id token es el correo de la cuenta.
+      simulado: {
+        verifyIdToken: async () => true,
+        getUserInfo: async ({ idToken }) => {
+          const correo = idToken ?? "";
+          return {
+            user: { email: correo, name: correo, emailVerified: true },
+            data: { sub: correo, email: correo } as GoogleProfile,
+          };
+        },
+      },
+    },
     acceso: crearAccesoAlPanel({ correosPermitidos, loginDeDesarrollo }),
   });
+}
+
+/**
+ * Lo que pasa cuando Google devuelve a alguien con ese correo: Better Auth
+ * valida la cuenta, la crea si hace falta y abre la sesión. Devuelve los
+ * `Set-Cookie`.
+ */
+function regresarDeGoogle(auth: Autenticacion, correo: string): Promise<Response> {
+  return auth.handler(
+    new Request(`${URL_BASE}/api/auth/sign-in/social`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: URL_BASE },
+      body: JSON.stringify({ provider: "google", idToken: { token: correo } }),
+    }),
+  );
 }
 
 /** Convierte los `Set-Cookie` de una respuesta en el `Cookie` del navegador. */
@@ -97,19 +127,30 @@ describe("autenticación de operadoras", () => {
     expect(await sinLogin.operadoraDeLaSesion(cookies)).toBeNull();
   });
 
-  it("no crea cuentas para correos fuera de la lista (lo mismo que hace el regreso de Google)", async () => {
-    // El regreso de Google crea la cuenta con el adaptador interno de Better
-    // Auth, que corre los mismos hooks.
-    const { internalAdapter } = await autenticacion(prisma).instancia.$context;
-    const crear = (name: string, email: string) =>
-      internalAdapter.createUser({ name, email, emailVerified: true });
+  it("Google solo abre sesión si el correo está en la lista", async () => {
+    const auth = autenticacion(prisma);
 
-    await expect(crear("Extraña", "extrana@gmail.com")).rejects.toMatchObject({
-      body: { code: "correo_no_permitido" },
+    const rechazo = await regresarDeGoogle(auth, "extrana@gmail.com");
+    expect(rechazo.status).toBe(403);
+    expect(await rechazo.json()).toMatchObject({ code: "correo_no_permitido" });
+    expect(await prisma.user.count()).toBe(0);
+
+    const respuesta = await regresarDeGoogle(auth, "Ingrid@gmail.com");
+    expect(respuesta.status).toBe(200);
+    expect(await auth.operadoraDeLaSesion(cookiesDe(respuesta.headers))).toEqual({
+      nombre: "Ingrid@gmail.com",
+      correo: "ingrid@gmail.com",
     });
-    await expect(crear("Ingrid", "Ingrid@gmail.com")).resolves.toMatchObject({
-      email: "ingrid@gmail.com",
-    });
+  });
+
+  it("quitar un correo de la lista corta el acceso de su sesión abierta", async () => {
+    const antes = autenticacion(prisma, { correosPermitidos: "ingrid@gmail.com" });
+    const cookies = cookiesDe((await regresarDeGoogle(antes, "ingrid@gmail.com")).headers);
+
+    const despues = autenticacion(prisma, { correosPermitidos: "mario@gmail.com" });
+
+    expect(await despues.operadoraDeLaSesion(cookies)).toBeNull();
+    expect((await regresarDeGoogle(despues, "ingrid@gmail.com")).status).toBe(403);
   });
 
   it("iniciar con Google devuelve la URL de Google y la cookie de estado", async () => {
