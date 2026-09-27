@@ -1,4 +1,4 @@
-import { data, useSearchParams } from "react-router";
+import { data, Link, useSearchParams } from "react-router";
 
 import { Icono } from "~/componentes/icono";
 import { Sello } from "~/componentes/sello";
@@ -97,6 +97,11 @@ export default function EditarPieza({
               Ver ficha pública
               <Icono nombre="externo" />
             </a>
+          ) : null}
+          {publicada ? (
+            <Link className="enlace-ficha" to={`/admin/piezas/${pieza.codigo}/reserva`}>
+              Reserva e interesadas
+            </Link>
           ) : null}
         </div>
         <Sello texto={TEXTO_DEL_ESTADO[pieza.estado]} />

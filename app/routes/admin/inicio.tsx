@@ -34,8 +34,17 @@ export default function InicioDelPanel({ loaderData }: Route.ComponentProps) {
               <Icono nombre="adelante" />
             </Link>
           </li>
+          <li>
+            <Link className="seccion" to="/admin/reservas">
+              <span>
+                <b>Reservas</b>
+                <span>Activas, por vencimiento</span>
+              </span>
+              <Icono nombre="adelante" />
+            </Link>
+          </li>
           <li className="seccion seccion-proxima">
-            <span>Lotes, fotos y reservas aparecen aquí cuando estén listos.</span>
+            <span>Lotes y fotos aparecen aquí cuando estén listos.</span>
           </li>
         </ul>
       </BloquePanel>

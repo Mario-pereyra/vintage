@@ -21,5 +21,7 @@ export default [
     route("piezas", "routes/admin/piezas/lista.tsx"),
     route("piezas/nueva", "routes/admin/piezas/nueva.tsx"),
     route("piezas/:codigo", "routes/admin/piezas/editar.tsx"),
+    route("piezas/:codigo/reserva", "routes/admin/piezas/reserva.tsx"),
+    route("reservas", "routes/admin/reservas.tsx"),
   ]),
 ] satisfies RouteConfig;

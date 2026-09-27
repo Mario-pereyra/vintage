@@ -9,6 +9,7 @@ import {
   PieComprobante,
 } from "~/componentes/comprobante";
 import { GaleriaDeTomas } from "~/componentes/galeria-tomas";
+import { horaDeBolivia } from "~/componentes/hora";
 import { Icono } from "~/componentes/icono";
 import { Pagina } from "~/componentes/pagina";
 import { Grupo, Renglon, Renglones } from "~/componentes/renglon";
@@ -115,7 +116,12 @@ export default function Ficha({ loaderData }: Route.ComponentProps) {
               codigo={ficha.codigo}
               id="ref-pieza"
               como="h2"
-              sello={{ texto: SELLO[ficha.estado] }}
+              sello={{
+                texto: SELLO[ficha.estado],
+                detalle: ficha.reservadaHasta
+                  ? `hasta las ${horaDeBolivia(ficha.reservadaHasta)}`
+                  : undefined,
+              }}
             />
             <NombrePieza>{ficha.nombre}</NombrePieza>
             <Renglones>
