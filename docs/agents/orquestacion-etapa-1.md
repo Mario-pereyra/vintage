@@ -132,8 +132,19 @@ Si una sesión no ve las definiciones, lanza `general-purpose` con el modelo del
   - El `.env` raíz no trae `DEV_LOGIN`. Los agentes que necesitan el login de desarrollo lo agregan a su copia.
   - Después de una corrección no hace falta repetir las tres revisiones: basta con el revisor que la encontró y una confirmación rápida del resto.
 
-**Próximos pasos**
-- Ola 6: #17 (despliegue a producción) con `dominio-nucleo`. Después, preparar el #18 (verificación humana) y el #19 (ronda de ajustes visuales, con capturas de todas las pantallas a 390 y 1280 px).
+**Ola 6 (#17): terminada. La Etapa 1 está en producción.**
+- #17 está cerrado, sin cambios de código ni de configuración. Los 8 criterios pasaron.
+  - Deploy de `main` en verde, con las 9 migraciones aplicadas en Neon `main`.
+  - Secretos de producción cargados. `DEV_LOGIN` está vacío y `/ingresar/desarrollo` responde 404.
+  - `/admin` redirige a `/ingresar`, y Google recibe el `redirect_uri` correcto.
+  - El catálogo y "Ver vendidas" (`/?vendidas=1`) responden 200.
+  - La ficha y el Open Graph se verificaron en la preview, porque producción todavía no tiene piezas.
+  - Informe con capturas: https://github.com/Mario-pereyra/vintage/issues/17#issuecomment-5853498536
+- #18 tiene los pasos humanos: login real con Google, primera pieza con fotos y vista previa al compartir, revisar las listas iniciales y sacar la app de OAuth del modo de prueba.
+- #19 tiene las capturas de las 28 pantallas a 390 y 1280 px, más el índice de menores por pantalla: https://github.com/Mario-pereyra/vintage/issues/19#issuecomment-5853649669
+
+**Próximos pasos (humanos)**
+- La dueña hace los pasos del #18 y marca en el #19 los ajustes visuales que quiere. La ronda de ajustes se lanza con `disenador-ui`, más `revisor-diseno` en paralelo.
 
 ## Cómo retomar
 
