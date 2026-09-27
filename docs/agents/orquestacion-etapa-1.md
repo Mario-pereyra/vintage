@@ -93,8 +93,15 @@ Si una sesión no ve las definiciones, lanza `general-purpose` con el modelo del
 **Reorganización (decisiones del 2026-09-26): terminada.**
 - Se crearon #16, #17, #18 y #19, con sus dependencias nativas en GitHub. Del #4 al #13 quedaron bloqueados por el #16. El #14 tiene un comentario que lo remite al #16 y al #19.
 
+**Ola 2 (#16 y #3): terminada.**
+- #16 → PR #20, squash b71e220. Una vuelta de corrección por 2 graves del code-review (selector de estado de la maqueta portado y wordmark ausente en el panel). Criterio aceptado: en las pantallas internas del panel el wordmark va en el `<title>`, porque la barra muestra el botón volver.
+- #3 → PR #21, squash 1896d3b. Verificador 11 ✅ y 2 ⏸️ (login real con Google e instalación de la PWA, anotados en el #18). El diseño y el code-review salieron sin fallas materiales ni graves.
+- Componentes del sistema en `app/componentes/` y muestrario en `/sistema` (solo en desarrollo). Los umbrales de tamaño están en `app/configuracion/tienda.ts`. Las pantallas de `/admin` definen su título con `export const handle = { titulo }`.
+- Los hallazgos menores de diseño se van anotando en el #19.
+- **Lección operativa:** los revisores en paralelo no deben tomar la rama con `gh pr checkout`, porque la bloquean para los demás worktrees. Tienen que usar `git fetch origin && git checkout --detach origin/ticket/N`.
+
 **Próximos pasos**
-- Ola 2: `dominio-nucleo` en el #3 y `disenador-ui` en el #16, en paralelo.
+- Ola 3: el #4 solo (`dominio-nucleo` y después `disenador-ui`).
 
 ## Cómo retomar
 
