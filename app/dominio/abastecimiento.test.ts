@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   COSTO_DIRECTO_MAXIMO_CENTAVOS,
   ErrorDeDominio,
+  TOMAS_REQUERIDAS,
   type Dominio,
   type Proveedor,
 } from "./index";
@@ -444,6 +445,13 @@ describe("abastecimiento", () => {
         profundidadCm: 8,
         precioCentavos: 15000,
       });
+      for (const tipo of TOMAS_REQUERIDAS) {
+        await dominio.agregarFoto(piezas[0].codigo, tipo, {
+          claveMiniatura: `${tipo}-mini.jpg`,
+          claveCatalogo: `${tipo}-cat.jpg`,
+          claveDetalle: `${tipo}-det.jpg`,
+        });
+      }
       const { rutaPublica } = await dominio.publicarPieza(piezas[0].codigo);
 
       const ficha = await dominio.fichaPublica(rutaPublica.slice("/carteras/".length));
