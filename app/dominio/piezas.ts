@@ -126,8 +126,12 @@ export interface DatosDePieza {
 
 export type CampoDePieza = keyof DatosDePieza;
 
-/** Sin estos datos una pieza no se publica. La caída es opcional. */
-const CAMPOS_OBLIGATORIOS = [
+/**
+ * Sin estos datos una pieza no se publica. La caída es opcional. Se exporta
+ * para que `drops.ts` (#12) sepa qué pieza está lista para publicar sin
+ * recalcular el costo de pieza de cada una (`piezaDelPanel` es más caro).
+ */
+export const CAMPOS_OBLIGATORIOS = [
   "nombre",
   "tipoId",
   "colorId",
@@ -748,13 +752,21 @@ export function crearPiezas(db: Prisma.TransactionClient, config: ConfiguracionD
     /**
      * Edita una pieza en cualquier estado. Una pieza ya publicada no puede
      * quedarse sin sus datos obligatorios. La URL pública conserva su sufijo:
-     * la dirección anterior sigue llevando a la pieza.
+     * la dirección anterior sigue llevando a la pieza. El precio publicado no
+     * se edita aquí una vez publicada: eso dejaría de guardar su historial
+     * (ver `cambiarPrecioPublicado` en historial-de-precio.ts).
      */
     async editarPieza(
       codigo: string,
       datos: DatosDePieza,
     ): Promise<PiezaDelPanel> {
       const fila = await exigirFila(codigo);
+      if (fila.estado !== "EN_PREPARACION" && datos.precioCentavos !== undefined) {
+        throw new ErrorDeDominio(
+          "transicion_no_permitida",
+          `El precio de ${codigoDe(fila.codigo)} ya está publicado: cámbialo desde su historial de precio.`,
+        );
+      }
       const limpios = await validar(db, datos);
       const erroresCruzados = normalizarMarcaYAutenticidad(limpios, {
         marcaId: fila.marcaId,

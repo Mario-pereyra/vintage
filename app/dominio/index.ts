@@ -3,7 +3,9 @@ import type { PrismaClient } from "~/generated/prisma/client";
 
 import { crearAbastecimiento } from "./abastecimiento";
 import { listarCatalogo, type FiltrosDeCatalogo } from "./catalogo";
+import { crearDrops } from "./drops";
 import { crearFotos } from "./fotos";
+import { crearHistorialDePrecio } from "./historial-de-precio";
 import { ampliarLista, obtenerListas, type Lista } from "./listas";
 import { crearPiezas, type ConfiguracionDePiezas } from "./piezas";
 import { crearReservas } from "./reservas";
@@ -38,6 +40,13 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
   // `abrirLote` recibe también la configuración para poder crear las piezas
   // del lote dentro de su propia transacción (ver abastecimiento.ts).
   const abastecimiento = crearAbastecimiento(db, piezas, configDePiezas);
+  // Drops (#12): agrupan piezas En preparación y las publican reusando
+  // `publicarPieza`, sin duplicar sus reglas de estado ni de datos mínimos.
+  const drops = crearDrops(db, piezas, { prefijoDeCodigo: configDePiezas.prefijoDeCodigo });
+  const historialDePrecio = crearHistorialDePrecio(db, {
+    prefijoDeCodigo: configDePiezas.prefijoDeCodigo,
+    ahora: configDePiezas.ahora,
+  });
 
   /**
    * Vencimiento perezoso: antes de leer el estado de una pieza, vence las
@@ -90,6 +99,12 @@ export function crearDominio(db: PrismaClient, opciones: OpcionesDelDominio = {}
     retirarPieza: trasVencer(retiros.retirarPieza),
     retiroDePieza: retiros.retiroDePieza,
 
+    // --- Drops: agrupar piezas y publicarlas juntas o de a poco (#12) ---
+    ...drops,
+
+    // --- Historial de precios del precio publicado (#12) ---
+    ...historialDePrecio,
+
     // --- Listas ampliables (tipo de cartera, color, material, calidad declarada) ---
     /** Los valores de cada lista, en orden de alta. */
     listas: () => obtenerListas(db),
@@ -125,6 +140,12 @@ export {
   TEXTO_DE_AUTENTICIDAD,
   type AutenticidadDePieza,
 } from "./autenticidad";
+export {
+  CODIGOS_MAXIMOS_POR_ASIGNACION,
+  numeroDeDrop,
+  type DropDelPanel,
+  type PiezaDeDrop,
+} from "./drops";
 export { ErrorDeDominio, type MotivoDeRechazo } from "./errores";
 export {
   TOMAS_REQUERIDAS,
@@ -133,6 +154,7 @@ export {
   type FotoPublica,
   type TipoDeToma,
 } from "./fotos";
+export type { PrecioDelHistorial } from "./historial-de-precio";
 export type { Lista, Listas, OpcionDeColor, OpcionDeLista } from "./listas";
 export {
   PRECIO_MAXIMO_CENTAVOS,

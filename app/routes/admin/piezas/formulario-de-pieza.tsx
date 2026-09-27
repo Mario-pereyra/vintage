@@ -17,6 +17,7 @@ import {
 import { Chips } from "~/componentes/chips";
 import { ControlSegmentado } from "~/componentes/control-segmentado";
 import { TOMAS } from "~/componentes/galeria-tomas";
+import { Icono } from "~/componentes/icono";
 import { InterruptorMostrar } from "~/componentes/interruptor-mostrar";
 import { Renglon, Renglones } from "~/componentes/renglon";
 import { TomasDelPanel } from "~/componentes/tomas-panel";
@@ -725,15 +726,36 @@ export function FormularioDePieza({
       </BloquePanel>
 
       <BloquePanel titulo="Precio publicado">
-        <CampoPrecio
-          name="precio"
-          aria-label="Precio publicado en bolivianos"
-          defaultValue={
-            pieza?.precioCentavos != null ? pieza.precioCentavos / 100 : ""
-          }
-          aria-invalid={errores.precioCentavos ? true : undefined}
-        />
-        <MensajeDeError texto={errores.precioCentavos} />
+        {publicada && pieza ? (
+          <>
+            <Renglones>
+              <Renglon etiqueta="Precio" cifra>
+                {pieza.precioCentavos != null
+                  ? formatearPrecio(pieza.precioCentavos / 100)
+                  : "—"}
+              </Renglon>
+            </Renglones>
+            <p className="ayuda">
+              Ya está publicado: cambiarlo deja historial.
+            </p>
+            <Link className="enlace-ficha" to={`/admin/piezas/${pieza.codigo}/precio`}>
+              Cambiar precio e historial
+              <Icono nombre="adelante" />
+            </Link>
+          </>
+        ) : (
+          <>
+            <CampoPrecio
+              name="precio"
+              aria-label="Precio publicado en bolivianos"
+              defaultValue={
+                pieza?.precioCentavos != null ? pieza.precioCentavos / 100 : ""
+              }
+              aria-invalid={errores.precioCentavos ? true : undefined}
+            />
+            <MensajeDeError texto={errores.precioCentavos} />
+          </>
+        )}
       </BloquePanel>
 
       <BloqueDeAtributos pieza={pieza} marcas={listas.marcas} errores={errores} />

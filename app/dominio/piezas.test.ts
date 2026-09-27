@@ -273,9 +273,19 @@ describe("pieza", () => {
       const { codigo } = await dominio.crearPieza(await bandolera());
       await agregarTomasYPublicar(codigo);
 
-      const editada = await dominio.editarPieza(codigo, { precioCentavos: 16000 });
+      const editada = await dominio.editarPieza(codigo, { nombre: "Bandolera negra clásica" });
 
-      expect(editada).toMatchObject({ estado: "disponible", precioCentavos: 16000 });
+      expect(editada).toMatchObject({ estado: "disponible", nombre: "Bandolera negra clásica" });
+    });
+
+    it("no permite cambiar el precio de una pieza ya publicada: eso deja historial aparte", async () => {
+      const { codigo } = await dominio.crearPieza(await bandolera());
+      await agregarTomasYPublicar(codigo);
+
+      await expect(dominio.editarPieza(codigo, { precioCentavos: 16000 })).rejects.toMatchObject({
+        motivo: "transicion_no_permitida",
+      });
+      expect((await dominio.piezaDelPanel(codigo))?.precioCentavos).toBe(18000);
     });
 
     it("una pieza publicada no puede quedar sin sus datos obligatorios", async () => {

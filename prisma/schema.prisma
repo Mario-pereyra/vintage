@@ -59,8 +59,8 @@ enum Autenticidad {
 ///
 /// Mientras está En preparación los datos pueden estar incompletos; publicar
 /// exige los obligatorios. Procedencia y costo de reacondicionamiento llegan
-/// con #8 (ver más abajo); condición, visibilidad, drop y retiro llegan con
-/// sus tickets (#6, #9, #10, #12).
+/// con #8 (ver más abajo); condición, visibilidad y retiro llegan con sus
+/// tickets (#6, #10). El drop llega con #12 (ver más abajo).
 model Pieza {
   id     String @id @db.Uuid
   codigo Int    @unique @default(autoincrement())
@@ -142,22 +142,65 @@ model Pieza {
   /// tiene interruptor propio.
   descripcion           String?    @map("descripcion")
 
+  // --- Drop (ticket #12) -----------------------------------------------------
+  /// El lanzamiento numerado que agrupa esta pieza para promocionarla junto a
+  /// otras (ver "Drop" en CONTEXT.md). Opcional: una pieza también se publica
+  /// suelta, fuera de un drop.
+  dropId Int?  @map("drop_id")
+  drop   Drop? @relation(fields: [dropId], references: [id])
+
   estado        EstadoPieza @default(EN_PREPARACION)
   publicadaEn   DateTime?   @map("publicada_en")
   creadaEn      DateTime    @default(now()) @map("creada_en")
   actualizadaEn DateTime    @default(now()) @updatedAt @map("actualizada_en")
 
-  reservas    Reserva[]
-  interesadas Interesada[]
-  fotos       Foto[]
-  venta       Venta?
-  retiro      Retiro?
+  reservas         Reserva[]
+  interesadas      Interesada[]
+  fotos            Foto[]
+  venta            Venta?
+  retiro           Retiro?
+  historialPrecios HistorialPrecio[]
 
   @@index([estado, publicadaEn])
   @@index([loteId])
   @@index([proveedorId])
   @@index([marcaId])
+  @@index([dropId])
   @@map("pieza")
+}
+
+// --- Drops y historial de precios (ticket #12) ------------------------------
+
+/// Un lanzamiento numerado que agrupa piezas nuevas para promocionarlas juntas
+/// (ver "Drop" en CONTEXT.md, "DROP #03 — 20 carteras nuevas"). El número que
+/// se muestra es el `id`; sus piezas se publican todas juntas o de a poco, y
+/// una pieza también puede publicarse suelta, fuera de un drop.
+model Drop {
+  id       Int      @id @default(autoincrement())
+  creadoEn DateTime @default(now()) @map("creado_en")
+
+  piezas Pieza[]
+
+  @@map("drop")
+}
+
+/// Cada precio publicado que tuvo una pieza y desde cuándo (ver "Precio
+/// publicado" en CONTEXT.md). Se guarda una fila por cada cambio, incluida la
+/// primera vez que `cambiarPrecioPublicado` la toca (que registra también el
+/// precio con el que se publicó, sembrado a partir de `publicadaEn`); así el
+/// panel puede mostrar el historial completo de rebajas.
+model HistorialPrecio {
+  id      String @id @db.Uuid
+  piezaId String @map("pieza_id") @db.Uuid
+  pieza   Pieza  @relation(fields: [piezaId], references: [id])
+
+  precioCentavos Int      @map("precio_centavos")
+  /// Desde cuándo rigió este precio: la fecha de publicación para la primera
+  /// fila sembrada, o la fecha del cambio para las siguientes.
+  fecha          DateTime
+
+  @@index([piezaId, fecha])
+  @@map("historial_precio")
 }
 
 /// Las 8 tomas estandarizadas de una pieza (PRODUCT.md), en el orden en que se
