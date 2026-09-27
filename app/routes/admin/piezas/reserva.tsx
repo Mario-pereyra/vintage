@@ -1,15 +1,20 @@
-import { data, Form, Link } from "react-router";
+import { useState } from "react";
+import { data, Form, Link, useNavigation } from "react-router";
 
 import { BloquePanel } from "~/componentes/bloque-panel";
 import { enlaceWhatsApp } from "~/componentes/boton-whatsapp";
-import { AreaTexto, Campo, CampoTexto } from "~/componentes/campos";
-import { horaDeBolivia, tiempoRestante } from "~/componentes/hora";
+import { Campo, CampoTexto } from "~/componentes/campos";
+import { ControlSegmentado } from "~/componentes/control-segmentado";
+import { horaDeBolivia } from "~/componentes/hora";
+import { Icono } from "~/componentes/icono";
 import { Renglon, Renglones } from "~/componentes/renglon";
 import { Sello } from "~/componentes/sello";
+import { TiempoRestante, useRefrescarCada } from "~/componentes/tiempo-restante";
 import {
   ErrorDeDominio,
   PLAZO_POR_DEFECTO,
   type Compradora,
+  type OrigenDeLaReserva,
   type ReglaDeCompradora,
 } from "~/dominio";
 import { obtenerDominio } from "~/servidor/contexto.server";
@@ -24,7 +29,7 @@ import type { Route } from "./+types/reserva";
 import { TEXTO_DEL_ESTADO } from "./formulario-de-pieza";
 
 export const handle = {
-  titulo: "Reserva e interesadas",
+  titulo: "Reserva",
   volverA: "/admin/reservas",
 } satisfies BarraDelPanel;
 
@@ -109,11 +114,20 @@ export async function action({ params, request, context }: Route.ActionArgs) {
 /** Qué se le dice a la operadora según las reservas vencidas de la compradora. */
 const AVISO_DE_REGLA: Record<ReglaDeCompradora, (c: Compradora) => string> = {
   libre: () => "",
-  aviso: (c) => `Ojo: ${c.nombre} ya dejó vencer 1 reserva.`,
-  pago_previo: (c) => `${c.nombre} dejó vencer 2 reservas: debe pagar antes de reservar.`,
+  aviso: (c) => `${c.nombre} ya dejó vencer 1 reserva. Puedes reservarle; avísale del plazo.`,
+  pago_previo: (c) =>
+    `${c.nombre} dejó vencer 2 reservas: solo se le reserva si paga antes.`,
   bloqueada: (c) =>
     `${c.nombre} dejó vencer ${c.reservasVencidas} reservas: ya no se le reserva.`,
 };
+
+/** Minutos de los botones de extender. */
+const EXTENSIONES = [5, 15, 30, 60] as const;
+
+const ORIGENES = [
+  { valor: "live", texto: `En un live · ${PLAZO_POR_DEFECTO.live} min` },
+  { valor: "fuera_de_live", texto: `Fuera de live · ${PLAZO_POR_DEFECTO.fuera_de_live / 60} h` },
+] as const satisfies readonly { valor: OrigenDeLaReserva; texto: string }[];
 
 function MensajeDeError({ texto }: { texto?: string }) {
   return texto ? (
@@ -123,20 +137,61 @@ function MensajeDeError({ texto }: { texto?: string }) {
   ) : null;
 }
 
+/** "Hola Ana, te escribo por la Ref. VT-0142." */
+function whatsAppDe(persona: { nombre: string; whatsapp: string }, codigo: string) {
+  return enlaceWhatsApp(
+    persona.whatsapp,
+    `Hola ${persona.nombre}, te escribo por la Ref. ${codigo}.`,
+  );
+}
+
+/** El contador de vencidas, como marca pequeña junto a la compradora. Nunca se publica. */
+function Vencidas({ cantidad }: { cantidad: number }) {
+  if (cantidad === 0) return null;
+  return (
+    <span className="marca-vencidas">
+      <span className="cifra">{cantidad}</span> {cantidad === 1 ? "vencida" : "vencidas"}
+    </span>
+  );
+}
+
 export default function ReservaDePieza({ loaderData, actionData }: Route.ComponentProps) {
   const { pieza, reserva, interesadas, q, encontradas, elegida } = loaderData;
+  const navegacion = useNavigation();
+  const enviando = navegacion.state === "submitting";
+  const intencionEnviada = navegacion.formData?.get("intencion");
+
   const erroresDe = (intencion: Intencion): Partial<Record<string, string>> =>
     actionData?.intencion === intencion ? (actionData.errores ?? {}) : {};
   const mensajeDe = (intencion: Intencion) =>
     actionData?.intencion === intencion ? (
-      <p className={actionData.errores ? "campo-error" : "ayuda"} role="status">
+      <p
+        className={actionData.errores ? "panel-aviso panel-aviso-fuerte" : "panel-aviso"}
+        role={actionData.errores ? "alert" : "status"}
+      >
         {actionData.mensaje}
       </p>
     ) : null;
 
   const deReserva = erroresDe("reservar");
-  const deExtension = erroresDe("extender");
   const deInteresada = erroresDe("interesada");
+
+  const [origen, setOrigen] = useState<OrigenDeLaReserva>("live");
+  const [pagoPrevio, setPagoPrevio] = useState(false);
+
+  const regla = elegida?.regla ?? "libre";
+  const motivo =
+    regla === "bloqueada" && elegida
+      ? AVISO_DE_REGLA.bloqueada(elegida)
+      : regla === "pago_previo" && !pagoPrevio
+        ? "Marca que ya pagó para poder reservar."
+        : null;
+
+  // Una búsqueda sin resultados deja escrito lo buscado en el alta.
+  const buscado = q?.trim() ?? "";
+  const buscoNumero = /^[\d\s+()-]+$/.test(buscado);
+
+  useRefrescarCada(30, Boolean(reserva));
 
   return (
     <>
@@ -157,150 +212,257 @@ export default function ReservaDePieza({ loaderData, actionData }: Route.Compone
         />
       </div>
 
-      {mensajeDe("cancelar")}
+      {actionData?.intencion === "cancelar" ? (
+        <p className="panel-nota panel-nota-fuerte" role="status">
+          {actionData.mensaje}
+        </p>
+      ) : null}
 
       {reserva ? (
-        <BloquePanel
-          titulo="Reserva activa"
-          detalle={`quedan ${tiempoRestante(reserva.minutosRestantes)}`}
-        >
+        <BloquePanel titulo="Reserva activa">
           {mensajeDe("reservar")}
+          <TiempoRestante
+            minutos={reserva.minutosRestantes}
+            venceEn={reserva.venceEn}
+            grande
+          />
           <Renglones>
-            <Renglon etiqueta="Compradora">{reserva.compradora.nombre}</Renglon>
-            <Renglon etiqueta="WhatsApp" cifra>
-              <a
-                href={enlaceWhatsApp(
-                  reserva.compradora.whatsapp,
-                  `Hola ${reserva.compradora.nombre}, te escribo por la Ref. ${pieza.codigo}.`,
-                )}
-              >
-                +{reserva.compradora.whatsapp}
-              </a>
+            <Renglon etiqueta="Compradora">
+              {reserva.compradora.nombre}{" "}
+              <Vencidas cantidad={reserva.compradora.reservasVencidas} />
             </Renglon>
-            <Renglon etiqueta="Vence" cifra>
-              {horaDeBolivia(reserva.venceEn)}
+            <Renglon etiqueta="WhatsApp" cifra>
+              +{reserva.compradora.whatsapp}
             </Renglon>
             <Renglon etiqueta="Origen">
-              {reserva.origen === "live" ? "Live" : "Fuera de un live"}
+              {reserva.origen === "live" ? "En un live" : "Fuera de live"}
             </Renglon>
-            {reserva.conPagoPrevio ? <Renglon etiqueta="Pago">Con pago previo</Renglon> : null}
-            <Renglon etiqueta="Vencidas" cifra>
-              {reserva.compradora.reservasVencidas}
-            </Renglon>
+            {reserva.conPagoPrevio ? (
+              <Renglon etiqueta="Pago">Pagó antes de reservar</Renglon>
+            ) : null}
           </Renglones>
 
-          <Form method="post">
+          <a className="btn btn-primario btn-ancho reserva-escribir" href={whatsAppDe(reserva.compradora, pieza.codigo)}>
+            <Icono nombre="chat" />
+            Escribir a {reserva.compradora.nombre}
+          </a>
+
+          <Form method="post" className="extender">
             <input type="hidden" name="intencion" value="extender" />
-            <Campo etiqueta="Extender (minutos)" para="minutos">
-              <CampoTexto id="minutos" name="minutos" inputMode="numeric" defaultValue="15" />
-              <MensajeDeError texto={deExtension.minutos} />
-            </Campo>
-            {mensajeDe("extender")}
-            <button type="submit" className="btn btn-ancho">
+            <h3 className="grupo" id="extender">
               Extender
-            </button>
+            </h3>
+            <div className="extender-opciones" role="group" aria-labelledby="extender">
+              {EXTENSIONES.map((minutos) => (
+                <button
+                  key={minutos}
+                  type="submit"
+                  name="minutos"
+                  value={minutos}
+                  className="btn"
+                  disabled={enviando}
+                  aria-label={`Extender ${minutos} minutos`}
+                >
+                  <span className="cifra">+{minutos}</span>
+                  <span className="extender-unidad">min</span>
+                </button>
+              ))}
+            </div>
+            {mensajeDe("extender")}
           </Form>
-          <Form method="post">
-            <input type="hidden" name="intencion" value="cancelar" />
-            <button type="submit" className="btn btn-ancho">
-              Cancelar reserva
-            </button>
-          </Form>
+
+          <details className="cancelar">
+            <summary className="btn btn-ancho">Cancelar reserva</summary>
+            <Form method="post" className="cancelar-confirmar">
+              <input type="hidden" name="intencion" value="cancelar" />
+              <p className="ayuda">
+                La pieza vuelve a estar Disponible. No suma al contador de vencidas de{" "}
+                {reserva.compradora.nombre}.
+              </p>
+              <button type="submit" className="btn btn-primario btn-ancho" disabled={enviando}>
+                Sí, cancelar la reserva
+              </button>
+            </Form>
+          </details>
         </BloquePanel>
       ) : pieza.estado === "disponible" ? (
         <BloquePanel titulo="Reservar">
-          <Form method="get" role="search">
-            {elegida ? <input type="hidden" name="compradora" value={elegida.id} /> : null}
-            <Campo etiqueta="Buscar compradora" para="q" ayuda="Por nombre o WhatsApp.">
-              <CampoTexto id="q" name="q" type="search" defaultValue={q ?? ""} />
-            </Campo>
-            <button type="submit" className="btn btn-ancho">
-              Buscar
-            </button>
-          </Form>
-          {encontradas ? (
-            encontradas.length > 0 ? (
-              <ul>
-                {encontradas.map((c) => (
-                  <li key={c.id}>
-                    <Link to={`?compradora=${c.id}`}>
-                      {c.nombre} · +{c.whatsapp}
-                      {c.reservasVencidas > 0 ? ` · ${c.reservasVencidas} vencidas` : ""}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="ayuda">Nadie con ese nombre o WhatsApp: regístrala abajo.</p>
-            )
-          ) : null}
+          <h3 className="grupo">Compradora</h3>
+          {elegida ? (
+            <div className="compradora-elegida">
+              <p>
+                <b>{elegida.nombre}</b>
+                <span className="cifra">+{elegida.whatsapp}</span>
+                <Vencidas cantidad={elegida.reservasVencidas} />
+              </p>
+              <Link to="." className="enlace-ficha">
+                Cambiar
+              </Link>
+            </div>
+          ) : (
+            <>
+              <Form method="get" role="search" className="buscar-compradora">
+                <label htmlFor="q" className="etiqueta">
+                  Buscar por nombre o WhatsApp
+                </label>
+                <div className="buscar-compradora-fila">
+                  <CampoTexto
+                    id="q"
+                    name="q"
+                    type="search"
+                    defaultValue={q ?? ""}
+                    autoComplete="off"
+                    enterKeyHint="search"
+                  />
+                  <button type="submit" className="btn btn-icono" aria-label="Buscar">
+                    <Icono nombre="buscar" />
+                  </button>
+                </div>
+              </Form>
+              {encontradas ? (
+                encontradas.length > 0 ? (
+                  <ul className="compradoras">
+                    {encontradas.map((c) => (
+                      <li key={c.id}>
+                        <Link className="compradora-fila" to={`?compradora=${c.id}`}>
+                          <span>
+                            <b>{c.nombre}</b>
+                            <span className="cifra">+{c.whatsapp}</span>
+                          </span>
+                          <span className="compradora-fila-derecha">
+                            <Vencidas cantidad={c.reservasVencidas} />
+                            <Icono nombre="adelante" />
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="ayuda">
+                    Nadie registrada con «{buscado}». Anótala abajo.
+                  </p>
+                )
+              ) : null}
+            </>
+          )}
 
-          <Form method="post">
+          <Form method="post" className="reservar">
             <input type="hidden" name="intencion" value="reservar" />
             {elegida ? (
               <>
                 <input type="hidden" name="compradoraId" value={elegida.id} />
-                <p>
-                  Para <b>{elegida.nombre}</b> (+{elegida.whatsapp}).{" "}
-                  <Link to=".">Otra compradora</Link>
-                </p>
-                {elegida.regla !== "libre" ? (
-                  <p className="campo-error">{AVISO_DE_REGLA[elegida.regla](elegida)}</p>
+                {regla !== "libre" ? (
+                  <p
+                    className={
+                      regla === "aviso" ? "panel-aviso" : "panel-aviso panel-aviso-fuerte"
+                    }
+                    role="note"
+                  >
+                    {AVISO_DE_REGLA[regla](elegida)}
+                  </p>
                 ) : null}
               </>
             ) : (
-              <>
-                <Campo etiqueta="Nombre de la compradora" para="nombre">
-                  <CampoTexto id="nombre" name="nombre" autoComplete="off" />
+              <div className="compradora-nueva">
+                <p className="ayuda">
+                  {encontradas ? "O una compradora nueva:" : "Si es nueva, anótala aquí:"}
+                </p>
+                <Campo etiqueta="Nombre" para="nombre">
+                  <CampoTexto
+                    id="nombre"
+                    name="nombre"
+                    autoComplete="off"
+                    defaultValue={encontradas?.length === 0 && !buscoNumero ? buscado : undefined}
+                    aria-invalid={deReserva.nombre ? true : undefined}
+                  />
                   <MensajeDeError texto={deReserva.nombre} />
                 </Campo>
                 <Campo
                   etiqueta="WhatsApp"
                   para="whatsapp"
-                  ayuda="Si ya está registrada, se usa la misma compradora."
+                  ayuda="Si el número ya está registrado, se usa esa compradora."
                 >
-                  <CampoTexto id="whatsapp" name="whatsapp" inputMode="tel" autoComplete="off" />
+                  <CampoTexto
+                    id="whatsapp"
+                    name="whatsapp"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="off"
+                    placeholder="7123 4567"
+                    defaultValue={encontradas?.length === 0 && buscoNumero ? buscado : undefined}
+                    aria-invalid={deReserva.whatsapp ? true : undefined}
+                  />
                   <MensajeDeError texto={deReserva.whatsapp} />
                 </Campo>
-              </>
+              </div>
             )}
 
-            <fieldset className="campo">
-              <legend className="etiqueta">¿Nace de un live?</legend>
-              <label>
-                <input type="radio" name="origen" value="live" defaultChecked /> Sí (
-                {PLAZO_POR_DEFECTO.live} min)
-              </label>{" "}
-              <label>
-                <input type="radio" name="origen" value="fuera_de_live" /> No (
-                {PLAZO_POR_DEFECTO.fuera_de_live / 60} horas)
-              </label>
+            <h3 className="grupo" id="plazo">
+              Plazo
+            </h3>
+            <Campo etiqueta="¿Nace en un live?" idEtiqueta="origen">
+              <ControlSegmentado
+                etiquetadoPor="origen"
+                opciones={ORIGENES}
+                valor={origen}
+                alCambiar={setOrigen}
+                name="origen"
+              />
               <MensajeDeError texto={deReserva.origen} />
-            </fieldset>
-
+            </Campo>
             <Campo
-              etiqueta="Plazo (minutos)"
+              etiqueta="Otro plazo, en minutos"
               para="plazoMinutos"
-              ayuda="Vacío: el plazo por defecto del origen."
+              ayuda="Déjalo vacío para usar el del origen."
             >
-              <CampoTexto id="plazoMinutos" name="plazoMinutos" inputMode="numeric" />
+              <CampoTexto
+                id="plazoMinutos"
+                name="plazoMinutos"
+                inputMode="numeric"
+                placeholder={String(PLAZO_POR_DEFECTO[origen])}
+                aria-invalid={deReserva.plazoMinutos ? true : undefined}
+              />
               <MensajeDeError texto={deReserva.plazoMinutos} />
             </Campo>
 
-            <label className="campo">
-              <input type="checkbox" name="pagoPrevio" value="si" /> Ya pagó por adelantado
-              (obligatorio con 2 reservas vencidas)
-            </label>
+            {regla !== "bloqueada" ? (
+              <label className="casilla">
+                <input
+                  type="checkbox"
+                  name="pagoPrevio"
+                  value="si"
+                  checked={pagoPrevio}
+                  onChange={(evento) => setPagoPrevio(evento.target.checked)}
+                />
+                <span>
+                  Ya pagó por adelantado
+                  <small>
+                    {regla === "pago_previo"
+                      ? "Obligatorio: tiene 2 reservas vencidas."
+                      : "Obligatorio con 2 reservas vencidas."}
+                  </small>
+                </span>
+              </label>
+            ) : null}
+            <MensajeDeError texto={deReserva.pagoPrevio} />
 
             {mensajeDe("reservar")}
-            <button type="submit" className="btn btn-primario btn-ancho">
-              Reservar
+            {motivo ? <p className="acciones-motivo">{motivo}</p> : null}
+            <button
+              type="submit"
+              className="btn btn-primario btn-ancho reservar-enviar"
+              disabled={Boolean(motivo) || (enviando && intencionEnviada === "reservar")}
+            >
+              Reservar {pieza.codigo}
             </button>
           </Form>
         </BloquePanel>
       ) : (
         <BloquePanel titulo="Reservar">
-          <p className="ayuda">Solo se reserva una pieza Disponible.</p>
+          <p className="ayuda">
+            Solo se reserva una pieza Disponible. Esta está{" "}
+            {TEXTO_DEL_ESTADO[pieza.estado].toLowerCase()}.
+          </p>
         </BloquePanel>
       )}
 
@@ -308,49 +470,77 @@ export default function ReservaDePieza({ loaderData, actionData }: Route.Compone
         {interesadas.length > 0 ? (
           <>
             {pieza.estado === "disponible" ? (
-              <p className="ayuda">La pieza está Disponible: escríbeles.</p>
+              <p className="panel-aviso">La pieza está Disponible: escríbeles.</p>
             ) : null}
-            <Renglones>
+            <ul className="interesadas">
               {interesadas.map((i) => (
-                <Renglon key={i.id} etiqueta={i.nombre} aclaracion={i.nota ?? undefined}>
+                <li key={i.id} className="interesada">
+                  <span>
+                    <b>{i.nombre}</b>
+                    <span className="cifra">+{i.whatsapp}</span>
+                    {i.nota ? <span className="interesada-nota">{i.nota}</span> : null}
+                  </span>
                   <a
-                    href={enlaceWhatsApp(
-                      i.whatsapp,
-                      `Hola ${i.nombre}, te escribo por la Ref. ${pieza.codigo}.`,
-                    )}
+                    className="btn btn-icono"
+                    href={whatsAppDe(i, pieza.codigo)}
+                    aria-label={`Escribir a ${i.nombre} por WhatsApp`}
                   >
-                    +{i.whatsapp}
+                    <Icono nombre="chat" />
                   </a>
-                </Renglon>
+                </li>
               ))}
-            </Renglones>
+            </ul>
           </>
         ) : (
-          <p className="ayuda">Nadie registrado todavía.</p>
+          <p className="ayuda">
+            Nadie anotada todavía. Anota a quien pida la pieza mientras está reservada.
+          </p>
         )}
 
-        <Form method="post">
+        <Form method="post" className="anotar" key={interesadas.length}>
           <input type="hidden" name="intencion" value="interesada" />
-          <Campo etiqueta="Nombre" para="interesada-nombre">
-            <CampoTexto id="interesada-nombre" name="nombre" autoComplete="off" />
-            <MensajeDeError texto={deInteresada.nombre} />
-          </Campo>
-          <Campo etiqueta="WhatsApp" para="interesada-whatsapp">
-            <CampoTexto
-              id="interesada-whatsapp"
-              name="whatsapp"
-              inputMode="tel"
-              autoComplete="off"
-            />
-            <MensajeDeError texto={deInteresada.whatsapp} />
-          </Campo>
+          <h3 className="grupo">Anotar interesada</h3>
+          <div className="anotar-campos">
+            <Campo etiqueta="Nombre" para="interesada-nombre">
+              <CampoTexto
+                id="interesada-nombre"
+                name="nombre"
+                autoComplete="off"
+                aria-invalid={deInteresada.nombre ? true : undefined}
+              />
+              <MensajeDeError texto={deInteresada.nombre} />
+            </Campo>
+            <Campo etiqueta="WhatsApp" para="interesada-whatsapp">
+              <CampoTexto
+                id="interesada-whatsapp"
+                name="whatsapp"
+                type="tel"
+                inputMode="tel"
+                autoComplete="off"
+                placeholder="7123 4567"
+                aria-invalid={deInteresada.whatsapp ? true : undefined}
+              />
+              <MensajeDeError texto={deInteresada.whatsapp} />
+            </Campo>
+          </div>
           <Campo etiqueta="Nota" para="interesada-nota">
-            <AreaTexto id="interesada-nota" name="nota" placeholder="Comentó «mía» en el live" />
+            <CampoTexto
+              id="interesada-nota"
+              name="nota"
+              autoComplete="off"
+              placeholder="Comentó «mía» en el live"
+              aria-invalid={deInteresada.nota ? true : undefined}
+            />
             <MensajeDeError texto={deInteresada.nota} />
           </Campo>
           {mensajeDe("interesada")}
-          <button type="submit" className="btn btn-ancho">
-            Registrar interesada
+          <button
+            type="submit"
+            className="btn btn-ancho"
+            disabled={enviando && intencionEnviada === "interesada"}
+          >
+            <Icono nombre="mas" />
+            Anotar interesada
           </button>
         </Form>
       </BloquePanel>

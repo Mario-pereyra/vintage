@@ -101,6 +101,7 @@ export default function EditarPieza({
           {publicada ? (
             <Link className="enlace-ficha" to={`/admin/piezas/${pieza.codigo}/reserva`}>
               Reserva e interesadas
+              <Icono nombre="adelante" />
             </Link>
           ) : null}
         </div>
