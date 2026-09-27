@@ -96,6 +96,22 @@ function esTipoDeToma(valor: unknown): valor is TipoDeToma {
   return typeof valor === "string" && valor in COLUMNA_DE_TOMA;
 }
 
+/**
+ * Valida que `valor` sea una de las 8 tomas antes de usarlo en cualquier
+ * `where` de Prisma. Un `tipo` inválido nunca debe llegar a una consulta: con
+ * `COLUMNA_DE_TOMA[tipo]` en `undefined`, Prisma lo trata como "sin filtro"
+ * (por ejemplo, `deleteMany({ tipo: undefined })` borra todas las fotos de la
+ * pieza en vez de ninguna).
+ */
+function exigirTipoDeToma(valor: unknown): TipoDeToma {
+  if (!esTipoDeToma(valor)) {
+    throw new ErrorDeDominio("datos_invalidos", "Esa toma no existe.", {
+      tipo: "Elige una de las 8 tomas.",
+    });
+  }
+  return valor;
+}
+
 function validarClaves(datos: DatosDeFoto): void {
   const errores: Record<string, string> = {};
   for (const campo of ["claveMiniatura", "claveCatalogo", "claveDetalle"] as const) {
@@ -195,27 +211,27 @@ export function crearFotos(db: PrismaClient, config: ConfiguracionDeFotos) {
      * toma, la reemplaza (volver a fotografiarla no la duplica). La primera
      * foto que recibe una pieza queda como portada.
      */
-    async agregarFoto(codigo: string, tipo: TipoDeToma, datos: DatosDeFoto): Promise<FotoDelPanel[]> {
-      if (!esTipoDeToma(tipo)) {
-        throw new ErrorDeDominio("datos_invalidos", "Esa toma no existe.", {
-          tipo: "Elige una de las 8 tomas.",
-        });
-      }
+    async agregarFoto(codigo: string, tipoDado: TipoDeToma, datos: DatosDeFoto): Promise<FotoDelPanel[]> {
+      const tipo = exigirTipoDeToma(tipoDado);
       validarClaves(datos);
       const pieza = await exigirPieza(codigo);
-      const existentes = await listar(pieza.id);
-      const esPrimera = existentes.length === 0;
 
-      await db.foto.upsert({
-        where: { piezaId_tipo: { piezaId: pieza.id, tipo: COLUMNA_DE_TOMA[tipo] } },
-        create: {
-          id: uuidV7(),
-          piezaId: pieza.id,
-          tipo: COLUMNA_DE_TOMA[tipo],
-          portada: esPrimera,
-          ...datos,
-        },
-        update: datos,
+      // Transacción: leer si es la primera foto y decidir la portada tiene
+      // que ser atómico con el upsert, para que dos fotos subidas a la vez no
+      // queden las dos como portada.
+      await db.$transaction(async (tx) => {
+        const existentes = await tx.foto.count({ where: { piezaId: pieza.id } });
+        await tx.foto.upsert({
+          where: { piezaId_tipo: { piezaId: pieza.id, tipo: COLUMNA_DE_TOMA[tipo] } },
+          create: {
+            id: uuidV7(),
+            piezaId: pieza.id,
+            tipo: COLUMNA_DE_TOMA[tipo],
+            portada: existentes === 0,
+            ...datos,
+          },
+          update: datos,
+        });
       });
       return fotosDelPanelDesde(await listar(pieza.id));
     },
@@ -225,7 +241,8 @@ export function crearFotos(db: PrismaClient, config: ConfiguracionDeFotos) {
      * primera toma (en el orden fijo) que quede. No se puede borrar una toma
      * de una pieza ya publicada: la dejaría sin las 8 mínimas.
      */
-    async eliminarFoto(codigo: string, tipo: TipoDeToma): Promise<FotoDelPanel[]> {
+    async eliminarFoto(codigo: string, tipoDado: TipoDeToma): Promise<FotoDelPanel[]> {
+      const tipo = exigirTipoDeToma(tipoDado);
       const pieza = await exigirPieza(codigo);
       if (pieza.estado !== "EN_PREPARACION") {
         throw new ErrorDeDominio(
@@ -250,7 +267,8 @@ export function crearFotos(db: PrismaClient, config: ConfiguracionDeFotos) {
     },
 
     /** Cambia cuál es la portada: la foto que muestra el catálogo. */
-    async elegirPortada(codigo: string, tipo: TipoDeToma): Promise<FotoDelPanel[]> {
+    async elegirPortada(codigo: string, tipoDado: TipoDeToma): Promise<FotoDelPanel[]> {
+      const tipo = exigirTipoDeToma(tipoDado);
       const pieza = await exigirPieza(codigo);
       const actual = await db.foto.findUnique({
         where: { piezaId_tipo: { piezaId: pieza.id, tipo: COLUMNA_DE_TOMA[tipo] } },
@@ -260,8 +278,10 @@ export function crearFotos(db: PrismaClient, config: ConfiguracionDeFotos) {
           tipo: "Subí la foto de esa toma antes de elegirla como portada.",
         });
       }
-      await db.foto.updateMany({ where: { piezaId: pieza.id }, data: { portada: false } });
-      await db.foto.update({ where: { id: actual.id }, data: { portada: true } });
+      await db.$transaction([
+        db.foto.updateMany({ where: { piezaId: pieza.id }, data: { portada: false } }),
+        db.foto.update({ where: { id: actual.id }, data: { portada: true } }),
+      ]);
       return fotosDelPanelDesde(await listar(pieza.id));
     },
 
@@ -270,7 +290,9 @@ export function crearFotos(db: PrismaClient, config: ConfiguracionDeFotos) {
      * tomas, sin tocar a qué toma pertenece cada hueco: sirve para corregir
      * una toma subida en el lugar equivocado.
      */
-    async intercambiarFotos(codigo: string, tipoA: TipoDeToma, tipoB: TipoDeToma): Promise<FotoDelPanel[]> {
+    async intercambiarFotos(codigo: string, tipoADado: TipoDeToma, tipoBDado: TipoDeToma): Promise<FotoDelPanel[]> {
+      const tipoA = exigirTipoDeToma(tipoADado);
+      const tipoB = exigirTipoDeToma(tipoBDado);
       const pieza = await exigirPieza(codigo);
       const [filaA, filaB] = await Promise.all([
         db.foto.findUnique({ where: { piezaId_tipo: { piezaId: pieza.id, tipo: COLUMNA_DE_TOMA[tipoA] } } }),

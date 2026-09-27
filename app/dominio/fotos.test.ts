@@ -182,6 +182,20 @@ describe("fotos de pieza", () => {
       });
       expect(await dominio.fotosDePieza(codigo)).toHaveLength(8);
     });
+
+    it("rechaza una toma que no es una de las 8 y no borra ninguna otra foto", async () => {
+      const { codigo } = await dominio.crearPieza({});
+      await dominio.agregarFoto(codigo, "frente", clavesDe("frente"));
+      await dominio.agregarFoto(codigo, "dorso", clavesDe("dorso"));
+
+      await expect(
+        // @ts-expect-error -- justo lo que la prueba quiere forzar
+        dominio.eliminarFoto(codigo, "colgante"),
+      ).rejects.toMatchObject({ motivo: "datos_invalidos" });
+      // Regresión: con `tipo` inválido, `deleteMany` no debe interpretarlo
+      // como "sin filtro" y borrar todas las fotos de la pieza.
+      expect(await dominio.fotosDePieza(codigo)).toHaveLength(2);
+    });
   });
 
   describe("elegir portada", () => {
@@ -203,6 +217,16 @@ describe("fotos de pieza", () => {
       await expect(dominio.elegirPortada(codigo, "dorso")).rejects.toMatchObject({
         motivo: "datos_invalidos",
       });
+    });
+
+    it("rechaza una toma que no es una de las 8", async () => {
+      const { codigo } = await dominio.crearPieza({});
+      await dominio.agregarFoto(codigo, "frente", clavesDe("frente"));
+
+      await expect(
+        // @ts-expect-error -- justo lo que la prueba quiere forzar
+        dominio.elegirPortada(codigo, "colgante"),
+      ).rejects.toMatchObject({ motivo: "datos_invalidos" });
     });
   });
 
@@ -236,6 +260,23 @@ describe("fotos de pieza", () => {
       await expect(
         dominio.intercambiarFotos(codigo, "frente", "dorso"),
       ).rejects.toMatchObject({ motivo: "datos_invalidos" });
+    });
+
+    it("rechaza una toma que no es una de las 8, sea el primer o el segundo lado", async () => {
+      const { codigo } = await dominio.crearPieza({});
+      await dominio.agregarFoto(codigo, "frente", clavesDe("frente"));
+      await dominio.agregarFoto(codigo, "dorso", clavesDe("dorso"));
+
+      await expect(
+        // @ts-expect-error -- justo lo que la prueba quiere forzar
+        dominio.intercambiarFotos(codigo, "colgante", "dorso"),
+      ).rejects.toMatchObject({ motivo: "datos_invalidos" });
+      await expect(
+        // @ts-expect-error -- justo lo que la prueba quiere forzar
+        dominio.intercambiarFotos(codigo, "frente", "colgante"),
+      ).rejects.toMatchObject({ motivo: "datos_invalidos" });
+      // Ninguno de los dos intentos tocó las fotos existentes.
+      expect(await dominio.fotosDePieza(codigo)).toHaveLength(2);
     });
   });
 
