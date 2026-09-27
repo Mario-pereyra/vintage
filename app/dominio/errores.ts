@@ -17,7 +17,11 @@ export type MotivoDeRechazo =
   /** La compradora tiene 2 reservas vencidas: debe pagar antes de reservar. */
   | "requiere_pago_previo"
   /** La compradora tiene 3 o más reservas vencidas: ya no se le reserva. */
-  | "compradora_bloqueada";
+  | "compradora_bloqueada"
+  /** Sin pago verificado en el banco no hay venta. */
+  | "pago_no_verificado"
+  /** La pieza no tiene una venta registrada. */
+  | "venta_no_encontrada";
 
 /**
  * Una regla del negocio rechazó la operación. Los loaders y actions la

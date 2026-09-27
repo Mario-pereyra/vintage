@@ -156,6 +156,41 @@ type FilaDeReserva = Prisma.ReservaGetPayload<{ include: typeof detalleDeReserva
 
 type Cliente = PrismaClient | Prisma.TransactionClient;
 
+/**
+ * Busca la compradora elegida (por id) o, si es nueva, la busca por su
+ * WhatsApp y la crea si no existe. La usan la reserva y la venta directa.
+ */
+export async function buscarOCrearCompradora(
+  tx: Prisma.TransactionClient,
+  datos: CompradoraDeReserva,
+  ahora: Date,
+): Promise<FilaDeCompradora> {
+  if ("id" in datos) {
+    const fila = await tx.compradora
+      .findUnique({ where: { id: datos.id }, include: conVencidas })
+      .catch(() => null); // un id que no es UUID
+    if (!fila) {
+      throw new ErrorDeDominio("compradora_no_encontrada", "No existe esa compradora.");
+    }
+    return fila;
+  }
+
+  const { nombre, whatsapp, errores } = validarPersona(datos);
+  if (Object.keys(errores).length > 0) {
+    throw new ErrorDeDominio("datos_invalidos", "Revisa los datos de la compradora.", errores);
+  }
+  const existente = await tx.compradora.findUnique({
+    where: { whatsapp },
+    include: conVencidas,
+  });
+  if (existente) return existente;
+  return tx.compradora.create({
+    data: { id: uuidV7(ahora.getTime()), nombre, whatsapp },
+    include: conVencidas,
+  });
+}
+
+
 export function crearReservas(db: PrismaClient, config: ConfiguracionDeReservas) {
   function aCompradora(fila: FilaDeCompradora): Compradora {
     const reservasVencidas = fila._count.reservas;
@@ -212,37 +247,6 @@ export function crearReservas(db: PrismaClient, config: ConfiguracionDeReservas)
       );
     }
     return fila;
-  }
-
-  /** Busca la compradora de la reserva, o la crea si su WhatsApp es nuevo. */
-  async function compradoraDeReserva(
-    tx: Prisma.TransactionClient,
-    datos: CompradoraDeReserva,
-  ): Promise<FilaDeCompradora> {
-    if ("id" in datos) {
-      const fila = await tx.compradora.findUnique({
-        where: { id: datos.id },
-        include: conVencidas,
-      });
-      if (!fila) {
-        throw new ErrorDeDominio("compradora_no_encontrada", "No existe esa compradora.");
-      }
-      return fila;
-    }
-
-    const { nombre, whatsapp, errores } = validarPersona(datos);
-    if (Object.keys(errores).length > 0) {
-      throw new ErrorDeDominio("datos_invalidos", "Revisa los datos de la compradora.", errores);
-    }
-    const existente = await tx.compradora.findUnique({
-      where: { whatsapp },
-      include: conVencidas,
-    });
-    if (existente) return existente;
-    return tx.compradora.create({
-      data: { id: uuidV7(config.ahora().getTime()), nombre, whatsapp },
-      include: conVencidas,
-    });
   }
 
   /**
@@ -359,7 +363,7 @@ export function crearReservas(db: PrismaClient, config: ConfiguracionDeReservas)
 
       const { id, regla } = await db.$transaction(async (tx) => {
         const pieza = await exigirPieza(tx, datos.codigo);
-        const compradora = aCompradora(await compradoraDeReserva(tx, datos.compradora));
+        const compradora = aCompradora(await buscarOCrearCompradora(tx, datos.compradora, config.ahora()));
 
         if (compradora.regla === "bloqueada") {
           throw new ErrorDeDominio(

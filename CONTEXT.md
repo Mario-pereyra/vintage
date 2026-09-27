@@ -38,6 +38,10 @@ _Avoid_: Lista de defectos, reporte de daños
 La etapa de una pieza en su ciclo de vida: En preparación (limpieza, reparación, fotos o a la espera de su drop), Disponible, Reservada, Vendida o Retirada (sale del catálogo sin venderse). Una reserva caída devuelve la pieza a Disponible.
 _Avoid_: No apta, En reparación (quedan dentro de En preparación)
 
+**Retiro**:
+La salida de una pieza En preparación o Disponible del catálogo sin venderse, con un motivo: irrecuperable, devuelta al proveedor, uso propio u otro (con una nota). Retirada es un estado final, igual que Vendida; si la pieza llegó a publicarse, su URL dice "ya no disponible".
+_Avoid_: Baja, borrar (el dominio nunca borra piezas)
+
 **Autenticidad**:
 El grado de certeza sobre la marca de una pieza: marca comprobada, marca atribuida (sin autenticar) o sin marca. Solo una marca comprobada se presenta como "Original".
 _Avoid_: Original (como atributo; es solo una consecuencia de "marca comprobada")

@@ -105,6 +105,8 @@ model Pieza {
   reservas    Reserva[]
   interesadas Interesada[]
   fotos       Foto[]
+  venta       Venta?
+  retiro      Retiro?
 
   @@index([estado, publicadaEn])
   @@index([loteId])
@@ -253,12 +255,13 @@ enum OrigenDeReserva {
   FUERA_DE_LIVE
 }
 
-/// Una reserva está activa hasta que vence o se cancela. El pago verificado y
-/// la venta (ticket #10) sumarán su propio estado final.
+/// Una reserva está activa hasta que vence, se cancela o se paga (PAGADA: el
+/// pago verificado la convirtió en venta, ticket #10).
 enum EstadoReserva {
   ACTIVA
   VENCIDA
   CANCELADA
+  PAGADA
 }
 
 /// La persona que compra por WhatsApp. Su número es único (solo dígitos, con
@@ -270,6 +273,7 @@ model Compradora {
   whatsapp String    @unique
   creadaEn DateTime  @default(now()) @map("creada_en")
   reservas Reserva[]
+  ventas   Venta[]
 
   @@map("compradora")
 }
@@ -295,6 +299,7 @@ model Reserva {
   creadaEn      DateTime        @map("creada_en")
   venceEn       DateTime        @map("vence_en")
   canceladaEn   DateTime?       @map("cancelada_en")
+  venta         Venta?
 
   @@index([estado, venceEn])
   @@index([piezaId, estado])
@@ -315,6 +320,89 @@ model Interesada {
 
   @@index([piezaId])
   @@map("interesada")
+}
+
+// --- Ventas, entregas y retiros (ticket #10) --------------------------------
+
+/// La red o vía por la que llegó la compradora (ver "Canal de captación").
+enum CanalDeCaptacion {
+  TIKTOK_PUBLICACION
+  TIKTOK_LIVE
+  INSTAGRAM_PUBLICACION
+  INSTAGRAM_LIVE
+  FACEBOOK_PUBLICACION
+  FACEBOOK_LIVE
+  WEB
+  RECOMENDACION
+}
+
+/// Cómo llega la pieza vendida a la compradora (ver "Modalidad de entrega").
+enum ModalidadDeEntrega {
+  RETIRO
+  DELIVERY_SANTA_CRUZ
+  ENVIO_DEPARTAMENTO
+}
+
+enum EstadoEntrega {
+  PENDIENTE
+  ENTREGADA
+}
+
+/// El cierre de una pieza con una compradora, con pago verificado. Una pieza
+/// tiene como máximo una venta (Vendida es un estado final). Si nació de una
+/// reserva, `reservaId` la enlaza (la reserva pasa a PAGADA).
+///
+/// La entrega vive en la misma fila (una venta, una entrega). Los montos van
+/// en centavos de boliviano. La rentabilidad (#11) suma `precioFinalCentavos`
+/// y `costoEntregaCentavos` por `vendidaEn`.
+model Venta {
+  id                   String             @id @db.Uuid
+  piezaId              String             @unique @map("pieza_id") @db.Uuid
+  pieza                Pieza              @relation(fields: [piezaId], references: [id])
+  compradoraId         String             @map("compradora_id") @db.Uuid
+  compradora           Compradora         @relation(fields: [compradoraId], references: [id])
+  reservaId            String?            @unique @map("reserva_id") @db.Uuid
+  reserva              Reserva?           @relation(fields: [reservaId], references: [id])
+  /// Puede ser menor que el precio publicado (regateo por WhatsApp).
+  precioFinalCentavos  Int                @map("precio_final_centavos")
+  /// La fecha de la venta. Puede ser anterior al registro (`creadaEn`).
+  vendidaEn            DateTime           @map("vendida_en")
+  canal                CanalDeCaptacion
+  /// Cuándo la operadora registró el pago verificado en el banco.
+  pagoVerificadoEn     DateTime           @map("pago_verificado_en")
+  modalidadDeEntrega   ModalidadDeEntrega @map("modalidad_de_entrega")
+  costoEntregaCentavos Int                @map("costo_entrega_centavos")
+  estadoDeEntrega      EstadoEntrega      @default(PENDIENTE) @map("estado_de_entrega")
+  /// Guía o comprobante de un envío a otro departamento.
+  guia                 String?
+  entregadaEn          DateTime?          @map("entregada_en")
+  creadaEn             DateTime           @map("creada_en")
+
+  @@index([estadoDeEntrega, vendidaEn])
+  @@index([vendidaEn])
+  @@index([compradoraId])
+  @@map("venta")
+}
+
+/// Por qué una pieza salió del catálogo sin venderse.
+enum MotivoDeRetiro {
+  IRRECUPERABLE
+  DEVUELTA_AL_PROVEEDOR
+  USO_PROPIO
+  OTRO
+}
+
+/// El retiro de una pieza En preparación o Disponible. Retirada es un estado
+/// final. La nota es obligatoria con el motivo OTRO.
+model Retiro {
+  id         String         @id @db.Uuid
+  piezaId    String         @unique @map("pieza_id") @db.Uuid
+  pieza      Pieza          @relation(fields: [piezaId], references: [id])
+  motivo     MotivoDeRetiro
+  nota       String?
+  retiradaEn DateTime       @map("retirada_en")
+
+  @@map("retiro")
 }
 
 // --- Sesiones de las operadoras (Better Auth) ------------------------------
