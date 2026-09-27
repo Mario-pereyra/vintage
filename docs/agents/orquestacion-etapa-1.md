@@ -107,8 +107,22 @@ Si una sesión no ve las definiciones, lanza `general-purpose` con el modelo del
 - Pendiente para la dueña: los valores iniciales de las listas (tipos, colores y materiales), que están en la migración.
 - **Lecciones operativas:** el `.env` apunta a Neon `dev`, así que los agentes pueden aplicar ahí sus migraciones. Cada agente usa su propia sesión de `playwright-cli`. En Neon `dev` quedan piezas de prueba.
 
+**Ola 4a (#5, #7, #8 y #9): terminada.**
+- #7 → PR #23, de535c3. Un grave: parámetros de URL sin tope que tiraban el catálogo público.
+- #9 → PR #24, 64302e3. El vencimiento se calcula al leer en lugar de usar un Cron Trigger, por el costo de cómputo en Neon; es una decisión del orquestador que quedó comentada en el PR. Contador de vencidas: con 1 se avisa, con 2 se exige pago previo y con 3 se rechaza.
+- #5 → PR #25, 0f6b923. Tres graves de seguridad en la subida de fotos: un tipo inválido borraba todas las fotos, la clave de R2 no se validaba y faltaban topes. Además, una falla material: los errores salían en inglés. El catálogo ya muestra la foto de portada.
+- #8 → PR #26, 3498ad4. Dos graves: la apertura no era atómica y la cantidad de unidades no tenía tope. La migración se renombró a `20260927050000_...` para que quede después de las de `main`, y su registro se actualizó en Neon `dev`.
+- #10 se adelantó (PR #27, `dominio-nucleo` + `disenador-ui`) porque sus bloqueos ya estaban cerrados.
+- **Patrón recurrente:** los enteros y montos sin tope aparecen una y otra vez como grave. Hay que pedir los topes desde el prompt de dominio.
+- **Lecciones operativas:**
+  - El PR que se mergea segundo casi siempre necesita al `integrador`, así que conviene rebasar una sola vez, después del merge anterior.
+  - Las vistas previas `pr-N-vintage…workers.dev` usan R2 real (el mismo bucket que producción) y Neon `dev`. Ahí se prueban las fotos.
+  - Neon `dev` está lleno de datos de prueba.
+- ⏸️ acumulados en #18 y menores de diseño en #19.
+
 **Próximos pasos**
-- Ola 4a: #5, #7 y #8 con `dominio`, y #9 con `dominio-nucleo`, en paralelo. Cada uno sigue con `disenador-ui`.
+- Ola 4b: #6 y #12 con `dominio`. #10 ya está en revisión y se rebasa sobre `main`.
+- Ola 5: #11 (espera a #8 y #10) y #13 (espera a #10).
 
 ## Cómo retomar
 
